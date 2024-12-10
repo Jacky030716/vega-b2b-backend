@@ -1,41 +1,35 @@
 # MemowordCleanArc
 
+Expanded Guidelines for Creating a New API
+1. Define the Requirements
+Step 1.1: Clarify the purpose of the API.
+Example: Create an API for managing "Products" with operations like adding, updating, and retrieving products.
+Step 1.2: Decide on the route structure and HTTP method.
+Example: POST /api/v1/products for adding a product.
+Step 1.3: Define the input and output JSON structure.
+2. Update the Project Structure
+Step 2.1: Add a New Folder for the Feature
 
-### Expanded and Example-Based Step-by-Step Guidelines for Creating One API
+Navigate to Core/CleanArc.Application/Features.
+Create a new folder named Products to group all files related to this feature.
+mathematica
+Copy code
+Core/CleanArc.Application/Features/Products
+Step 2.2: Inside the Products folder, create the following structure:
 
-Using examples extracted from your project, here's a tailored guide for creating a new API endpoint:
+Commands: For command handling (e.g., AddProductCommand).
+Queries: For query handling (e.g., GetProductQuery).
+DTOs: For data transfer objects.
+mathematica
+Copy code
+Core/CleanArc.Application/Features/Products/Commands
+Core/CleanArc.Application/Features/Products/Queries
+Core/CleanArc.Application/Features/Products/DTOs
+3. Define the Command and Handler
+Step 3.1: Add the AddProductCommand class in Commands:
 
----
-
-#### **1. Define the Requirements**
-**Example: Create an API for adding a "Product".**
-- **HTTP Method**: `POST`
-- **Endpoint Route**: `/api/v1/products`
-- **Input DTO**:
-  ```json
-  {
-      "name": "Product Name",
-      "price": 100.00,
-      "category": "Category Name"
-  }
-  ```
-- **Output DTO**:
-  ```json
-  {
-      "id": 1,
-      "name": "Product Name",
-      "price": 100.00,
-      "category": "Category Name"
-  }
-  ```
-
----
-
-#### **2. Update the Core Layer**
-
-**Step 2.1**: Define the Command  
-Example from `AddAdminCommand.cs`:
-```csharp
+csharp
+Copy code
 public record AddProductCommand(string Name, decimal Price, string Category) 
     : IRequest<ProductDto>, IValidatableModel<AddProductCommand>
 {
@@ -46,11 +40,10 @@ public record AddProductCommand(string Name, decimal Price, string Category)
         return validator;
     }
 };
-```
+Step 3.2: Add the AddProductCommandHandler in the same folder:
 
-**Step 2.2**: Implement the Handler  
-Example from `AddAdminCommand.Handler.cs`:
-```csharp
+csharp
+Copy code
 internal class AddProductCommandHandler : IRequestHandler<AddProductCommand, ProductDto>
 {
     private readonly IProductRepository _productRepository;
@@ -74,52 +67,33 @@ internal class AddProductCommandHandler : IRequestHandler<AddProductCommand, Pro
         };
     }
 }
-```
+4. Update the Domain Layer
+Step 4.1: Add the Product entity in Core/CleanArc.Domain/Entities:
 
-**Step 2.3**: Add DTOs  
-Create `ProductDto.cs`:
-```csharp
-public class ProductDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-    public decimal Price { get; set; }
-    public string Category { get; set; }
-}
-```
-
----
-
-#### **3. Update the Domain Layer**
-
-**Step 3.1**: Define the Product Entity  
-Example from `Order.cs`:
-```csharp
+csharp
+Copy code
 public class Product : BaseEntity
 {
     public string Name { get; set; }
     public decimal Price { get; set; }
     public string Category { get; set; }
 }
-```
+5. Update the Infrastructure Layer
+Step 5.1: Add a Repository Interface
 
----
-
-#### **4. Update the Infrastructure Layer**
-
-**Step 4.1**: Define the Repository Interface  
-Example from `IOrderRepository.cs`:
-```csharp
+Add a new interface IProductRepository in Core/CleanArc.Application/Contracts/Persistence:
+csharp
+Copy code
 public interface IProductRepository
 {
     Task AddProductAsync(Product product);
     Task<Product> GetProductByIdAsync(int id);
 }
-```
+Step 5.2: Add a Repository Implementation
 
-**Step 4.2**: Implement the Repository  
-Example from `OrderRepository.cs`:
-```csharp
+Add ProductRepository in Infrastructure/CleanArc.Infrastructure.Persistence/Repositories:
+csharp
+Copy code
 internal class ProductRepository : BaseAsyncRepository<Product>, IProductRepository
 {
     public ProductRepository(ApplicationDbContext dbContext) : base(dbContext) { }
@@ -134,58 +108,71 @@ internal class ProductRepository : BaseAsyncRepository<Product>, IProductReposit
         return await base.TableNoTracking.FirstOrDefaultAsync(p => p.Id == id);
     }
 }
-```
+Step 5.3: Register the Repository in ServiceCollectionExtensions.cs:
 
----
+csharp
+Copy code
+services.AddScoped<IProductRepository, ProductRepository>();
+Step 5.4: Update the Database Context
 
-#### **5. Update the API Layer**
+Add DbSet<Product> to ApplicationDbContext:
+csharp
+Copy code
+public DbSet<Product> Products { get; set; }
+6. Update the API Layer
+Step 6.1: Add a Controller
 
-**Step 5.1**: Create a Controller  
-Example from `AdminManagerController.cs`:
-```csharp
+Create ProductController in API/CleanArc.Web.Api/Controllers/V1:
+csharp
+Copy code
 [ApiVersion("1")]
 [ApiController]
 [Route("api/v{version:apiVersion}/products")]
-public class ProductController(ISender sender) : ControllerBase
+public class ProductController : ControllerBase
 {
+    private readonly ISender _sender;
+
+    public ProductController(ISender sender)
+    {
+        _sender = sender;
+    }
+
     [HttpPost]
     public async Task<IActionResult> AddProduct([FromBody] AddProductCommand command)
     {
-        var result = await sender.Send(command);
+        var result = await _sender.Send(command);
         return Ok(result);
     }
 }
-```
+Step 6.2: Add Swagger Documentation
 
----
+Update SwaggerConfigurationExtensions.cs to include the new endpoint.
+7. Update the Database
+Step 7.1: Add a Migration
 
-#### **6. Add Error Handling**
-**Example**: Use middleware or filters for error handling.  
-From `WebFramework/Middlewares/ExceptionHandler.cs`:
-```csharp
+Run the following command:
+bash
+Copy code
+dotnet ef migrations add AddProductsTable -p Infrastructure/CleanArc.Infrastructure.Persistence -s API/CleanArc.Web.Api
+Step 7.2: Apply the Migration
+
+Run:
+bash
+Copy code
+dotnet ef database update -p Infrastructure/CleanArc.Infrastructure.Persistence -s API/CleanArc.Web.Api
+8. Add Error Handling
+Ensure validation and error-handling middleware is active:
+csharp
+Copy code
 app.UseMiddleware<ExceptionHandler>();
-```
+9. Write Tests
+Step 9.1: Unit Tests
 
----
-
-#### **7. Document the API**
-Example from Swagger setup:
-```csharp
-services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Product API", Version = "v1" });
-});
-```
-
----
-
-#### **8. Write Tests**
-
-**Step 8.1**: Write Unit Tests  
-Example from `AddAdminCommandTests`:
-```csharp
+Add tests for AddProductCommandHandler in Tests/BaseSetup:
+csharp
+Copy code
 [Fact]
-public async Task AddProductCommandHandler_ShouldReturnProductDto()
+public async Task AddProduct_ShouldReturnProductDto()
 {
     var repositoryMock = new Mock<IProductRepository>();
     var handler = new AddProductCommandHandler(repositoryMock.Object);
@@ -197,7 +184,9 @@ public async Task AddProductCommandHandler_ShouldReturnProductDto()
     Assert.NotNull(result);
     Assert.Equal("Test Product", result.Name);
 }
-```
+Step 9.2: Integration Tests
+
+Add tests for the endpoint in Tests/Infrastructure.
 
 **Step 8.2**: Write Integration Tests  
 Setup test environment in `TestApplicationDbContext.cs`.
