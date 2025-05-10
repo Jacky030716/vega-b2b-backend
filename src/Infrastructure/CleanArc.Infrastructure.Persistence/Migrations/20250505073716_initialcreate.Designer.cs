@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanArc.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241030090556_initialcreate")]
+    [Migration("20250505073716_initialcreate")]
     partial class initialcreate
     {
         /// <inheritdoc />
@@ -52,7 +52,7 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Order");
+                    b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.User.Role", b =>
@@ -315,7 +315,7 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -326,7 +326,7 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArc.Domain.Entities.User.Role", "Role")
                         .WithMany("Claims")
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Role");
@@ -337,7 +337,7 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
                         .WithMany("Claims")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -348,7 +348,7 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
                         .WithMany("Logins")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -359,7 +359,7 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
                         .WithMany("UserRefreshTokens")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -370,13 +370,13 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArc.Domain.Entities.User.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
                         .WithMany("UserRoles")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Role");
@@ -389,7 +389,7 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
                         .WithMany("Tokens")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");

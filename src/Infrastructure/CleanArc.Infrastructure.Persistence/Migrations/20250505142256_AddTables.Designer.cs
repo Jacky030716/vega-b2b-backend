@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanArc.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241030095341_initialcreateagain")]
-    partial class initialcreateagain
+    [Migration("20250505142256_AddTables")]
+    partial class AddTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -310,6 +310,76 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.ToTable("UserTokens", "usr");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.Word.Word", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("WordListId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WordListId");
+
+                    b.ToTable("Words", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Word.WordList", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("WordLists", (string)null);
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.Order.Order", b =>
                 {
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
@@ -395,6 +465,28 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.Word.Word", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Word.WordList", "WordList")
+                        .WithMany("Words")
+                        .HasForeignKey("WordListId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("WordList");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Word.WordList", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "User")
+                        .WithMany("WordLists")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.User.Role", b =>
                 {
                     b.Navigation("Claims");
@@ -415,6 +507,13 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("UserRefreshTokens");
 
                     b.Navigation("UserRoles");
+
+                    b.Navigation("WordLists");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Word.WordList", b =>
+                {
+                    b.Navigation("Words");
                 });
 #pragma warning restore 612, 618
         }
