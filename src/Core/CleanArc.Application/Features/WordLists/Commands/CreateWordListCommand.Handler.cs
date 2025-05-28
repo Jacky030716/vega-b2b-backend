@@ -5,7 +5,7 @@ using Mediator;
 
 namespace CleanArc.Application.Features.WordLists.Commands
 {
-    internal class CreateWordListCommandHandler : IRequestHandler<CreateWordListCommand, OperationResult<bool>>
+    public class CreateWordListCommandHandler : IRequestHandler<CreateWordListCommand, OperationResult<bool>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAppUserManager _userManager;
