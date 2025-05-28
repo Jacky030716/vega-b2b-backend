@@ -32,6 +32,7 @@ public class UserTokenRequestQueryHandler:IRequestHandler<UserTokenRequestQuery,
 
         //TODO Send Code Via Sms Provider
 
-        return OperationResult<UserTokenRequestQueryResponse>.SuccessResult(new UserTokenRequestQueryResponse {UserKey = user.GeneratedCode});
+        //TODO: Delete later, this is for 
+        return OperationResult<UserTokenRequestQueryResponse>.SuccessResult(new UserTokenRequestQueryResponse {UserKey = user.GeneratedCode, Code = code});
     }
 }

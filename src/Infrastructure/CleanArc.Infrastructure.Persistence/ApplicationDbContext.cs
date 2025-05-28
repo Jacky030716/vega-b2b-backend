@@ -1,19 +1,24 @@
 ﻿using System.Reflection;
 using CleanArc.Domain.Common;
+using CleanArc.Domain.Entities.Order;
 using CleanArc.Domain.Entities.User;
+using CleanArc.Domain.Entities.Word;
 using CleanArc.SharedKernel.Extensions;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanArc.Infrastructure.Persistence;
 
-public class ApplicationDbContext: IdentityDbContext<User, Role, int, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>
+public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>
 {
     public ApplicationDbContext(DbContextOptions options)
         : base(options)
     {
         base.SavingChanges += OnSavingChanges;
     }
+
+    public DbSet<Order> Orders { get; set; }
+    public DbSet<Word> Words { get; set; }
 
     private void OnSavingChanges(object sender, SavingChangesEventArgs e)
     {
@@ -59,8 +64,6 @@ public class ApplicationDbContext: IdentityDbContext<User, Role, int, UserClaim,
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         modelBuilder.AddRestrictDeleteBehaviorConvention();
         modelBuilder.AddPluralizingTableNameConvention();
-
-
     }
 
     private void ConfigureEntityDates()

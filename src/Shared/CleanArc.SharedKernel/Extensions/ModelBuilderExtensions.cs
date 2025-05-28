@@ -33,7 +33,12 @@ public static class ModelBuilderExtensions
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {
             string tableName = entityType.GetTableName();
-            entityType.SetTableName(pluralizer.Pluralize(tableName));
+            string schema = entityType.GetSchema();
+
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                entityType.SetTableName(pluralizer.Pluralize(tableName));
+            }
         }
     }
 

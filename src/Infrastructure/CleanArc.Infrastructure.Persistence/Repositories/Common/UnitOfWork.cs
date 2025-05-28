@@ -5,18 +5,20 @@ namespace CleanArc.Infrastructure.Persistence.Repositories.Common;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext _db;
-       
+
     public IUserRefreshTokenRepository UserRefreshTokenRepository { get; }
     public IOrderRepository OrderRepository { get; }
+    public IWordListRepository WordListRepository { get; }
 
     public UnitOfWork(ApplicationDbContext db)
     {
         _db = db;
         UserRefreshTokenRepository = new UserRefreshTokenRepository(_db);
-        OrderRepository= new OrderRepository(_db);
+        OrderRepository = new OrderRepository(_db);
+        WordListRepository = new WordListRepository(_db);
     }
 
-    public  Task CommitAsync()
+    public Task CommitAsync()
     {
         return _db.SaveChangesAsync();
     }
