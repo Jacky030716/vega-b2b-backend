@@ -9,11 +9,26 @@ public class User : IdentityUser<int>, IEntity
     public User()
     {
         this.GeneratedCode = Guid.NewGuid().ToString().Substring(0, 8);
+        this.Level = 1;
+        this.Experience = 0;
+        this.Diamonds = 0;
+        this.AvatarId = "bear"; // default avatar
     }
 
     public string Name { get; set; }
     public string FamilyName { get; set; }
     public string GeneratedCode { get; set; }
+
+    // User Profile Data
+    public int Level { get; set; } = 1;
+    public int Experience { get; set; } = 0;
+    public int Diamonds { get; set; } = 0;
+    public string AvatarId { get; set; } = "bear";
+
+    // Password reset tracking (store hashed token only)
+    public DateTime? PasswordResetTokenExpiresAt { get; set; }
+    public string PasswordResetTokenHash { get; set; }
+    public bool PasswordResetTokenUsed { get; set; }
 
     public ICollection<UserRole> UserRoles { get; set; }
     public ICollection<UserLogin> Logins { get; set; }

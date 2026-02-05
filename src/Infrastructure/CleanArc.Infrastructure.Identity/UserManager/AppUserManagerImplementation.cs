@@ -104,7 +104,7 @@ public class AppUserManagerImplementation : IAppUserManager
 
     public async Task<IdentityResult> IncrementAccessFailedCountAsync(User user)
     {
-       
+
 
         return await _userManager.AccessFailedAsync(user);
     }
@@ -119,7 +119,7 @@ public class AppUserManagerImplementation : IAppUserManager
     public async Task ResetUserLockoutAsync(User user)
     {
         await _userManager.SetLockoutEndDateAsync(user, null);
-         await _userManager.ResetAccessFailedCountAsync(user);
+        await _userManager.ResetAccessFailedCountAsync(user);
     }
 
     public async Task UpdateUserAsync(User user)
@@ -130,5 +130,30 @@ public class AppUserManagerImplementation : IAppUserManager
     public async Task UpdateSecurityStampAsync(User user)
     {
         await _userManager.UpdateSecurityStampAsync(user);
+    }
+
+    public async Task<User> GetUserById(int userId)
+    {
+        return await _userManager.FindByIdAsync(userId.ToString());
+    }
+
+    public async Task<IdentityResult> UpdateUser(User user)
+    {
+        return await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<User> FindUserByEmail(string email)
+    {
+        return await _userManager.FindByEmailAsync(email);
+    }
+
+    public async Task<string> GeneratePasswordResetToken(User user)
+    {
+        return await _userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    public async Task<IdentityResult> ResetPassword(User user, string token, string newPassword)
+    {
+        return await _userManager.ResetPasswordAsync(user, token, newPassword);
     }
 }

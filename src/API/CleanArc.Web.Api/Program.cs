@@ -55,7 +55,7 @@ builder.Services.AddControllers(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwagger();
-builder.Services.AddCarter(configurator: configurator => { configurator.WithEmptyValidators();});
+builder.Services.AddCarter(configurator: configurator => { configurator.WithEmptyValidators(); });
 
 builder.Services.AddApplicationServices()
     .RegisterIdentityServices(identitySettings)
@@ -82,13 +82,14 @@ var app = builder.Build();
 
 await app.ApplyMigrationsAsync();
 await app.SeedDefaultUsersAsync();
+await app.SeedQuizDataAsync();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 
-app.UseExceptionHandler(_=>{});
+app.UseExceptionHandler(_ => { });
 app.UseSwaggerAndUI();
 
 app.MapCarter();

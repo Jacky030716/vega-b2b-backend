@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using CleanArc.Domain.Common;
 using CleanArc.Domain.Entities.Order;
+using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Domain.Entities.Word;
 using CleanArc.SharedKernel.Extensions;
@@ -19,6 +20,28 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
 
     public DbSet<Order> Orders { get; set; }
     public DbSet<Word> Words { get; set; }
+    public DbSet<Quiz> Quizzes { get; set; }
+    public DbSet<QuizQuestion> QuizQuestions { get; set; }
+    public DbSet<GameCatalog> GameCatalogs { get; set; }
+    public DbSet<GameConfig> GameConfigs { get; set; }
+    public DbSet<GameTheme> GameThemes { get; set; }
+    public DbSet<GameThemeItem> GameThemeItems { get; set; }
+    public DbSet<GameThemeGradient> GameThemeGradients { get; set; }
+    public DbSet<GameDifficulty> GameDifficulties { get; set; }
+    public DbSet<MagicBackpackQuestion> MagicBackpackQuestions { get; set; }
+    public DbSet<MagicBackpackItem> MagicBackpackItems { get; set; }
+    public DbSet<MagicBackpackSequence> MagicBackpackSequences { get; set; }
+    public DbSet<WordBridgeQuestion> WordBridgeQuestions { get; set; }
+    public DbSet<StoryRecallQuestion> StoryRecallQuestions { get; set; }
+    public DbSet<StoryRecallItem> StoryRecallItems { get; set; }
+    public DbSet<StoryRecallOption> StoryRecallOptions { get; set; }
+    public DbSet<QuizAttempt> QuizAttempts { get; set; }
+    public DbSet<QuizAttemptAnswer> QuizAttemptAnswers { get; set; }
+    public DbSet<MagicBackpackAttemptAnswer> MagicBackpackAttemptAnswers { get; set; }
+    public DbSet<MagicBackpackAttemptSelection> MagicBackpackAttemptSelections { get; set; }
+    public DbSet<WordBridgeAttemptAnswer> WordBridgeAttemptAnswers { get; set; }
+    public DbSet<StoryRecallAttemptAnswer> StoryRecallAttemptAnswers { get; set; }
+    public DbSet<StoryRecallAttemptSelection> StoryRecallAttemptSelections { get; set; }
 
     private void OnSavingChanges(object sender, SavingChangesEventArgs e)
     {

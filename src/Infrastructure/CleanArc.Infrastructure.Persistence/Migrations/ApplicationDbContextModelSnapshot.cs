@@ -52,6 +52,840 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.ToTable("Orders");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameCatalog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("QuestionType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("GameCatalogs");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DefaultAgeGroup")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DefaultDifficulty")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DefaultRounds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DefaultStartingDifficulty")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DefaultThemeId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("GameType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameType")
+                        .IsUnique();
+
+                    b.ToTable("GameConfigs");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameDifficulty", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("GameConfigId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("GhostMode")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SequenceLength")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Speed")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameConfigId");
+
+                    b.ToTable("GameDifficulties");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameTheme", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("GameConfigId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ThemeId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameConfigId");
+
+                    b.ToTable("GameThemes");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameThemeGradient", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GameThemeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameThemeId");
+
+                    b.ToTable("GameThemeGradients");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameThemeItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("GameThemeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameThemeId");
+
+                    b.ToTable("GameThemeItems");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackAttemptAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool?>("IsSuccess")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuizAttemptAnswerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizAttemptAnswerId")
+                        .IsUnique();
+
+                    b.ToTable("MagicBackpackAttemptAnswers");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackAttemptSelection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("MagicBackpackAttemptAnswerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MagicBackpackAttemptAnswerId");
+
+                    b.ToTable("MagicBackpackAttemptSelections");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("MagicBackpackQuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MagicBackpackQuestionId");
+
+                    b.ToTable("MagicBackpackItems");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AgeGroup")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuizQuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizQuestionId")
+                        .IsUnique();
+
+                    b.ToTable("MagicBackpackQuestions");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackSequence", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("MagicBackpackQuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MagicBackpackQuestionId");
+
+                    b.ToTable("MagicBackpackSequences");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.Quiz", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("EstimatedTime")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ImageUrl")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("QuizId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizId")
+                        .IsUnique();
+
+                    b.ToTable("Quizzes");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizAttempt", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AttemptId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClientVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("QuizId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("TotalTimeSec")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttemptId")
+                        .IsUnique();
+
+                    b.ToTable("QuizAttempts");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizAttemptAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool?>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("QuestionId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("QuestionType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("QuizAttemptId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TimeSpentSec")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizAttemptId");
+
+                    b.ToTable("QuizAttemptAnswers");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Explanation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("QuestionId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("QuestionText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("QuizRefId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizRefId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("QuizQuestions");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallAttemptAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("QuizAttemptAnswerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizAttemptAnswerId")
+                        .IsUnique();
+
+                    b.ToTable("StoryRecallAttemptAnswers");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallAttemptSelection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RecallQuestionId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SelectedOption")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StoryRecallAttemptAnswerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoryRecallAttemptAnswerId");
+
+                    b.ToTable("StoryRecallAttemptSelections");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CorrectAnswer")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("QuestionText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RecallQuestionId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("StoryRecallQuestionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoryRecallQuestionId");
+
+                    b.ToTable("StoryRecallItems");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StoryRecallItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoryRecallItemId");
+
+                    b.ToTable("StoryRecallOptions");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuizQuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StoryAudioUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StoryText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizQuestionId")
+                        .IsUnique();
+
+                    b.ToTable("StoryRecallQuestions");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.WordBridgeAttemptAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuizAttemptAnswerId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TargetWord")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TimeMs")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizAttemptAnswerId")
+                        .IsUnique();
+
+                    b.ToTable("WordBridgeAttemptAnswers");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.WordBridgeQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImageUrl")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuizQuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TargetWord")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Translation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuizQuestionId")
+                        .IsUnique();
+
+                    b.ToTable("WordBridgeQuestions");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.User.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -126,9 +960,15 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("AvatarId")
+                        .HasColumnType("text");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");
+
+                    b.Property<int>("Diamonds")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -137,11 +977,17 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Experience")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FamilyName")
                         .HasColumnType("text");
 
                     b.Property<string>("GeneratedCode")
                         .HasColumnType("text");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -162,6 +1008,15 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PasswordResetTokenUsed")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("text");
@@ -388,6 +1243,204 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameDifficulty", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.GameConfig", "GameConfig")
+                        .WithMany("DifficultyLevels")
+                        .HasForeignKey("GameConfigId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GameConfig");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameTheme", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.GameConfig", "GameConfig")
+                        .WithMany("Themes")
+                        .HasForeignKey("GameConfigId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GameConfig");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameThemeGradient", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.GameTheme", "GameTheme")
+                        .WithMany("Gradients")
+                        .HasForeignKey("GameThemeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GameTheme");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameThemeItem", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.GameTheme", "GameTheme")
+                        .WithMany("Items")
+                        .HasForeignKey("GameThemeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GameTheme");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackAttemptAnswer", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.QuizAttemptAnswer", "QuizAttemptAnswer")
+                        .WithOne("MagicBackpackAttemptAnswer")
+                        .HasForeignKey("CleanArc.Domain.Entities.Quiz.MagicBackpackAttemptAnswer", "QuizAttemptAnswerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("QuizAttemptAnswer");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackAttemptSelection", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.MagicBackpackAttemptAnswer", "MagicBackpackAttemptAnswer")
+                        .WithMany("Selections")
+                        .HasForeignKey("MagicBackpackAttemptAnswerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MagicBackpackAttemptAnswer");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackItem", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.MagicBackpackQuestion", "MagicBackpackQuestion")
+                        .WithMany("Items")
+                        .HasForeignKey("MagicBackpackQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MagicBackpackQuestion");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackQuestion", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.QuizQuestion", "QuizQuestion")
+                        .WithOne("MagicBackpackQuestion")
+                        .HasForeignKey("CleanArc.Domain.Entities.Quiz.MagicBackpackQuestion", "QuizQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("QuizQuestion");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackSequence", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.MagicBackpackQuestion", "MagicBackpackQuestion")
+                        .WithMany("Sequence")
+                        .HasForeignKey("MagicBackpackQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MagicBackpackQuestion");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizAttemptAnswer", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.QuizAttempt", "QuizAttempt")
+                        .WithMany("Answers")
+                        .HasForeignKey("QuizAttemptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("QuizAttempt");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizQuestion", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.Quiz", "Quiz")
+                        .WithMany("Questions")
+                        .HasForeignKey("QuizRefId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Quiz");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallAttemptAnswer", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.QuizAttemptAnswer", "QuizAttemptAnswer")
+                        .WithOne("StoryRecallAttemptAnswer")
+                        .HasForeignKey("CleanArc.Domain.Entities.Quiz.StoryRecallAttemptAnswer", "QuizAttemptAnswerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("QuizAttemptAnswer");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallAttemptSelection", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.StoryRecallAttemptAnswer", "StoryRecallAttemptAnswer")
+                        .WithMany("Selections")
+                        .HasForeignKey("StoryRecallAttemptAnswerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("StoryRecallAttemptAnswer");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallItem", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.StoryRecallQuestion", "StoryRecallQuestion")
+                        .WithMany("RecallQuestions")
+                        .HasForeignKey("StoryRecallQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("StoryRecallQuestion");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallOption", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.StoryRecallItem", "StoryRecallItem")
+                        .WithMany("Options")
+                        .HasForeignKey("StoryRecallItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("StoryRecallItem");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallQuestion", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.QuizQuestion", "QuizQuestion")
+                        .WithOne("StoryRecallQuestion")
+                        .HasForeignKey("CleanArc.Domain.Entities.Quiz.StoryRecallQuestion", "QuizQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("QuizQuestion");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.WordBridgeAttemptAnswer", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.QuizAttemptAnswer", "QuizAttemptAnswer")
+                        .WithOne("WordBridgeAttemptAnswer")
+                        .HasForeignKey("CleanArc.Domain.Entities.Quiz.WordBridgeAttemptAnswer", "QuizAttemptAnswerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("QuizAttemptAnswer");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.WordBridgeQuestion", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.QuizQuestion", "QuizQuestion")
+                        .WithOne("WordBridgeQuestion")
+                        .HasForeignKey("CleanArc.Domain.Entities.Quiz.WordBridgeQuestion", "QuizQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("QuizQuestion");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.User.RoleClaim", b =>
                 {
                     b.HasOne("CleanArc.Domain.Entities.User.Role", "Role")
@@ -482,6 +1535,75 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameConfig", b =>
+                {
+                    b.Navigation("DifficultyLevels");
+
+                    b.Navigation("Themes");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.GameTheme", b =>
+                {
+                    b.Navigation("Gradients");
+
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackAttemptAnswer", b =>
+                {
+                    b.Navigation("Selections");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.MagicBackpackQuestion", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Sequence");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.Quiz", b =>
+                {
+                    b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizAttempt", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizAttemptAnswer", b =>
+                {
+                    b.Navigation("MagicBackpackAttemptAnswer");
+
+                    b.Navigation("StoryRecallAttemptAnswer");
+
+                    b.Navigation("WordBridgeAttemptAnswer");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.QuizQuestion", b =>
+                {
+                    b.Navigation("MagicBackpackQuestion");
+
+                    b.Navigation("StoryRecallQuestion");
+
+                    b.Navigation("WordBridgeQuestion");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallAttemptAnswer", b =>
+                {
+                    b.Navigation("Selections");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallItem", b =>
+                {
+                    b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.StoryRecallQuestion", b =>
+                {
+                    b.Navigation("RecallQuestions");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.User.Role", b =>

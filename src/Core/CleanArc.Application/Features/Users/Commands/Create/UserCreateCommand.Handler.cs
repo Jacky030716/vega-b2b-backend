@@ -22,34 +22,55 @@ internal class UserCreateCommandHandler : IRequestHandler<UserCreateCommand, Ope
 
     public async ValueTask<OperationResult<UserCreateCommandResult>> Handle(UserCreateCommand request, CancellationToken cancellationToken)
     {
-        var userNameExist = await _userManager.IsExistUser(request.PhoneNumber);
-
+        // Check if username already exists
+        var userNameExist = await _userManager.IsExistUserName(request.UserName);
         if (userNameExist)
-            return OperationResult<UserCreateCommandResult>.FailureResult("Phone number already exists");
-
-        var phoneNumberExist = await _userManager.IsExistUserName(request.UserName);
-
-        if (phoneNumberExist)
             return OperationResult<UserCreateCommandResult>.FailureResult("Username already exists");
 
-        //var user = new User { UserName = request.UserName, Name = request.FirstName, FamilyName = request.LastName, PhoneNumber = request.PhoneNumber };
+        // Check if email already exists
+        var emailUser = await _userManager.FindUserByEmail(request.Email);
+        if (emailUser != null)
+            return OperationResult<UserCreateCommandResult>.FailureResult("Email already exists");
 
-        var user = _mapper.Map<User>(request);
+        // Check if phone number exists (if provided)
+        if (!string.IsNullOrEmpty(request.PhoneNumber))
+        {
+            var phoneExist = await _userManager.IsExistUser(request.PhoneNumber);
+            if (phoneExist)
+                return OperationResult<UserCreateCommandResult>.FailureResult("Phone number already exists");
+        }
 
-        var createResult = await _userManager.CreateUser(user);
+        // Create user object
+        var user = new User
+        {
+            UserName = request.UserName,
+            Email = request.Email,
+            Name = request.Name,
+            FamilyName = request.FamilyName,
+            PhoneNumber = request.PhoneNumber,
+            EmailConfirmed = true, // Auto-confirm since admin is creating
+            PhoneNumberConfirmed = !string.IsNullOrEmpty(request.PhoneNumber)
+        };
+
+        // Create user with password
+        var createResult = await _userManager.CreateUserWithPasswordAsync(user, request.Password);
 
         if (!createResult.Succeeded)
         {
             return OperationResult<UserCreateCommandResult>.FailureResult(string.Join(",", createResult.Errors.Select(c => c.Description)));
         }
 
-        var code = await _userManager.GeneratePhoneNumberConfirmationToken(user, user.PhoneNumber);
+        // Assign role
+        var role = new CleanArc.Domain.Entities.User.Role { Name = request.Role };
+        var addRoleResult = await _userManager.AddUserToRoleAsync(user, role);
 
+        if (!addRoleResult.Succeeded)
+        {
+            _logger.LogError($"Failed to assign role {request.Role} to user {user.UserName}");
+        }
 
-        _logger.LogWarning($"Generated Code for User ID {user.Id} is {code}");
+        _logger.LogInformation($"User {user.UserName} created successfully with role {request.Role}");
 
-        //TODO Send Code Via Sms Provider
-
-        return OperationResult<UserCreateCommandResult>.SuccessResult(new UserCreateCommandResult { UserGeneratedKey = user.GeneratedCode });
+        return OperationResult<UserCreateCommandResult>.SuccessResult(new UserCreateCommandResult { UserGeneratedKey = user.Id.ToString() });
     }
 }
