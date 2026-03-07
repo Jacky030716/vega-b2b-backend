@@ -32,7 +32,7 @@ internal class UserPasswordLoginQueryHandler : IRequestHandler<UserPasswordLogin
     if (user == null)
     {
       _logger.LogWarning("Invalid login attempt for username: {UserName}", request.UserName);
-      return OperationResult<AccessToken>.FailureResult("Invalid credentials");
+      return OperationResult<AccessToken>.UnauthorizedResult("Invalid credentials");
     }
 
     if (await _userManager.IsUserLockedOutAsync(user))
@@ -47,7 +47,7 @@ internal class UserPasswordLoginQueryHandler : IRequestHandler<UserPasswordLogin
     {
       await _userManager.IncrementAccessFailedCountAsync(user);
       _logger.LogWarning("Invalid password for username: {UserName}", request.UserName);
-      return OperationResult<AccessToken>.FailureResult("Invalid credentials");
+      return OperationResult<AccessToken>.UnauthorizedResult("Invalid credentials");
     }
 
     await _userManager.ResetUserLockoutAsync(user);

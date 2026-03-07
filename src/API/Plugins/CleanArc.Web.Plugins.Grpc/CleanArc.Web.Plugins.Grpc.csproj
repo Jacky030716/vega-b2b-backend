@@ -16,7 +16,6 @@
 
 	<ItemGroup>
 		<Protobuf Include="ProtoModels\UserGrpcServiceModels.proto" GrpcServices="Server" />
-		<Protobuf Include="ProtoModels\OrderGrpcServiceModels.proto" GrpcServices="Server" />
 	</ItemGroup>
 
 	

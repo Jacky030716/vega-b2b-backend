@@ -1,7 +1,15 @@
 ﻿using System.Reflection;
 using CleanArc.Domain.Common;
-using CleanArc.Domain.Entities.Order;
+using CleanArc.Domain.Entities.Achievement;
+using CleanArc.Domain.Entities.Activity;
+using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.Mascot;
+using CleanArc.Domain.Entities.Mission;
+using CleanArc.Domain.Entities.Progression;
 using CleanArc.Domain.Entities.Quiz;
+using CleanArc.Domain.Entities.Shop;
+using CleanArc.Domain.Entities.Social;
+using CleanArc.Domain.Entities.Streak;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Domain.Entities.Word;
 using CleanArc.SharedKernel.Extensions;
@@ -18,8 +26,10 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
         base.SavingChanges += OnSavingChanges;
     }
 
-    public DbSet<Order> Orders { get; set; }
+    // Word
     public DbSet<Word> Words { get; set; }
+
+    // Quiz & Games
     public DbSet<Quiz> Quizzes { get; set; }
     public DbSet<QuizQuestion> QuizQuestions { get; set; }
     public DbSet<GameCatalog> GameCatalogs { get; set; }
@@ -42,6 +52,46 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<WordBridgeAttemptAnswer> WordBridgeAttemptAnswers { get; set; }
     public DbSet<StoryRecallAttemptAnswer> StoryRecallAttemptAnswers { get; set; }
     public DbSet<StoryRecallAttemptSelection> StoryRecallAttemptSelections { get; set; }
+
+    // Streak
+    public DbSet<DailyCheckIn> DailyCheckIns { get; set; }
+    public DbSet<UserStreak> UserStreaks { get; set; }
+
+    // Achievements
+    public DbSet<Badge> Badges { get; set; }
+    public DbSet<UserBadge> UserBadges { get; set; }
+    public DbSet<FeaturedBadge> FeaturedBadges { get; set; }
+
+    // Shop
+    public DbSet<ShopItem> ShopItems { get; set; }
+    public DbSet<UserInventoryItem> UserInventoryItems { get; set; }
+    public DbSet<UserEquippedItem> UserEquippedItems { get; set; }
+    public DbSet<DailySpecial> DailySpecials { get; set; }
+    public DbSet<DiamondTransaction> DiamondTransactions { get; set; }
+
+    // Classroom
+    public DbSet<Classroom> Classrooms { get; set; }
+    public DbSet<ClassroomStudent> ClassroomStudents { get; set; }
+    public DbSet<ClassroomQuiz> ClassroomQuizzes { get; set; }
+    public DbSet<LeaderboardEntry> LeaderboardEntries { get; set; }
+
+    // Progression
+    public DbSet<Level> Levels { get; set; }
+    public DbSet<UserProgress> UserProgresses { get; set; }
+
+    // Missions
+    public DbSet<SpecialMission> SpecialMissions { get; set; }
+    public DbSet<UserMission> UserMissions { get; set; }
+
+    // Mascots
+    public DbSet<Mascot> Mascots { get; set; }
+    public DbSet<UserMascot> UserMascots { get; set; }
+
+    // Activity
+    public DbSet<ActivityLog> ActivityLogs { get; set; }
+
+    // Social
+    public DbSet<Friendship> Friendships { get; set; }
 
     private void OnSavingChanges(object sender, SavingChangesEventArgs e)
     {

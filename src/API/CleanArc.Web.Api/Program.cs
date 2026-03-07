@@ -38,6 +38,17 @@ builder.Services.Configure<IdentitySettings>(configuration.GetSection(nameof(Ide
 
 var identitySettings = configuration.GetSection(nameof(IdentitySettings)).Get<IdentitySettings>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", builder =>
+    {
+        builder.SetIsOriginAllowed(_ => true)
+               .AllowAnyMethod()
+               .AllowAnyHeader()
+               .AllowCredentials();
+    });
+});
+
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add(typeof(OkResultAttribute));
@@ -83,6 +94,7 @@ var app = builder.Build();
 await app.ApplyMigrationsAsync();
 await app.SeedDefaultUsersAsync();
 await app.SeedQuizDataAsync();
+await app.SeedGameDataAsync();
 
 if (app.Environment.IsDevelopment())
 {
@@ -94,6 +106,8 @@ app.UseSwaggerAndUI();
 
 app.MapCarter();
 app.UseRouting();
+
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

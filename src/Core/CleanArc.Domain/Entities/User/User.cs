@@ -38,7 +38,6 @@ public class User : IdentityUser<int>, IEntity
 
     #region Navigation Properties
 
-    public IList<Order.Order> Orders { get; set; }
     public IList<WordList> WordLists { get; set; }
 
     #endregion

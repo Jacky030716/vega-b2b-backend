@@ -9,8 +9,8 @@ public static class GrpcPluginStartup
 {
     public static IServiceCollection ConfigureGrpcPluginServices(this IServiceCollection services)
     {
-     
-        
+
+
         services.AddGrpc();
         services.AddGrpcReflection();
 
@@ -21,16 +21,9 @@ public static class GrpcPluginStartup
     {
 
         app.MapGrpcService<UserGrpcServices>();
-        app.MapGrpcService<OrderGrpcServices>();
         app.MapGrpcReflectionService();
 
         app.MapGet("/GrpcUser", async context =>
-        {
-            await context.Response.WriteAsync(
-                "Communication with this gRPC endpoint must be made through a gRPC client.");
-        });
-
-        app.MapGet("/GrpcUserOrder", async context =>
         {
             await context.Response.WriteAsync(
                 "Communication with this gRPC endpoint must be made through a gRPC client.");

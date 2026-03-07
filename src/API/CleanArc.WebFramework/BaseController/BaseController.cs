@@ -43,6 +43,15 @@ public class BaseController : ControllerBase
             return NotFound(notFoundErrors.Errors);
         }
 
+        if (result.IsUnauthorized)
+        {
+            ModelState.AddModelError("GeneralError", result.ErrorMessage);
+
+            var unauthorizedErrors = new ValidationProblemDetails(ModelState);
+
+            return Unauthorized(unauthorizedErrors.Errors);
+        }
+
         ModelState.AddModelError("GeneralError", result.ErrorMessage);
 
         var badRequestErrors = new ValidationProblemDetails(ModelState);

@@ -18,6 +18,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IQuizContentRepository, QuizContentRepository>();
         services.AddScoped<IQuizAttemptRepository, QuizAttemptRepository>();
         services.AddScoped<ISeedQuizData, SeedQuizData>();
+        services.AddScoped<ISeedGameData, SeedGameData>();
+
+        // New repositories
+        services.AddScoped<IStreakRepository, StreakRepository>();
+        services.AddScoped<IBadgeRepository, BadgeRepository>();
+        services.AddScoped<IShopRepository, ShopRepository>();
+        services.AddScoped<IClassroomRepository, ClassroomRepository>();
+        services.AddScoped<IProgressionRepository, ProgressionRepository>();
+        services.AddScoped<IMissionRepository, MissionRepository>();
+        services.AddScoped<IMascotRepository, MascotRepository>();
+        services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
+        services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
@@ -44,6 +56,13 @@ public static class ServiceCollectionExtensions
     {
         await using var scope = app.Services.CreateAsyncScope();
         var seedService = scope.ServiceProvider.GetRequiredService<ISeedQuizData>();
+        await seedService.Seed();
+    }
+
+    public static async Task SeedGameDataAsync(this WebApplication app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var seedService = scope.ServiceProvider.GetRequiredService<ISeedGameData>();
         await seedService.Seed();
     }
 }

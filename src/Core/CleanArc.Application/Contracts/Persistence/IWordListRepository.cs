@@ -1,5 +1,4 @@
-﻿using CleanArc.Domain.Entities.Order;
-using CleanArc.Domain.Entities.Word;
+﻿using CleanArc.Domain.Entities.Word;
 
 namespace CleanArc.Application.Contracts.Persistence
 {
