@@ -79,6 +79,14 @@ internal class ProgressionRepository(ApplicationDbContext dbContext) : BaseAsync
     var progress = await GetOrCreateUserProgressAsync(userId);
     progress.TotalXP += xpAmount;
 
+    var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    if (user is not null)
+    {
+      // Keep profile-facing XP in sync with progression XP.
+      // Frontend profile/home reads User.Experience.
+      user.Experience += xpAmount;
+    }
+
     // Check for level up
     var nextLevel = await DbContext.Levels.AsNoTracking()
         .Where(l => l.LevelNumber == progress.CurrentLevel + 1 && l.RequiredXP <= progress.TotalXP)
@@ -90,5 +98,15 @@ internal class ProgressionRepository(ApplicationDbContext dbContext) : BaseAsync
     }
 
     await DbContext.SaveChangesAsync();
+  }
+
+  public async Task AddDiamondsAsync(int userId, int amount)
+  {
+    var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    if (user is not null)
+    {
+      user.Diamonds += amount;
+      await DbContext.SaveChangesAsync();
+    }
   }
 }

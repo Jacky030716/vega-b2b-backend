@@ -1,4 +1,5 @@
-﻿using CleanArc.Domain.Common;
+#nullable enable
+using CleanArc.Domain.Common;
 
 namespace CleanArc.Domain.Entities.Word
 {

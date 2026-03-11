@@ -19,11 +19,16 @@ internal class CheckInCommandHandler : IRequestHandler<CheckInCommand, Operation
     var today = DateOnly.FromDateTime(DateTime.UtcNow);
     var existing = await _unitOfWork.StreakRepository.GetCheckInAsync(request.UserId, today);
 
+    // Fetch updated 60-day array
+    var fromDate = today.AddDays(-60);
+    var recentCheckIns = await _unitOfWork.StreakRepository.GetCheckInsForRangeAsync(request.UserId, fromDate, today);
+    var dates = recentCheckIns.Select(c => c.CheckInDate).ToList();
+
     if (existing != null)
     {
       var streak = await _unitOfWork.StreakRepository.GetUserStreakAsync(request.UserId);
       return OperationResult<CheckInResult>.SuccessResult(
-          new CheckInResult(streak.CurrentStreak, streak.BestStreak, false));
+          new CheckInResult(streak.CurrentStreak, dates, false));
     }
 
     // Create check-in
@@ -33,26 +38,17 @@ internal class CheckInCommandHandler : IRequestHandler<CheckInCommand, Operation
       CheckInDate = today
     });
 
-    // Update streak
+    // Update streak (Always increment total)
     var userStreak = await _unitOfWork.StreakRepository.GetOrCreateUserStreakAsync(request.UserId);
-    var yesterday = today.AddDays(-1);
-
-    if (userStreak.LastCheckInDate == yesterday)
-    {
-      userStreak.CurrentStreak++;
-    }
-    else
-    {
-      userStreak.CurrentStreak = 1;
-    }
-
-    if (userStreak.CurrentStreak > userStreak.BestStreak)
-      userStreak.BestStreak = userStreak.CurrentStreak;
-
+    userStreak.CurrentStreak++;
     userStreak.LastCheckInDate = today;
     await _unitOfWork.StreakRepository.UpdateStreakAsync(userStreak);
 
+    // Re-fetch array including the newly added check-in today
+    var updatedCheckIns = await _unitOfWork.StreakRepository.GetCheckInsForRangeAsync(request.UserId, fromDate, today);
+    var updatedDates = updatedCheckIns.Select(c => c.CheckInDate).ToList();
+
     return OperationResult<CheckInResult>.SuccessResult(
-        new CheckInResult(userStreak.CurrentStreak, userStreak.BestStreak, true));
+        new CheckInResult(userStreak.CurrentStreak, updatedDates, true));
   }
 }

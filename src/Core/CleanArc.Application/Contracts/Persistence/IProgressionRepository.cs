@@ -16,4 +16,7 @@ public interface IProgressionRepository
   Task<UserProgress> GetOrCreateUserProgressAsync(int userId);
   Task UpdateUserProgressAsync(UserProgress progress);
   Task AddXpAsync(int userId, int xpAmount);
+
+  /// <summary>Adds diamonds to the user's account (User.Diamonds column).</summary>
+  Task AddDiamondsAsync(int userId, int amount);
 }

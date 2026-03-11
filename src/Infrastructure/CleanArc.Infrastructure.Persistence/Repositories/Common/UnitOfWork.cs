@@ -1,4 +1,4 @@
-﻿using CleanArc.Application.Contracts.Persistence;
+using CleanArc.Application.Contracts.Persistence;
 
 namespace CleanArc.Infrastructure.Persistence.Repositories.Common;
 
@@ -11,14 +11,11 @@ public class UnitOfWork : IUnitOfWork
 
     // New repositories
     public IStreakRepository StreakRepository { get; }
-    public IBadgeRepository BadgeRepository { get; }
     public IShopRepository ShopRepository { get; }
     public IClassroomRepository ClassroomRepository { get; }
     public IProgressionRepository ProgressionRepository { get; }
-    public IMissionRepository MissionRepository { get; }
-    public IMascotRepository MascotRepository { get; }
     public IActivityLogRepository ActivityLogRepository { get; }
-    public IFriendshipRepository FriendshipRepository { get; }
+    public IChallengeRepository ChallengeRepository { get; }
 
     public UnitOfWork(ApplicationDbContext db)
     {
@@ -28,14 +25,11 @@ public class UnitOfWork : IUnitOfWork
 
         // New repositories
         StreakRepository = new StreakRepository(_db);
-        BadgeRepository = new BadgeRepository(_db);
         ShopRepository = new ShopRepository(_db);
         ClassroomRepository = new ClassroomRepository(_db);
         ProgressionRepository = new ProgressionRepository(_db);
-        MissionRepository = new MissionRepository(_db);
-        MascotRepository = new MascotRepository(_db);
         ActivityLogRepository = new ActivityLogRepository(_db);
-        FriendshipRepository = new FriendshipRepository(_db);
+        ChallengeRepository = new ChallengeRepository(_db);
     }
 
     public Task CommitAsync()

@@ -35,8 +35,8 @@ public record UpdateUserProfileCommand(int UserId, UpdateUserProfileRequest Prof
         .WithMessage("Family name must be provided and less than 100 characters");
 
     validator.RuleFor(c => c.Profile.AvatarId)
-        .MaximumLength(50)
-        .WithMessage("Avatar ID must be less than 50 characters");
+        .MaximumLength(500)
+        .WithMessage("Avatar ID must be less than 500 characters");
 
     return validator;
   }

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text;
 using CleanArc.Application.Contracts;
 using CleanArc.Application.Contracts.Identity;
@@ -108,11 +108,10 @@ public static class ServiceCollectionExtension
         }).AddJwtBearer(options =>
         {
             var secretkey = Encoding.UTF8.GetBytes(identitySettings.SecretKey);
-            var encryptionkey = Encoding.UTF8.GetBytes(identitySettings.Encryptkey);
 
             var validationParameters = new TokenValidationParameters
             {
-                ClockSkew = TimeSpan.Zero, // default: 5 min
+                ClockSkew = TimeSpan.FromMinutes(1),
                 RequireSignedTokens = true,
 
                 ValidateIssuerSigningKey = true,
@@ -121,14 +120,11 @@ public static class ServiceCollectionExtension
                 RequireExpirationTime = true,
                 ValidateLifetime = true,
 
-                ValidateAudience = true, //default : false
+                ValidateAudience = true,
                 ValidAudience = identitySettings.Audience,
 
-                ValidateIssuer = true, //default : false
+                ValidateIssuer = true,
                 ValidIssuer = identitySettings.Issuer,
-
-                TokenDecryptionKey = new SymmetricSecurityKey(encryptionkey),
-
             };
 
             options.RequireHttpsMetadata = false;
@@ -138,9 +134,6 @@ public static class ServiceCollectionExtension
             {
                 OnAuthenticationFailed = context =>
                 {
-                    //var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtBearerEvents));
-                    //logger.LogError("Authentication failed.", context.Exception);
-
                     return Task.CompletedTask;
                 },
                 OnTokenValidated = async context =>
@@ -154,50 +147,38 @@ public static class ServiceCollectionExtension
                     var securityStamp =
                         claimsIdentity.FindFirstValue(new ClaimsIdentityOptions().SecurityStampClaimType);
                     if (!securityStamp.HasValue())
-                        context.Fail("This token has no secuirty stamp");
-
-                    //Find user and token from database and perform your custom validation
-                    var userId = claimsIdentity.GetUserId<int>();
-                    // var user = await userRepository.GetByIdAsync(context.HttpContext.RequestAborted, userId);
-
-                    //if (user.SecurityStamp != Guid.Parse(securityStamp))
-                    //    context.Fail("Token secuirty stamp is not valid.");
+                        context.Fail("This token has no security stamp");
 
                     var validatedUser = await signInManager.ValidateSecurityStampAsync(context.Principal);
                     if (validatedUser == null)
-                        context.Fail("Token secuirty stamp is not valid.");
+                        context.Fail("Token security stamp is not valid.");
 
                 },
                 OnChallenge = async context =>
                 {
-                    //var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtBearerEvents));
-                    //logger.LogError("OnChallenge error", context.Error, context.ErrorDescription);
                     if (context.AuthenticateFailure is SecurityTokenExpiredException)
                     {
                         context.HandleResponse();
 
                         var response = new ApiResult(false,
-                            ApiResultStatusCode.UnAuthorized, "Token is expired. refresh your token");
+                            ApiResultStatusCode.UnAuthorized, "Token is expired. Refresh your token");
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         await context.Response.WriteAsJsonAsync(response);
                     }
-
                     else if (context.AuthenticateFailure != null)
                     {
                         context.HandleResponse();
 
                         var response = new ApiResult(false,
-                            ApiResultStatusCode.UnAuthorized, "Token is Not Valid");
+                            ApiResultStatusCode.UnAuthorized, "Token is not valid");
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         await context.Response.WriteAsJsonAsync(response);
-
                     }
-
                     else
                     {
                         context.HandleResponse();
 
-                        context.Response.StatusCode = (int)StatusCodes.Status401Unauthorized;
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         await context.Response.WriteAsJsonAsync(new ApiResult(false, ApiResultStatusCode.UnAuthorized, "Invalid access token. Please login"));
                     }
 

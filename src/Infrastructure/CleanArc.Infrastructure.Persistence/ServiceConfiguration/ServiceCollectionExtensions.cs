@@ -1,4 +1,4 @@
-﻿using CleanArc.Application.Contracts.Persistence;
+using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using CleanArc.Infrastructure.Persistence.Repositories;
 using CleanArc.Infrastructure.Persistence.SeedDatabaseService;
@@ -15,21 +15,15 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddPersistenceServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IQuizContentRepository, QuizContentRepository>();
-        services.AddScoped<IQuizAttemptRepository, QuizAttemptRepository>();
-        services.AddScoped<ISeedQuizData, SeedQuizData>();
         services.AddScoped<ISeedGameData, SeedGameData>();
 
         // New repositories
         services.AddScoped<IStreakRepository, StreakRepository>();
-        services.AddScoped<IBadgeRepository, BadgeRepository>();
         services.AddScoped<IShopRepository, ShopRepository>();
         services.AddScoped<IClassroomRepository, ClassroomRepository>();
         services.AddScoped<IProgressionRepository, ProgressionRepository>();
-        services.AddScoped<IMissionRepository, MissionRepository>();
-        services.AddScoped<IMascotRepository, MascotRepository>();
         services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
-        services.AddScoped<IFriendshipRepository, FriendshipRepository>();
+        services.AddScoped<IChallengeRepository, ChallengeRepository>();
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
@@ -52,17 +46,15 @@ public static class ServiceCollectionExtensions
         await context.Database.MigrateAsync();
     }
 
-    public static async Task SeedQuizDataAsync(this WebApplication app)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        var seedService = scope.ServiceProvider.GetRequiredService<ISeedQuizData>();
-        await seedService.Seed();
-    }
-
     public static async Task SeedGameDataAsync(this WebApplication app)
     {
         await using var scope = app.Services.CreateAsyncScope();
-        var seedService = scope.ServiceProvider.GetRequiredService<ISeedGameData>();
-        await seedService.Seed();
+        var seedGameData = scope.ServiceProvider.GetService<ISeedGameData>();
+
+        if (seedGameData is null)
+            throw new Exception("Seed Game Data Service Not Found");
+
+        await seedGameData.Seed();
     }
+
 }

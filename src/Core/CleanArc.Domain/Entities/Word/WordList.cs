@@ -1,4 +1,4 @@
-﻿using CleanArc.Domain.Common;
+using CleanArc.Domain.Common;
 
 namespace CleanArc.Domain.Entities.Word
 {

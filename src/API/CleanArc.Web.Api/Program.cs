@@ -24,8 +24,10 @@ using CleanArc.WebFramework.Swagger;
 using CleanArc.WebFramework.WebExtensions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Logging;
 using Serilog;
 
+IdentityModelEventSource.ShowPII = true;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog(LoggingConfiguration.ConfigureLogger);
@@ -93,7 +95,6 @@ var app = builder.Build();
 
 await app.ApplyMigrationsAsync();
 await app.SeedDefaultUsersAsync();
-await app.SeedQuizDataAsync();
 await app.SeedGameDataAsync();
 
 if (app.Environment.IsDevelopment())

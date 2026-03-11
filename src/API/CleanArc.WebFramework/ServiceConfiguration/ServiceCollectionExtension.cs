@@ -1,4 +1,4 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +23,7 @@ public static class ServiceCollectionExtension
             //options.ApiVersionReader = new QueryStringApiVersionReader("api-version");
             // api/posts?api-version=1
 
-            //options.ApiVersionReader = new UrlSegmentApiVersionReader();
+            options.ApiVersionReader = new UrlSegmentApiVersionReader();
             // api/v1/posts
 
             //options.ApiVersionReader = new HeaderApiVersionReader(new[] { "Api-Version" });
@@ -33,8 +33,9 @@ public static class ServiceCollectionExtension
 
             //options.ApiVersionReader = ApiVersionReader.Combine(new QueryStringApiVersionReader("api-version"), new UrlSegmentApiVersionReader())
             // combine of [querystring] & [urlsegment]
-        });
+        }).AddMvc();
 
+        services.AddEndpointsApiExplorer();
         return services;
 
 

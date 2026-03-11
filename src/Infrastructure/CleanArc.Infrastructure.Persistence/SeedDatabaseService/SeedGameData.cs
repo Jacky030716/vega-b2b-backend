@@ -1,375 +1,358 @@
-using CleanArc.Domain.Entities.Achievement;
-using CleanArc.Domain.Entities.Mascot;
-using CleanArc.Domain.Entities.Progression;
-using CleanArc.Domain.Entities.Shop;
+using System.Text.Json;
+using CleanArc.Domain.Entities.Quiz;
+using CleanArc.Domain.Entities.Quiz.Content;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanArc.Infrastructure.Persistence.SeedDatabaseService;
 
-public interface ISeedGameData
+public class SeedGameData : ISeedGameData
 {
-  Task Seed();
-}
+    private readonly ApplicationDbContext _dbContext;
 
-public class SeedGameData(ApplicationDbContext dbContext) : ISeedGameData
-{
-  public async Task Seed()
-  {
-    await SeedLevels();
-    await SeedMascots();
-    await SeedBadges();
-    await SeedShopItems();
-  }
+    // Serialize contentData as camelCase so it matches the frontend TypeScript types.
+    // e.g. WordBridgeContent.Words → {"words":[...]} not {"Words":[...]}
+    private static readonly JsonSerializerOptions _camelCase = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
-  private async Task SeedLevels()
-  {
-    if (await dbContext.Levels.AnyAsync()) return;
+    public SeedGameData(ApplicationDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
 
-    var levels = new List<Level>
+    public async Task Seed()
+    {
+        if (!await _dbContext.Games.AnyAsync())
         {
-            new() { LevelNumber = 1, Name = "Beginner", RequiredXP = 0, UnlocksGameType = "magic_backpack" },
-            new() { LevelNumber = 2, Name = "Explorer", RequiredXP = 100, UnlocksGameType = "word_bridge" },
-            new() { LevelNumber = 3, Name = "Adventurer", RequiredXP = 300, UnlocksGameType = "story_recall" },
-            new() { LevelNumber = 4, Name = "Scholar", RequiredXP = 600 },
-            new() { LevelNumber = 5, Name = "Champion", RequiredXP = 1000 },
-            new() { LevelNumber = 6, Name = "Master", RequiredXP = 1500 },
-            new() { LevelNumber = 7, Name = "Legend", RequiredXP = 2200 },
-            new() { LevelNumber = 8, Name = "Mythic", RequiredXP = 3000 },
-            new() { LevelNumber = 9, Name = "Celestial", RequiredXP = 4000 },
-            new() { LevelNumber = 10, Name = "Transcendent", RequiredXP = 5500 }
-        };
+            var magicBackpackGame = new Game
+            {
+                Key = "magic_backpack",
+                Name = "Magic Backpack: Pack & Remember",
+                Description = "Watch as items drop into the backpack, then select the items in the same order.",
+                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fbackpack.png?alt=media",
+                Category = "School",
+                SkillsTaught = "memory"
+            };
 
-    await dbContext.Levels.AddRangeAsync(levels);
-    await dbContext.SaveChangesAsync();
-  }
+            var wordBridgeGame = new Game
+            {
+                Key = "word_bridge",
+                Name = "Word Builder Bridge: Spell & Learn",
+                Description = "Drag letters to build words! Practice spelling while crossing the bridge.",
+                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fbuilder.png?alt=media",
+                Category = "Spelling & Vocabulary",
+                SkillsTaught = "spelling"
+            };
 
-  private async Task SeedMascots()
-  {
-    if (await dbContext.Mascots.AnyAsync()) return;
+            var storyRecallGame = new Game
+            {
+                Key = "story_recall",
+                Name = "Word Twins",
+                Description = "Flip the cards and match the word with the image!",
+                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fwordpair.png?alt=media",
+                Category = "Story Comprehension Training",
+                SkillsTaught = "memory"
+            };
 
-    var mascots = new List<Mascot>
+            await _dbContext.Games.AddRangeAsync(magicBackpackGame, wordBridgeGame, storyRecallGame);
+            await _dbContext.SaveChangesAsync();
+
+            // ── Magic Backpack: 3 adventure map nodes ──────────────────────────
+            await _dbContext.Challenges.AddRangeAsync(
+                new Challenge
+                {
+                    GameId = magicBackpackGame.Id,
+                    Title = "Remember 3 Items",
+                    Description = "Watch 3 school items drop in, then recall them in order!",
+                    DifficultyLevel = 1,
+                    OrderIndex = 1,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new
+                    {
+                        theme = "school",
+                        sequenceLength = 3,
+                        items = new[] { "Pencil", "Eraser", "Notebook" }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                },
+                new Challenge
+                {
+                    GameId = magicBackpackGame.Id,
+                    Title = "Remember 4 Items",
+                    Description = "Step it up — 4 items in the backpack. Can you pack them all?",
+                    DifficultyLevel = 2,
+                    OrderIndex = 2,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new
+                    {
+                        theme = "camping",
+                        sequenceLength = 4,
+                        items = new[] { "Tent", "Flashlight", "Sleeping Bag", "Water Bottle" }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                },
+                new Challenge
+                {
+                    GameId = magicBackpackGame.Id,
+                    Title = "Speed Round",
+                    Description = "5 items, shorter display time. Stay sharp!",
+                    DifficultyLevel = 3,
+                    OrderIndex = 3,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new
+                    {
+                        theme = "school",
+                        sequenceLength = 5,
+                        ghostMode = true,
+                        items = new[] { "Ruler", "Scissors", "Glue", "Pencil Case", "Highlighter" }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                }
+            );
+
+            // ── Word Bridge: 3 adventure map nodes ────────────────────────────
+            // Uses strongly-typed WordBridgeContent so schema is enforced in C#.
+            // ImageRef stores a Firebase Storage relative path, e.g. "quizzes/word-bridge/cat.jpg".
+            // Leave ImageRef null until you upload images to Firebase Storage.
+            await _dbContext.Challenges.AddRangeAsync(
+                new Challenge
+                {
+                    GameId = wordBridgeGame.Id,
+                    Title = "Short Words",
+                    Description = "Build simple 3-letter words by dragging the right letters.",
+                    DifficultyLevel = 1,
+                    OrderIndex = 1,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new WordBridgeContent
+                    {
+                        Words = new List<WordBridgeWord>
+                        {
+                            new() { Target = "CAT", Translation = "A small furry animal",      Difficulty = "easy", ImageRef = "quizzes/word-bridge/cat.jpg" },
+                            new() { Target = "DOG", Translation = "Man's best friend",         Difficulty = "easy", ImageRef = "quizzes/word-bridge/dog.jpg" },
+                            new() { Target = "SUN", Translation = "The star at the center",    Difficulty = "easy", ImageRef = "quizzes/word-bridge/sun.jpg" }
+                        }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                },
+                new Challenge
+                {
+                    GameId = wordBridgeGame.Id,
+                    Title = "Medium Words",
+                    Description = "4-5 letter words. Watch out for the vowels!",
+                    DifficultyLevel = 2,
+                    OrderIndex = 2,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new WordBridgeContent
+                    {
+                        Words = new List<WordBridgeWord>
+                        {
+                            new() { Target = "RAIN",  Translation = "Water falling from clouds", Difficulty = "easy", ImageRef = null },
+                            new() { Target = "CLOUD", Translation = "White puffs in the sky",    Difficulty = "hard", ImageRef = null },
+                            new() { Target = "STORM", Translation = "Strong wind and rain",       Difficulty = "hard", ImageRef = null }
+                        }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                },
+                new Challenge
+                {
+                    GameId = wordBridgeGame.Id,
+                    Title = "Tricky Spelling",
+                    Description = "Longer words with tricky letter patterns. Think before you drag!",
+                    DifficultyLevel = 3,
+                    OrderIndex = 3,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new WordBridgeContent
+                    {
+                        Words = new List<WordBridgeWord>
+                        {
+                            new() { Target = "BRIDGE", Translation = "Structure crossing water", Difficulty = "hard", ImageRef = null },
+                            new() { Target = "SCHOOL", Translation = "Where you learn",           Difficulty = "hard", ImageRef = null },
+                            new() { Target = "FRIEND", Translation = "Someone you like",          Difficulty = "hard", ImageRef = null }
+                        }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                }
+            );
+
+            // ── Story Recall (Word Twins): 3 adventure map nodes ──────────────
+            // Uses strongly-typed WordTwinsContent.
+            // ImageRef = Firebase Storage path (e.g. "quizzes/word-twins/apple.jpg").
+            // ImageKey = local bundled asset key used as offline fallback.
+            // When ImageRef is set, the frontend calls getDownloadURL(ref(storage, imageRef)).
+            await _dbContext.Challenges.AddRangeAsync(
+                new Challenge
+                {
+                    GameId = storyRecallGame.Id,
+                    Title = "4 Pairs",
+                    Description = "Match 4 words with their pictures. Flip and find!",
+                    DifficultyLevel = 1,
+                    OrderIndex = 1,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new WordTwinsContent
+                    {
+                        Pairs = new List<WordTwinsPair>
+                        {
+                            new() { Word = "Apple",  ImageKey = "apple",  ImageRef = null },
+                            new() { Word = "Banana", ImageKey = "banana", ImageRef = null },
+                            new() { Word = "Cat",    ImageKey = "cat",    ImageRef = null },
+                            new() { Word = "Dog",    ImageKey = "dog",    ImageRef = null }
+                        }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                },
+                new Challenge
+                {
+                    GameId = storyRecallGame.Id,
+                    Title = "6 Pairs",
+                    Description = "6 pairs now — stay focused and remember where they are!",
+                    DifficultyLevel = 2,
+                    OrderIndex = 2,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new WordTwinsContent
+                    {
+                        Pairs = new List<WordTwinsPair>
+                        {
+                            new() { Word = "Sun",   ImageKey = "sun",   ImageRef = null },
+                            new() { Word = "Moon",  ImageKey = "moon",  ImageRef = null },
+                            new() { Word = "Star",  ImageKey = "star",  ImageRef = null },
+                            new() { Word = "Rain",  ImageKey = "rain",  ImageRef = null },
+                            new() { Word = "Cloud", ImageKey = "cloud", ImageRef = null },
+                            new() { Word = "Snow",  ImageKey = "snow",  ImageRef = null }
+                        }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                },
+                new Challenge
+                {
+                    GameId = storyRecallGame.Id,
+                    Title = "8 Pairs — Speed Match",
+                    Description = "8 pairs with a time limit. Match as fast as you can!",
+                    DifficultyLevel = 3,
+                    OrderIndex = 3,
+                    MaxStars = 3,
+                    ContentData = JsonSerializer.Serialize(new WordTwinsContent
+                    {
+                        Pairs = new List<WordTwinsPair>
+                        {
+                            new() { Word = "Book",    ImageKey = "book",    ImageRef = null },
+                            new() { Word = "Pencil",  ImageKey = "pencil",  ImageRef = null },
+                            new() { Word = "School",  ImageKey = "school",  ImageRef = null },
+                            new() { Word = "Tree",    ImageKey = "tree",    ImageRef = null },
+                            new() { Word = "Flower",  ImageKey = "flower",  ImageRef = null },
+                            new() { Word = "House",   ImageKey = "house",   ImageRef = null },
+                            new() { Word = "Car",     ImageKey = "car",     ImageRef = null },
+                            new() { Word = "Bicycle", ImageKey = "bicycle", ImageRef = null }
+                        }
+                    }, _camelCase),
+                    IsAIGenerated = false
+                }
+            );
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        if (!await _dbContext.ShopItems.AnyAsync())
         {
-            new()
+            var shopItems = new List<CleanArc.Domain.Entities.Shop.ShopItem>
             {
-                Name = "Bear",
-                ImageUrl = "bear",
-                Description = "A friendly bear companion who loves learning!",
-                IsDefault = true,
-                UnlockCondition = null
-            },
-            new()
-            {
-                Name = "Fox",
-                ImageUrl = "fox",
-                Description = "A clever fox who helps you solve puzzles.",
-                IsDefault = false,
-                UnlockCondition = "{\"type\":\"level\",\"value\":3}"
-            },
-            new()
-            {
-                Name = "Owl",
-                ImageUrl = "owl",
-                Description = "A wise owl that guides you through stories.",
-                IsDefault = false,
-                UnlockCondition = "{\"type\":\"level\",\"value\":5}"
-            },
-            new()
-            {
-                Name = "Rabbit",
-                ImageUrl = "rabbit",
-                Description = "A speedy rabbit that races through word challenges.",
-                IsDefault = false,
-                UnlockCondition = "{\"type\":\"streak\",\"value\":7}"
-            },
-            new()
-            {
-                Name = "Dragon",
-                ImageUrl = "dragon",
-                Description = "A mighty dragon unlocked by true dedication.",
-                IsDefault = false,
-                UnlockCondition = "{\"type\":\"level\",\"value\":10}"
-            }
-        };
+                new() { Name = "Pirate King", Description = "Arr! A swashbuckling pirate bear variant.", Category = "avatar", Price = 800, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FPirate.png?alt=media", Rarity = "common", IsAvailable = true },
+                new() { Name = "Crown", Description = "A regal bear variant fit for a quiz champion.", Category = "avatar", Price = 1500, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FKing.png?alt=media", Rarity = "rare", IsAvailable = true },
+                new() { Name = "Giyu", Description = "Demon Slayer", Category = "avatar", Price = 1750, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FGiyu.png?alt=media", Rarity = "rare", IsAvailable = true },
+                new() { Name = "Rengoku", Description = "Demon Slayer", Category = "avatar", Price = 1850, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FRengoku.png?alt=media", Rarity = "rare", IsAvailable = true },
+                new() { Name = "Inosuke", Description = "Demon Slayer", Category = "avatar", Price = 1500, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FInosuke.png?alt=media", Rarity = "rare", IsAvailable = true }
+            };
 
-    await dbContext.Mascots.AddRangeAsync(mascots);
-    await dbContext.SaveChangesAsync();
-  }
+            await _dbContext.ShopItems.AddRangeAsync(shopItems);
+            await _dbContext.SaveChangesAsync();
+        }
 
-  private async Task SeedBadges()
-  {
-    if (await dbContext.Badges.AnyAsync()) return;
-
-    var badges = new List<Badge>
+        var wordBridge = await _dbContext.Games.FirstOrDefaultAsync(g => g.Key == "word_bridge");
+        if (wordBridge is null)
         {
-            // Streak badges
-            new()
+            wordBridge = new Game
             {
-                Name = "First Flame",
-                Description = "Complete your first daily check-in.",
-                BadgeImageUrl = "badge_first_flame",
-                Rarity = "common",
-                Category = "streak",
-                MaxProgress = 1,
-                UnlockCriteria = "{\"type\":\"streak\",\"count\":1}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Week Warrior",
-                Description = "Maintain a 7-day streak.",
-                BadgeImageUrl = "badge_week_warrior",
-                Rarity = "rare",
-                Category = "streak",
-                MaxProgress = 7,
-                UnlockCriteria = "{\"type\":\"streak\",\"count\":7}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Month Master",
-                Description = "Maintain a 30-day streak.",
-                BadgeImageUrl = "badge_month_master",
-                Rarity = "legendary",
-                Category = "streak",
-                MaxProgress = 30,
-                UnlockCriteria = "{\"type\":\"streak\",\"count\":30}",
-                IsActive = true
-            },
+                Key = "word_bridge",
+                Name = "Word Builder Bridge: Spell & Learn",
+                Description = "Drag letters to build words! Practice spelling while crossing the bridge.",
+                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fbuilder.png?alt=media",
+                Category = "Spelling & Vocabulary",
+                SkillsTaught = "spelling"
+            };
 
-            // Quiz badges
-            new()
-            {
-                Name = "Quiz Starter",
-                Description = "Complete your first quiz.",
-                BadgeImageUrl = "badge_quiz_starter",
-                Rarity = "common",
-                Category = "quiz",
-                MaxProgress = 1,
-                UnlockCriteria = "{\"type\":\"quizzes_completed\",\"count\":1}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Quiz Enthusiast",
-                Description = "Complete 10 quizzes.",
-                BadgeImageUrl = "badge_quiz_enthusiast",
-                Rarity = "rare",
-                Category = "quiz",
-                MaxProgress = 10,
-                UnlockCriteria = "{\"type\":\"quizzes_completed\",\"count\":10}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Quiz Master",
-                Description = "Complete 50 quizzes.",
-                BadgeImageUrl = "badge_quiz_master",
-                Rarity = "epic",
-                Category = "quiz",
-                MaxProgress = 50,
-                UnlockCriteria = "{\"type\":\"quizzes_completed\",\"count\":50}",
-                IsActive = true
-            },
+            await _dbContext.Games.AddAsync(wordBridge);
+            await _dbContext.SaveChangesAsync();
+        }
 
-            // Level badges
-            new()
-            {
-                Name = "Level Up!",
-                Description = "Reach level 2.",
-                BadgeImageUrl = "badge_level_up",
-                Rarity = "common",
-                Category = "level",
-                MaxProgress = 2,
-                UnlockCriteria = "{\"type\":\"level\",\"value\":2}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Rising Star",
-                Description = "Reach level 5.",
-                BadgeImageUrl = "badge_rising_star",
-                Rarity = "rare",
-                Category = "level",
-                MaxProgress = 5,
-                UnlockCriteria = "{\"type\":\"level\",\"value\":5}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Legendary Learner",
-                Description = "Reach level 10.",
-                BadgeImageUrl = "badge_legendary_learner",
-                Rarity = "legendary",
-                Category = "level",
-                MaxProgress = 10,
-                UnlockCriteria = "{\"type\":\"level\",\"value\":10}",
-                IsActive = true
-            },
-
-            // Social badges
-            new()
-            {
-                Name = "First Friend",
-                Description = "Add your first friend.",
-                BadgeImageUrl = "badge_first_friend",
-                Rarity = "common",
-                Category = "social",
-                MaxProgress = 1,
-                UnlockCriteria = "{\"type\":\"friends\",\"count\":1}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Social Butterfly",
-                Description = "Have 10 friends.",
-                BadgeImageUrl = "badge_social_butterfly",
-                Rarity = "rare",
-                Category = "social",
-                MaxProgress = 10,
-                UnlockCriteria = "{\"type\":\"friends\",\"count\":10}",
-                IsActive = true
-            },
-
-            // Special badges
-            new()
-            {
-                Name = "Classroom Champion",
-                Description = "Get the highest score in a classroom quiz.",
-                BadgeImageUrl = "badge_classroom_champion",
-                Rarity = "epic",
-                Category = "classroom",
-                MaxProgress = 1,
-                UnlockCriteria = "{\"type\":\"classroom_top_score\",\"count\":1}",
-                IsActive = true
-            },
-            new()
-            {
-                Name = "Mission Accomplished",
-                Description = "Complete your first special mission.",
-                BadgeImageUrl = "badge_mission_accomplished",
-                Rarity = "rare",
-                Category = "mission",
-                MaxProgress = 1,
-                UnlockCriteria = "{\"type\":\"missions_completed\",\"count\":1}",
-                IsActive = true
-            }
-        };
-
-    await dbContext.Badges.AddRangeAsync(badges);
-    await dbContext.SaveChangesAsync();
-  }
-
-  private async Task SeedShopItems()
-  {
-    if (await dbContext.ShopItems.AnyAsync()) return;
-
-    var shopItems = new List<ShopItem>
+        var storyRecall = await _dbContext.Games.FirstOrDefaultAsync(g => g.Key == "story_recall");
+        if (storyRecall is null)
         {
-            // Avatars
-            new()
+            storyRecall = new Game
             {
-                Name = "Pirate Hat",
-                Description = "Arr! A cool pirate hat for your avatar.",
-                Category = "avatar",
-                Price = 50,
-                Currency = "diamonds",
-                ImageUrl = "shop_pirate_hat",
-                Rarity = "common",
-                IsAvailable = true,
-                IsLimitedEdition = false
-            },
-            new()
-            {
-                Name = "Crown",
-                Description = "A golden crown fit for a quiz champion.",
-                Category = "avatar",
-                Price = 150,
-                Currency = "diamonds",
-                ImageUrl = "shop_crown",
-                Rarity = "rare",
-                IsAvailable = true,
-                IsLimitedEdition = false
-            },
-            new()
-            {
-                Name = "Wizard Hat",
-                Description = "A mysterious wizard hat with magical powers.",
-                Category = "avatar",
-                Price = 300,
-                Currency = "diamonds",
-                ImageUrl = "shop_wizard_hat",
-                Rarity = "epic",
-                RequiredLevel = 5,
-                IsAvailable = true,
-                IsLimitedEdition = false
-            },
+                Key = "story_recall",
+                Name = "Word Twins",
+                Description = "Flip the cards and match the word with the image!",
+                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fwordpair.png?alt=media",
+                Category = "Story Comprehension Training",
+                SkillsTaught = "memory"
+            };
 
-            // Themes
-            new()
-            {
-                Name = "Ocean Theme",
-                Description = "Dive into the deep blue ocean theme.",
-                Category = "theme",
-                Price = 100,
-                Currency = "diamonds",
-                ImageUrl = "shop_ocean_theme",
-                Rarity = "common",
-                IsAvailable = true,
-                IsLimitedEdition = false
-            },
-            new()
-            {
-                Name = "Space Theme",
-                Description = "Explore the cosmos with a space-themed background.",
-                Category = "theme",
-                Price = 200,
-                Currency = "diamonds",
-                ImageUrl = "shop_space_theme",
-                Rarity = "rare",
-                IsAvailable = true,
-                IsLimitedEdition = false
-            },
-            new()
-            {
-                Name = "Forest Theme",
-                Description = "A peaceful forest theme for calm studying.",
-                Category = "theme",
-                Price = 100,
-                Currency = "diamonds",
-                ImageUrl = "shop_forest_theme",
-                Rarity = "common",
-                IsAvailable = true,
-                IsLimitedEdition = false
-            },
+            await _dbContext.Games.AddAsync(storyRecall);
+            await _dbContext.SaveChangesAsync();
+        }
 
-            // Power-ups
-            new()
+        var hasWordBridgeChallenge = await _dbContext.Challenges.AnyAsync(c => c.GameId == wordBridge.Id);
+        if (!hasWordBridgeChallenge)
+        {
+            await _dbContext.Challenges.AddAsync(new Challenge
             {
-                Name = "Double XP Boost",
-                Description = "Earn double XP for your next quiz!",
-                Category = "powerup",
-                Price = 75,
-                Currency = "diamonds",
-                ImageUrl = "shop_double_xp",
-                Rarity = "common",
-                IsAvailable = true,
-                IsLimitedEdition = false
-            },
-            new()
-            {
-                Name = "Hint Token",
-                Description = "Get a free hint during any quiz question.",
-                Category = "powerup",
-                Price = 50,
-                Currency = "diamonds",
-                ImageUrl = "shop_hint_token",
-                Rarity = "common",
-                IsAvailable = true,
-                IsLimitedEdition = false
-            }
-        };
+                GameId = wordBridge.Id,
+                Title = "Classroom Objects (Starter)",
+                Description = "Build beginner classroom words by dragging letters in order.",
+                DifficultyLevel = 1,
+                OrderIndex = 1,
+                MaxStars = 3,
+                ContentData = JsonSerializer.Serialize(new WordBridgeContent
+                {
+                    Words = new List<WordBridgeWord>
+                    {
+                        new() { Target = "PEN",  Translation = "A tool used for writing",    Difficulty = "easy", ImageRef = null },
+                        new() { Target = "BOOK", Translation = "Something we read to learn", Difficulty = "easy", ImageRef = null },
+                        new() { Target = "DESK", Translation = "A table used by students",   Difficulty = "easy", ImageRef = null }
+                    }
+                }, _camelCase),
+                IsAIGenerated = false
+            });
+        }
 
-    await dbContext.ShopItems.AddRangeAsync(shopItems);
-    await dbContext.SaveChangesAsync();
-  }
+        var hasStoryRecallChallenge = await _dbContext.Challenges.AnyAsync(c => c.GameId == storyRecall.Id);
+        if (!hasStoryRecallChallenge)
+        {
+            await _dbContext.Challenges.AddAsync(new Challenge
+            {
+                GameId = storyRecall.Id,
+                Title = "School Word Twins (Starter)",
+                Description = "Match each school word with its picture pair.",
+                DifficultyLevel = 1,
+                OrderIndex = 1,
+                MaxStars = 3,
+                ContentData = JsonSerializer.Serialize(new WordTwinsContent
+                {
+                    Pairs = new List<WordTwinsPair>
+                    {
+                        new() { Word = "Book",   ImageKey = "book",   ImageRef = null },
+                        new() { Word = "Pencil", ImageKey = "pencil", ImageRef = null },
+                        new() { Word = "School", ImageKey = "school", ImageRef = null },
+                        new() { Word = "Tree",   ImageKey = "tree",   ImageRef = null }
+                    }
+                }, _camelCase),
+                IsAIGenerated = false
+            });
+        }
+
+        if (!hasWordBridgeChallenge || !hasStoryRecallChallenge)
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+    }
 }
