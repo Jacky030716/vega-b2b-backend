@@ -1,5 +1,6 @@
 using System.Reflection;
 using CleanArc.Domain.Common;
+using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Activity;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Progression;
@@ -35,9 +36,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<UserStreak> UserStreaks { get; set; }
 
     // Achievements
-    // public DbSet<Badge> Badges { get; set; }
-    // public DbSet<UserBadge> UserBadges { get; set; }
-    // public DbSet<FeaturedBadge> FeaturedBadges { get; set; }
+    public DbSet<Badge> Badges { get; set; }
+    public DbSet<UserBadge> UserBadges { get; set; }
 
     // Shop
     public DbSet<ShopItem> ShopItems { get; set; }

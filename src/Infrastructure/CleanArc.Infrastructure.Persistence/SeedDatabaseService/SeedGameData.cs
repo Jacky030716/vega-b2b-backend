@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.Quiz.Content;
 using Microsoft.EntityFrameworkCore;
@@ -352,6 +353,98 @@ public class SeedGameData : ISeedGameData
 
         if (!hasWordBridgeChallenge || !hasStoryRecallChallenge)
         {
+            await _dbContext.SaveChangesAsync();
+        }
+
+        // ── Badge catalog ─────────────────────────────────────────────────────
+        // ImageRef stores a Firebase Storage relative path.
+        // The frontend resolves it with resolveStorageRefToUrl(imageRef).
+        if (!await _dbContext.Badges.AnyAsync())
+        {
+            var badges = new List<Badge>
+            {
+                // ── Streak Badges ────────────────────────────────────────────
+                new()
+                {
+                    Name        = "Week Warrior",
+                    Description = "Check in to the app for 7 days in a row.",
+                    ImageRef    = "badges/7_day_streak.png",
+                    Category    = "streak",
+                    Rarity      = "silver",
+                    Requirement = "Check in for 7 consecutive days",
+                    IsSecret    = false,
+                },
+
+                // ── Quiz Badges ──────────────────────────────────────────────
+                new()
+                {
+                    Name        = "Perfect Score",
+                    Description = "Achieve 100% on any quiz.",
+                    ImageRef    = "badges/perfect_score.png",
+                    Category    = "quiz",
+                    Rarity      = "gold",
+                    Requirement = "Get 100% on a quiz",
+                    IsSecret    = false,
+                },
+                new()
+                {
+                    Name        = "Speed Demon",
+                    Description = "Complete a quiz in under 30 seconds.",
+                    ImageRef    = "badges/speed_demon.png",
+                    Category    = "quiz",
+                    Rarity      = "gold",
+                    Requirement = "Finish a quiz in under 30 seconds",
+                    IsSecret    = false,
+                },
+
+                // ── Milestone Badges ─────────────────────────────────────────
+                new()
+                {
+                    Name        = "First Step",
+                    Description = "Complete your very first quiz.",
+                    ImageRef    = "badges/first_step.png",
+                    Category    = "milestone",
+                    Rarity      = "wood",
+                    Requirement = "Complete your first quiz",
+                    IsSecret    = false,
+                },
+                new()
+                {
+                    Name        = "Word Collector",
+                    Description = "Learn or write 50 words in total.",
+                    ImageRef    = "badges/50_words.png",
+                    Category    = "milestone",
+                    Rarity      = "silver",
+                    Requirement = "Learn or write 50 words",
+                    IsSecret    = false,
+                },
+
+                // ── Social Badges ────────────────────────────────────────────
+                new()
+                {
+                    Name        = "Team Player",
+                    Description = "Join a classroom and collaborate with classmates.",
+                    ImageRef    = "badges/team_player.png",
+                    Category    = "social",
+                    Rarity      = "silver",
+                    Requirement = "Join a classroom",
+                    IsSecret    = false,
+                },
+
+                // ── Secret Badges ────────────────────────────────────────────
+                new()
+                {
+                    Name        = "Night Owl",
+                    Description = "???",
+                    ImageRef    = "badges/night_owl.png",
+                    Category    = "secret",
+                    Rarity      = "crystal",
+                    Requirement = "Complete a quiz after 11 PM",
+                    IsSecret    = true,
+                },
+            };
+
+            await _dbContext.Badges.AddRangeAsync(badges);
             await _dbContext.SaveChangesAsync();
         }
     }

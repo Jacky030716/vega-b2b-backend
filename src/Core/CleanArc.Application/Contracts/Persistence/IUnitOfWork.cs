@@ -12,6 +12,7 @@ public interface IUnitOfWork
     public IProgressionRepository ProgressionRepository { get; }
     public IActivityLogRepository ActivityLogRepository { get; }
     public IChallengeRepository ChallengeRepository { get; }
+    public IBadgeRepository BadgeRepository { get; }
 
     Task CommitAsync();
     ValueTask RollBackAsync();

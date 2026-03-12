@@ -16,6 +16,7 @@ public class UnitOfWork : IUnitOfWork
     public IProgressionRepository ProgressionRepository { get; }
     public IActivityLogRepository ActivityLogRepository { get; }
     public IChallengeRepository ChallengeRepository { get; }
+    public IBadgeRepository BadgeRepository { get; }
 
     public UnitOfWork(ApplicationDbContext db)
     {
@@ -30,6 +31,7 @@ public class UnitOfWork : IUnitOfWork
         ProgressionRepository = new ProgressionRepository(_db);
         ActivityLogRepository = new ActivityLogRepository(_db);
         ChallengeRepository = new ChallengeRepository(_db);
+        BadgeRepository = new BadgeRepository(_db);
     }
 
     public Task CommitAsync()
