@@ -120,6 +120,16 @@ internal class ShopRepository(ApplicationDbContext dbContext) : BaseAsyncReposit
     {
       DbContext.UserEquippedItems.Add(new UserEquippedItem { UserId = userId, Category = category, ShopItemId = shopItemId });
     }
+
+    if (string.Equals(category, "avatar", StringComparison.OrdinalIgnoreCase))
+    {
+      var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+      if (user != null)
+      {
+        user.AvatarId = shopItemId.ToString();
+      }
+    }
+
     await DbContext.SaveChangesAsync();
   }
 

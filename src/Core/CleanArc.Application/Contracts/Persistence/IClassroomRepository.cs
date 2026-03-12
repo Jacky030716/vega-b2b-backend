@@ -17,6 +17,7 @@ public interface IClassroomRepository
   Task<ClassroomStudent> JoinClassroomAsync(ClassroomStudent student);
   Task<ClassroomStudent> GetClassroomStudentAsync(int classroomId, int userId);
   Task<int> GetStudentCountAsync(int classroomId);
+  Task<List<ClassroomStudent>> GetClassroomMembersAsync(int classroomId);
 
   // Quizzes
   Task<List<ClassroomQuiz>> GetClassroomQuizzesAsync(int classroomId);

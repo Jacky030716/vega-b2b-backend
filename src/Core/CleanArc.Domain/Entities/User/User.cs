@@ -12,7 +12,7 @@ public class User : IdentityUser<int>, IEntity
         this.Level = 1;
         this.Experience = 0;
         this.Diamonds = 0;
-        this.AvatarId = "bear"; // default avatar
+        this.AvatarId = "0"; // default avatar sentinel (no equipped shop avatar)
     }
 
     public string Name { get; set; }
@@ -23,7 +23,7 @@ public class User : IdentityUser<int>, IEntity
     public int Level { get; set; } = 1;
     public int Experience { get; set; } = 0;
     public int Diamonds { get; set; } = 0;
-    public string AvatarId { get; set; } = "bear";
+    public string AvatarId { get; set; } = "0";
 
     // Password reset tracking (store hashed token only)
     public DateTime? PasswordResetTokenExpiresAt { get; set; }

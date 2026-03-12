@@ -1,7 +1,9 @@
 using System.Text.Json;
 using CleanArc.Domain.Entities.Achievement;
+using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.Quiz.Content;
+using CleanArc.Domain.Entities.User;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanArc.Infrastructure.Persistence.SeedDatabaseService;
@@ -445,6 +447,73 @@ public class SeedGameData : ISeedGameData
             };
 
             await _dbContext.Badges.AddRangeAsync(badges);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        // ── Classrooms ──────────────────────────────────────────────────────
+        if (!await _dbContext.Classrooms.AnyAsync())
+        {
+            // Create a test teacher first
+            var testTeacher = new User
+            {
+                UserName = "mr_smith_teacher",
+                Email = "mr.smith@school.com",
+                Name = "Mr. Smith",
+                FamilyName = "Smith",
+                Experience = 5000,
+                Diamonds = 100,
+                AvatarId = "0",
+                EmailConfirmed = true
+            };
+
+            // Note: Normally users are seeded via SeedDefaultUsersAsync, but if they don't exist, add the teacher
+            var existingTeacher = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == "mr.smith@school.com");
+            if (existingTeacher == null)
+            {
+                _dbContext.Users.Add(testTeacher);
+                await _dbContext.SaveChangesAsync();
+            }
+            else
+            {
+                testTeacher = existingTeacher;
+            }
+
+            // Create classrooms with join codes
+            var classrooms = new[]
+            {
+                new Classroom
+                {
+                    Name = "English 101 - Grade 5",
+                    Description = "Learn English fundamentals including vocabulary, grammar, and reading comprehension.",
+                    Subject = "English",
+                    Thumbnail = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fenglish.png?alt=media",
+                    JoinCode = "ENG5ABCD",
+                    TeacherId = testTeacher.Id,
+                    IsActive = true
+                },
+                new Classroom
+                {
+                    Name = "Math 101 - Grade 5",
+                    Description = "Master mathematics with interactive lessons covering basic arithmetic, fractions, and geometry.",
+                    Subject = "Mathematics",
+                    Thumbnail = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fmath.png?alt=media",
+                    JoinCode = "MATH5XYZ",
+                    TeacherId = testTeacher.Id,
+                    IsActive = true
+                },
+                new Classroom
+                {
+                    Name = "Science Explorer - Grade 4",
+                    Description = "Explore the wonders of science through fun and interactive lessons!",
+                    Subject = "Science",
+                    Thumbnail = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fscience.png?alt=media",
+                    JoinCode = "SCI4TEST",
+                    TeacherId = testTeacher.Id,
+                    IsActive = true
+                }
+            };
+
+            _dbContext.Classrooms.AddRange(classrooms);
             await _dbContext.SaveChangesAsync();
         }
     }

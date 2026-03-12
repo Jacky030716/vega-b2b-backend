@@ -35,9 +35,9 @@ internal class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfi
     // Apply profile updates
     user.Name = request.Profile.Name;
     user.FamilyName = request.Profile.FamilyName;
-    if (!string.IsNullOrWhiteSpace(request.Profile.AvatarId))
+    if (TryNormalizeAvatarItemId(request.Profile.AvatarId, out var normalizedAvatarItemId))
     {
-      user.AvatarId = request.Profile.AvatarId;
+      user.AvatarId = normalizedAvatarItemId;
     }
 
     // Update user in database
@@ -57,5 +57,28 @@ internal class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfi
       UserId = request.UserId,
       Message = "Profile updated successfully"
     });
+  }
+
+  private static bool TryNormalizeAvatarItemId(string? rawAvatarId, out string normalizedAvatarItemId)
+  {
+    normalizedAvatarItemId = string.Empty;
+    if (string.IsNullOrWhiteSpace(rawAvatarId))
+      return false;
+
+    var candidate = rawAvatarId.Trim();
+
+    if (candidate == "bear")
+    {
+      normalizedAvatarItemId = "0";
+      return true;
+    }
+
+    if (int.TryParse(candidate, out var avatarItemId) && avatarItemId >= 0)
+    {
+      normalizedAvatarItemId = avatarItemId.ToString();
+      return true;
+    }
+
+    return false;
   }
 }

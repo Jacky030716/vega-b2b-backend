@@ -41,6 +41,14 @@ public class ClassroomEndpoints : ICarterModule
       return result.ToEndpointResult();
     }), _version, "GetClassroomDetail", _tag).RequireAuthorization();
 
+    // Get classroom members (crew)
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId}}/members", async (int classroomId, ClaimsPrincipal user, ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var result = await sender.Send(new GetClassroomMembersQuery(classroomId, userId));
+      return result.ToEndpointResult();
+    }), _version, "GetClassroomMembers", _tag).RequireAuthorization();
+
     // Get leaderboard
     app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}leaderboard/{{quizId}}", async (string quizId, [FromQuery] int? classroomId, ISender sender) =>
     {

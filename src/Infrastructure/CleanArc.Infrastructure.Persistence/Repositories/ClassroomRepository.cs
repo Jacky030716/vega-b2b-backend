@@ -80,6 +80,15 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     return await DbContext.ClassroomStudents.CountAsync(cs => cs.ClassroomId == classroomId);
   }
 
+  public async Task<List<ClassroomStudent>> GetClassroomMembersAsync(int classroomId)
+  {
+    return await DbContext.ClassroomStudents.AsNoTracking()
+        .Include(cs => cs.User)
+        .Where(cs => cs.ClassroomId == classroomId)
+        .OrderByDescending(cs => cs.User.Experience)
+        .ToListAsync();
+  }
+
   // Quizzes
   public async Task<List<ClassroomQuiz>> GetClassroomQuizzesAsync(int classroomId)
   {
