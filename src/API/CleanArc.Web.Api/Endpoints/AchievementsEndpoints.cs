@@ -6,6 +6,7 @@ using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.WebExtensions;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace CleanArc.Web.Api.Endpoints;
 
@@ -32,6 +33,14 @@ public class AchievementsEndpoints : ICarterModule
       return result.ToEndpointResult();
     }), _version, "GetUserBadges", _tag).RequireAuthorization();
 
+    // GET /Badges/user/progress — badge progress for authenticated user
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}user/progress", async (ClaimsPrincipal user, ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var result = await sender.Send(new GetUserBadgeProgressQuery(userId));
+      return result.ToEndpointResult();
+    }), _version, "GetUserBadgeProgress", _tag).RequireAuthorization();
+
     // POST /Badges/featured — pin a badge to a featured slot
     app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}featured", async (
         [FromBody] SetFeaturedBadgeRequest request,
@@ -42,7 +51,28 @@ public class AchievementsEndpoints : ICarterModule
       var result = await sender.Send(new SetFeaturedBadgeCommand(userId, request.BadgeId, request.SlotIndex));
       return result.ToEndpointResult();
     }), _version, "SetFeaturedBadge", _tag).RequireAuthorization();
+
+    // POST /Badges/events — track a dynamic achievement event
+    app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}events", async (
+        [FromBody] TrackAchievementEventRequest request,
+        ClaimsPrincipal user,
+        ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var propertiesJson = request.Properties.ValueKind == JsonValueKind.Undefined
+          ? "{}"
+          : request.Properties.GetRawText();
+
+      var result = await sender.Send(new TrackAchievementEventCommand(
+          userId,
+          request.EventType,
+          request.EventId,
+          propertiesJson));
+
+      return result.ToEndpointResult();
+    }), _version, "TrackAchievementEvent", _tag).RequireAuthorization();
   }
 }
 
 public record SetFeaturedBadgeRequest(int BadgeId, int SlotIndex);
+public record TrackAchievementEventRequest(string EventType, string EventId, JsonElement Properties);

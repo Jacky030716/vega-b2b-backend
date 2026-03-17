@@ -3,6 +3,7 @@ using System;
 using CleanArc.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanArc.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317093901_AddMissionEntities")]
+    partial class AddMissionEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,63 +24,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.AchievementTrigger", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AggregationSourceField")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AggregationType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("BadgeId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("EvaluationOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FilterConditionsJson")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsRepeatable")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SupportedContexts")
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("Threshold")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BadgeId");
-
-                    b.ToTable("AchievementTriggers");
-                });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.Badge", b =>
                 {
@@ -1461,17 +1407,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("WordLists", (string)null);
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.AchievementTrigger", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.Achievement.Badge", "Badge")
-                        .WithMany()
-                        .HasForeignKey("BadgeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Badge");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.UserAchievementEvent", b =>

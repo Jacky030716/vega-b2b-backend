@@ -1,9 +1,9 @@
--- One-time data fix: convert usr."Users"."AvatarId" legacy values (URL/name/bear)
+-- One-time data fix: convert usr."Users"."AvatarId" legacy values (URL/name/default)
 -- into numeric avatar ShopItem IDs stored as text.
 --
 -- Target model:
 --   - AvatarId stores a numeric ShopItems.Id (as text)
---   - "0" means default avatar (bear / no equipped shop avatar)
+--   - "0" means default avatar (main mascot / no equipped shop avatar)
 --
 -- Safe to run multiple times (idempotent): rows already normalized stay unchanged.
 
@@ -36,7 +36,7 @@ source_norm AS (
         u."UserId",
         u."AvatarId",
         CASE
-            WHEN u."AvatarId" IS NULL OR btrim(u."AvatarId") = '' OR lower(btrim(u."AvatarId")) = 'bear' THEN '0'
+            WHEN u."AvatarId" IS NULL OR btrim(u."AvatarId") = '' THEN '0'
             WHEN btrim(u."AvatarId") = '0' THEN '0'
             WHEN u."AvatarId" ~ '^\d+$' THEN btrim(u."AvatarId")
             ELSE NULL

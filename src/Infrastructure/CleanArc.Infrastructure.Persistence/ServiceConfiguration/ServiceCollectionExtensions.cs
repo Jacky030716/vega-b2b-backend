@@ -1,7 +1,9 @@
+using CleanArc.Application.Contracts.Achievements;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using CleanArc.Infrastructure.Persistence.Repositories;
 using CleanArc.Infrastructure.Persistence.SeedDatabaseService;
+using CleanArc.Infrastructure.Persistence.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +26,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProgressionRepository, ProgressionRepository>();
         services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
         services.AddScoped<IChallengeRepository, ChallengeRepository>();
+        services.AddScoped<IAchievementTrackingService, AchievementTrackingService>();
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {

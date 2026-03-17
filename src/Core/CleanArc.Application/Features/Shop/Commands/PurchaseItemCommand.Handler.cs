@@ -1,8 +1,10 @@
 using CleanArc.Application.Contracts.Identity;
+using CleanArc.Application.Contracts.Achievements;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Shop;
 using Mediator;
+using System.Text.Json;
 
 namespace CleanArc.Application.Features.Shop.Commands;
 
@@ -10,11 +12,16 @@ internal class PurchaseItemCommandHandler : IRequestHandler<PurchaseItemCommand,
 {
   private readonly IUnitOfWork _unitOfWork;
   private readonly IAppUserManager _userManager;
+  private readonly IAchievementTrackingService _achievementTrackingService;
 
-  public PurchaseItemCommandHandler(IUnitOfWork unitOfWork, IAppUserManager userManager)
+  public PurchaseItemCommandHandler(
+    IUnitOfWork unitOfWork,
+    IAppUserManager userManager,
+    IAchievementTrackingService achievementTrackingService)
   {
     _unitOfWork = unitOfWork;
     _userManager = userManager;
+    _achievementTrackingService = achievementTrackingService;
   }
 
   public async ValueTask<OperationResult<bool>> Handle(PurchaseItemCommand request, CancellationToken cancellationToken)
@@ -25,9 +32,6 @@ internal class PurchaseItemCommandHandler : IRequestHandler<PurchaseItemCommand,
 
     if (!shopItem.IsAvailable)
       return OperationResult<bool>.FailureResult("This item is not currently available");
-
-    if (shopItem.Stock.HasValue && shopItem.Stock <= 0)
-      return OperationResult<bool>.FailureResult("This item is out of stock");
 
     // Check user level requirement
     var user = await _userManager.GetUserByIdAsync(request.UserId);
@@ -65,11 +69,22 @@ internal class PurchaseItemCommandHandler : IRequestHandler<PurchaseItemCommand,
       ReferenceId = shopItem.Id.ToString()
     });
 
-    // Update stock
-    if (shopItem.Stock.HasValue)
+    if (shopItem.Currency == "diamonds" && shopItem.Price > 0)
     {
-      shopItem.Stock--;
-      await _unitOfWork.ShopRepository.UpdateShopItemAsync(shopItem);
+      await _achievementTrackingService.TrackEventAsync(
+        request.UserId,
+        "diamond_spent",
+        $"diamond-spent:purchase:{request.UserId}:{shopItem.Id}:{DateTime.UtcNow:yyyyMMddHHmmssfff}",
+        JsonSerializer.Serialize(new
+        {
+          amount = shopItem.Price,
+          source = "shop_purchase",
+          shopItemId = shopItem.Id,
+          shopItemName = shopItem.Name,
+          category = shopItem.Category,
+          currency = shopItem.Currency,
+        }),
+        cancellationToken);
     }
 
     return OperationResult<bool>.SuccessResult(true);

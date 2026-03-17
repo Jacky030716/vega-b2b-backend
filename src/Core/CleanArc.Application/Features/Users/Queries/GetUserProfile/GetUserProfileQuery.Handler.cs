@@ -51,12 +51,16 @@ internal class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery,
       }
       else
       {
-        userProfile.AvatarId = "bear";
+        userProfile.AvatarId = "0";
       }
     }
     else if (string.IsNullOrWhiteSpace(user.AvatarId) || user.AvatarId == "0")
     {
-      userProfile.AvatarId = "bear";
+      userProfile.AvatarId = "0";
+    }
+    else
+    {
+      userProfile.AvatarId = "0";
     }
 
     return OperationResult<GetUserProfileResponse>.SuccessResult(userProfile);

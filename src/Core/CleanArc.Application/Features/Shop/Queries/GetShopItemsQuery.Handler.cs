@@ -17,8 +17,8 @@ internal class GetShopItemsQueryHandler : IRequestHandler<GetShopItemsQuery, Ope
   {
     var items = await _unitOfWork.ShopRepository.GetShopItemsAsync(request.Category);
     var result = items.Select(i => new ShopItemDto(
-        i.Id, i.Name, i.Description, i.Category, i.Price, i.Currency,
-        i.ImageUrl, i.Rarity, i.RequiredLevel, i.IsLimitedEdition, i.Stock)).ToList();
+        i.Id, i.Name, i.Description, i.Category, i.Theme, i.Price, i.Currency,
+        i.ImageUrl, i.Rarity, i.RequiredLevel, i.IsLimitedEdition)).ToList();
     return OperationResult<List<ShopItemDto>>.SuccessResult(result);
   }
 }

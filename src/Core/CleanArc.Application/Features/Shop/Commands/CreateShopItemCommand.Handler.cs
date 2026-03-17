@@ -21,14 +21,14 @@ internal class CreateShopItemCommandHandler : IRequestHandler<CreateShopItemComm
       Name = request.Name,
       Description = request.Description,
       Category = request.Category,
+      Theme = request.Theme,
       Price = request.Price,
       Currency = request.Currency,
       ImageUrl = request.ImageUrl,
       Rarity = request.Rarity,
       RequiredLevel = request.RequiredLevel,
       IsAvailable = true,
-      IsLimitedEdition = request.IsLimitedEdition,
-      Stock = request.Stock
+      IsLimitedEdition = request.IsLimitedEdition
     };
 
     var created = await _unitOfWork.ShopRepository.CreateShopItemAsync(item);

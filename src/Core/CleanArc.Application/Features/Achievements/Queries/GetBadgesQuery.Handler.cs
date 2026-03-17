@@ -18,7 +18,7 @@ internal class GetBadgesQueryHandler : IRequestHandler<GetBadgesQuery, Operation
     var badges = await _unitOfWork.BadgeRepository.GetAllBadgesAsync();
     var result = badges.Select(b => new BadgeDto(
         b.Id, b.Name, b.Description, b.ImageRef,
-        b.Category, b.Rarity, b.Requirement, b.IsSecret
+        b.Category, b.Rarity, b.Requirement, b.IsSecret, b.RuleJson
     )).ToList();
     return OperationResult<List<BadgeDto>>.SuccessResult(result);
   }

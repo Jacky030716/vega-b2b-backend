@@ -3,6 +3,7 @@ using System;
 using CleanArc.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanArc.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312154810_BackfillShopThemeFromDescription")]
+    partial class BackfillShopThemeFromDescription
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,63 +24,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.AchievementTrigger", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AggregationSourceField")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AggregationType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("BadgeId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("EvaluationOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FilterConditionsJson")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsRepeatable")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SupportedContexts")
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("Threshold")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BadgeId");
-
-                    b.ToTable("AchievementTriggers");
-                });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.Badge", b =>
                 {
@@ -88,18 +34,15 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Category")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("ImageRef")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<bool>("IsSecret")
@@ -109,66 +52,17 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Rarity")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Requirement")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("RuleJson")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
                     b.ToTable("Badges");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.UserAchievementEvent", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EventId")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PropertiesJson")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("{}");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "EventId")
-                        .IsUnique();
-
-                    b.ToTable("UserAchievementEvents");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.UserBadge", b =>
@@ -208,45 +102,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("UserBadges");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.UserBadgeProgress", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BadgeId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("LastEvaluatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("ProgressValue")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BadgeId");
-
-                    b.HasIndex("UserId", "BadgeId")
-                        .IsUnique();
-
-                    b.ToTable("UserBadgeProgresses");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Activity.ActivityLog", b =>
@@ -463,163 +318,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasIndex("QuizId", "UserId", "ClassroomId");
 
                     b.ToTable("LeaderboardEntries");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Mission.Mission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ImageRef")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Objective")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("RewardBadgeId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RewardCoins")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("RewardItemId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RewardXp")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TargetValue")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TriggerConditionsJson")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TriggerEventType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Missions");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Mission.UserMission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ClaimedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("CurrentProgress")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("MissionId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ProgressMetadataJson")
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MissionId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserMissions");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Mission.UserMissionProgress", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EventReferenceId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("MissionId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ProgressValue")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("RecordedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MissionId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserMissionProgresses");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Progression.Level", b =>
@@ -1463,51 +1161,10 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.ToTable("WordLists", (string)null);
                 });
 
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.AchievementTrigger", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.Achievement.Badge", "Badge")
-                        .WithMany()
-                        .HasForeignKey("BadgeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Badge");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.UserAchievementEvent", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.UserBadge", b =>
                 {
                     b.HasOne("CleanArc.Domain.Entities.Achievement.Badge", "Badge")
                         .WithMany("UserBadges")
-                        .HasForeignKey("BadgeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Badge");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.UserBadgeProgress", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.Achievement.Badge", "Badge")
-                        .WithMany("UserBadgeProgresses")
                         .HasForeignKey("BadgeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1588,44 +1245,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Classroom");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Mission.UserMission", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.Mission.Mission", "Mission")
-                        .WithMany("UserMissions")
-                        .HasForeignKey("MissionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Mission");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Mission.UserMissionProgress", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.Mission.Mission", "Mission")
-                        .WithMany("UserMissionProgresses")
-                        .HasForeignKey("MissionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Mission");
 
                     b.Navigation("User");
                 });
@@ -1857,8 +1476,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Achievement.Badge", b =>
                 {
-                    b.Navigation("UserBadgeProgresses");
-
                     b.Navigation("UserBadges");
                 });
 
@@ -1867,13 +1484,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("Quizzes");
 
                     b.Navigation("Students");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Mission.Mission", b =>
-                {
-                    b.Navigation("UserMissionProgresses");
-
-                    b.Navigation("UserMissions");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.Challenge", b =>

@@ -10,6 +10,7 @@ public class ShopItemConfiguration : IEntityTypeConfiguration<ShopItem>
   {
     builder.Property(s => s.Name).IsRequired().HasMaxLength(100);
     builder.Property(s => s.Category).IsRequired().HasMaxLength(30);
+    builder.Property(s => s.Theme).IsRequired().HasMaxLength(50).HasDefaultValue("General");
     builder.Property(s => s.Price).IsRequired();
     builder.Property(s => s.Currency).IsRequired().HasMaxLength(20).HasDefaultValue("diamonds");
     builder.Property(s => s.Rarity).HasMaxLength(20);

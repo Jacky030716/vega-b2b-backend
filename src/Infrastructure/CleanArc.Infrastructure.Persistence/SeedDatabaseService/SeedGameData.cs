@@ -259,11 +259,11 @@ public class SeedGameData : ISeedGameData
         {
             var shopItems = new List<CleanArc.Domain.Entities.Shop.ShopItem>
             {
-                new() { Name = "Pirate King", Description = "Arr! A swashbuckling pirate bear variant.", Category = "avatar", Price = 800, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FPirate.png?alt=media", Rarity = "common", IsAvailable = true },
-                new() { Name = "Crown", Description = "A regal bear variant fit for a quiz champion.", Category = "avatar", Price = 1500, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FKing.png?alt=media", Rarity = "rare", IsAvailable = true },
-                new() { Name = "Giyu", Description = "Demon Slayer", Category = "avatar", Price = 1750, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FGiyu.png?alt=media", Rarity = "rare", IsAvailable = true },
-                new() { Name = "Rengoku", Description = "Demon Slayer", Category = "avatar", Price = 1850, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FRengoku.png?alt=media", Rarity = "rare", IsAvailable = true },
-                new() { Name = "Inosuke", Description = "Demon Slayer", Category = "avatar", Price = 1500, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FInosuke.png?alt=media", Rarity = "rare", IsAvailable = true }
+                new() { Name = "Pirate King", Description = "Arr! A swashbuckling pirate mascot variant.", Category = "avatar", Theme = "Classic", Price = 800, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FPirate.png?alt=media", Rarity = "common", IsAvailable = true },
+                new() { Name = "Crown", Description = "A regal mascot variant fit for a quiz champion.", Category = "avatar", Theme = "Classic", Price = 1500, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FKing.png?alt=media", Rarity = "rare", IsAvailable = true },
+                new() { Name = "Giyu", Description = "Demon Slayer", Category = "avatar", Theme = "Demon Slayer", Price = 1750, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FGiyu.png?alt=media", Rarity = "rare", IsAvailable = true },
+                new() { Name = "Rengoku", Description = "Demon Slayer", Category = "avatar", Theme = "Demon Slayer", Price = 1850, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FRengoku.png?alt=media", Rarity = "rare", IsAvailable = true },
+                new() { Name = "Inosuke", Description = "Demon Slayer", Category = "avatar", Theme = "Demon Slayer", Price = 1500, Currency = "diamonds", ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/mascots%2FInosuke.png?alt=media", Rarity = "rare", IsAvailable = true }
             };
 
             await _dbContext.ShopItems.AddRangeAsync(shopItems);
@@ -374,6 +374,7 @@ public class SeedGameData : ISeedGameData
                     Category    = "streak",
                     Rarity      = "silver",
                     Requirement = "Check in for 7 consecutive days",
+                    RuleJson    = "{\"eventType\":\"daily_check_in\",\"aggregation\":\"count\",\"threshold\":7}",
                     IsSecret    = false,
                 },
 
@@ -386,6 +387,7 @@ public class SeedGameData : ISeedGameData
                     Category    = "quiz",
                     Rarity      = "gold",
                     Requirement = "Get 100% on a quiz",
+                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"accuracy\",\"operator\":\"gte\",\"value\":1}}",
                     IsSecret    = false,
                 },
                 new()
@@ -396,6 +398,18 @@ public class SeedGameData : ISeedGameData
                     Category    = "quiz",
                     Rarity      = "gold",
                     Requirement = "Finish a quiz in under 30 seconds",
+                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"durationSeconds\",\"operator\":\"lte\",\"value\":30}}",
+                    IsSecret    = false,
+                },
+                new()
+                {
+                    Name        = "Quick Finisher",
+                    Description = "Complete any quiz within 2 minutes, 3 times.",
+                    ImageRef    = "badges/speed_demon.png",
+                    Category    = "quiz",
+                    Rarity      = "silver",
+                    Requirement = "Complete a quiz within 2 minutes for three times",
+                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":3,\"predicate\":{\"field\":\"durationSeconds\",\"operator\":\"lte\",\"value\":120}}",
                     IsSecret    = false,
                 },
 
@@ -408,6 +422,7 @@ public class SeedGameData : ISeedGameData
                     Category    = "milestone",
                     Rarity      = "wood",
                     Requirement = "Complete your first quiz",
+                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"isFirstCompletion\",\"operator\":\"eq\",\"value\":true}}",
                     IsSecret    = false,
                 },
                 new()
@@ -418,6 +433,7 @@ public class SeedGameData : ISeedGameData
                     Category    = "milestone",
                     Rarity      = "silver",
                     Requirement = "Learn or write 50 words",
+                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":50}",
                     IsSecret    = false,
                 },
 
@@ -430,6 +446,7 @@ public class SeedGameData : ISeedGameData
                     Category    = "social",
                     Rarity      = "silver",
                     Requirement = "Join a classroom",
+                    RuleJson    = "{\"eventType\":\"classroom_joined\",\"aggregation\":\"count\",\"threshold\":1}",
                     IsSecret    = false,
                 },
 
@@ -442,6 +459,7 @@ public class SeedGameData : ISeedGameData
                     Category    = "secret",
                     Rarity      = "crystal",
                     Requirement = "Complete a quiz after 11 PM",
+                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"completedHourUtc\",\"operator\":\"gte\",\"value\":23}}",
                     IsSecret    = true,
                 },
             };

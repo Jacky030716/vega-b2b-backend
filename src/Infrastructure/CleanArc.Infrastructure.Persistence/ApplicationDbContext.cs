@@ -3,6 +3,7 @@ using CleanArc.Domain.Common;
 using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Activity;
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.Mission;
 using CleanArc.Domain.Entities.Progression;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.Shop;
@@ -38,6 +39,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     // Achievements
     public DbSet<Badge> Badges { get; set; }
     public DbSet<UserBadge> UserBadges { get; set; }
+    public DbSet<UserBadgeProgress> UserBadgeProgresses { get; set; }
+    public DbSet<UserAchievementEvent> UserAchievementEvents { get; set; }
+    public DbSet<AchievementTrigger> AchievementTriggers { get; set; }
 
     // Shop
     public DbSet<ShopItem> ShopItems { get; set; }
@@ -57,8 +61,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<UserProgress> UserProgresses { get; set; }
 
     // Missions
-    // public DbSet<SpecialMission> SpecialMissions { get; set; }
-    // public DbSet<UserMission> UserMissions { get; set; }
+    public DbSet<Mission> Missions { get; set; }
+    public DbSet<UserMission> UserMissions { get; set; }
+    public DbSet<UserMissionProgress> UserMissionProgresses { get; set; }
 
     // Mascots
     // public DbSet<Mascot> Mascots { get; set; }

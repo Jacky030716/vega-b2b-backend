@@ -67,12 +67,6 @@ internal class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfi
 
     var candidate = rawAvatarId.Trim();
 
-    if (candidate == "bear")
-    {
-      normalizedAvatarItemId = "0";
-      return true;
-    }
-
     if (int.TryParse(candidate, out var avatarItemId) && avatarItemId >= 0)
     {
       normalizedAvatarItemId = avatarItemId.ToString();

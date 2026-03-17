@@ -28,6 +28,22 @@ internal class BadgeRepository(ApplicationDbContext dbContext)
         .ToListAsync();
   }
 
+  public async Task<List<UserBadgeProgress>> GetUserBadgeProgressesAsync(int userId)
+  {
+    return await DbContext.UserBadgeProgresses
+    .AsNoTracking()
+    .Where(p => p.UserId == userId)
+    .ToListAsync();
+  }
+
+  public async Task<List<AchievementTrigger>> GetAchievementTriggersAsync()
+  {
+    return await DbContext.AchievementTriggers
+    .AsNoTracking()
+    .Where(t => t.IsActive)
+    .ToListAsync();
+  }
+
   public async Task<UserBadge?> GetUserBadgeAsync(int userId, int badgeId)
   {
     return await DbContext.UserBadges
@@ -36,11 +52,6 @@ internal class BadgeRepository(ApplicationDbContext dbContext)
 
   public async Task<UserBadge> AwardBadgeAsync(int userId, int badgeId)
   {
-    // Idempotent — don't duplicate if already awarded
-    var existing = await GetUserBadgeAsync(userId, badgeId);
-    if (existing is not null)
-      return existing;
-
     var userBadge = new UserBadge
     {
       UserId = userId,
@@ -49,9 +60,24 @@ internal class BadgeRepository(ApplicationDbContext dbContext)
       IsFeatured = false,
     };
 
-    await DbContext.UserBadges.AddAsync(userBadge);
-    await DbContext.SaveChangesAsync();
-    return userBadge;
+    // Concurrency-safe idempotency:
+    // unique index (UserId, BadgeId) guarantees one award; on conflict, load existing.
+    try
+    {
+      await DbContext.UserBadges.AddAsync(userBadge);
+      await DbContext.SaveChangesAsync();
+      return userBadge;
+    }
+    catch (DbUpdateException)
+    {
+      var existing = await GetUserBadgeAsync(userId, badgeId);
+      if (existing is not null)
+      {
+        return existing;
+      }
+
+      throw;
+    }
   }
 
   public async Task SetFeaturedBadgeAsync(int userId, int badgeId, int slotIndex)

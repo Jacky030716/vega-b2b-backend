@@ -1,3 +1,5 @@
+using System.Text.Json;
+using CleanArc.Application.Contracts.Achievements;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Quiz;
@@ -35,7 +37,9 @@ internal class CreateAttemptCommandHandler(IUnitOfWork unitOfWork)
 
 // ─── Complete Attempt Handler ─────────────────────────────────────────────────
 
-internal class CompleteAttemptCommandHandler(IUnitOfWork unitOfWork)
+internal class CompleteAttemptCommandHandler(
+  IUnitOfWork unitOfWork,
+  IAchievementTrackingService achievementTrackingService)
     : IRequestHandler<CompleteAttemptCommand, OperationResult<CompleteAttemptDto>>
 {
   // XP formula: 50 per star, minimum 10 for completing (even 0 stars)
@@ -52,6 +56,8 @@ internal class CompleteAttemptCommandHandler(IUnitOfWork unitOfWork)
 
     if (attempt.UserId != request.UserId)
       return OperationResult<CompleteAttemptDto>.FailureResult("Forbidden");
+
+    var challenge = await unitOfWork.ChallengeRepository.GetChallengeByIdAsync(attempt.ChallengeId);
 
     int clampedStars = Math.Clamp(request.StarsEarned, 0, 3);
 
@@ -88,7 +94,92 @@ internal class CompleteAttemptCommandHandler(IUnitOfWork unitOfWork)
       }
     }
 
+    // Dynamic achievement tracking for completion/performance achievements.
+    var completedAt = attempt.CompletedAt;
+    var (durationSeconds, accuracy) = ParseAttemptMetrics(request.AttemptData);
+    var achievementPayload = JsonSerializer.Serialize(new
+    {
+      attemptId = attempt.Id,
+      challengeId = attempt.ChallengeId,
+      gameId = challenge?.GameId,
+      gameKey = challenge?.Game?.Key,
+      score = attempt.Score,
+      starsEarned = clampedStars,
+      isFirstCompletion,
+      durationSeconds,
+      accuracy,
+      completedHourUtc = completedAt.Hour,
+    });
+
+    await achievementTrackingService.TrackEventAsync(
+        request.UserId,
+        "attempt_completed",
+        $"attempt-completed:{attempt.Id}",
+        achievementPayload,
+        cancellationToken);
+
+    if (coins > 0)
+    {
+      await achievementTrackingService.TrackEventAsync(
+          request.UserId,
+          "diamond_earned",
+          $"diamond-earned:attempt:{attempt.Id}",
+          JsonSerializer.Serialize(new
+          {
+            amount = coins,
+            source = "attempt_completed",
+            attemptId = attempt.Id,
+            challengeId = attempt.ChallengeId,
+            gameId = challenge?.GameId,
+            gameKey = challenge?.Game?.Key,
+          }),
+          cancellationToken);
+    }
+
     return OperationResult<CompleteAttemptDto>.SuccessResult(
         new CompleteAttemptDto(attempt.Id, attempt.Score, clampedStars, xp, coins, isFirstCompletion));
+  }
+
+  private static (decimal? DurationSeconds, decimal? Accuracy) ParseAttemptMetrics(string attemptData)
+  {
+    if (string.IsNullOrWhiteSpace(attemptData))
+      return (null, null);
+
+    try
+    {
+      using var doc = JsonDocument.Parse(attemptData);
+      if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        return (null, null);
+
+      var root = doc.RootElement;
+      var duration = TryReadDecimal(root, "durationSeconds")
+          ?? TryReadDecimal(root, "timeTakenSeconds")
+          ?? TryReadDecimal(root, "duration");
+
+      var accuracy = TryReadDecimal(root, "accuracy")
+          ?? TryReadDecimal(root, "accuracyRate")
+          ?? TryReadDecimal(root, "correctRate");
+
+      return (duration, accuracy);
+    }
+    catch
+    {
+      return (null, null);
+    }
+  }
+
+  private static decimal? TryReadDecimal(JsonElement root, string propertyName)
+  {
+    if (!root.TryGetProperty(propertyName, out var value))
+      return null;
+
+    if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number))
+      return number;
+
+    if (value.ValueKind == JsonValueKind.String
+        && decimal.TryParse(value.GetString(), out var parsed))
+      return parsed;
+
+    return null;
   }
 }

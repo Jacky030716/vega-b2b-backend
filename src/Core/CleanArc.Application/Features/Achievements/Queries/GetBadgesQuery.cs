@@ -1,3 +1,5 @@
+#nullable enable
+
 using CleanArc.Application.Models.Common;
 using Mediator;
 
@@ -15,5 +17,6 @@ public record BadgeDto(
     string Category,
     string Rarity,
     string Requirement,
-    bool IsSecret
+    bool IsSecret,
+    string? RuleJson
 );

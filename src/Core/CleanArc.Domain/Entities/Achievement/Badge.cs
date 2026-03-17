@@ -1,3 +1,5 @@
+#nullable enable
+
 using CleanArc.Domain.Common;
 
 namespace CleanArc.Domain.Entities.Achievement;
@@ -24,9 +26,16 @@ public class Badge : BaseEntity<int>
   /// <summary>Human-readable unlock requirement shown to the user.</summary>
   public string Requirement { get; set; }
 
+  /// <summary>
+  /// Optional JSON rule evaluated by the achievement engine.
+  /// Keep Requirement as human-readable text for UI.
+  /// </summary>
+  public string? RuleJson { get; set; }
+
   public bool IsSecret { get; set; }
 
   #region Navigation Properties
   public ICollection<UserBadge> UserBadges { get; set; } = new List<UserBadge>();
+  public ICollection<UserBadgeProgress> UserBadgeProgresses { get; set; } = new List<UserBadgeProgress>();
   #endregion
 }

@@ -13,6 +13,12 @@ public interface IBadgeRepository
   /// <summary>Returns all badges a specific user has earned.</summary>
   Task<List<UserBadge>> GetUserBadgesAsync(int userId);
 
+  /// <summary>Returns all progress rows for a specific user across badges.</summary>
+  Task<List<UserBadgeProgress>> GetUserBadgeProgressesAsync(int userId);
+
+  /// <summary>Returns all achievement triggers.</summary>
+  Task<List<AchievementTrigger>> GetAchievementTriggersAsync();
+
   /// <summary>Returns a specific UserBadge record.</summary>
   Task<UserBadge?> GetUserBadgeAsync(int userId, int badgeId);
 

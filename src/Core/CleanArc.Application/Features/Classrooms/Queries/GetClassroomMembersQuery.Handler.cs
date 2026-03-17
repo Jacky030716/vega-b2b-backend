@@ -23,10 +23,10 @@ internal class GetClassroomMembersQueryHandler : IRequestHandler<GetClassroomMem
     var avatarItems = await _unitOfWork.ShopRepository.GetShopItemsAsync("avatar");
     var avatarUrlById = avatarItems.ToDictionary(item => item.Id, item => item.ImageUrl);
 
-    static string? ResolveAvatarForResponse(string? rawAvatarId, IReadOnlyDictionary<int, string> avatarMap)
+    static string ResolveAvatarForResponse(string rawAvatarId, IReadOnlyDictionary<int, string> avatarMap)
     {
       if (string.IsNullOrWhiteSpace(rawAvatarId) || rawAvatarId == "0")
-        return "bear";
+        return "0";
 
       if (rawAvatarId.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
           rawAvatarId.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
@@ -35,7 +35,7 @@ internal class GetClassroomMembersQueryHandler : IRequestHandler<GetClassroomMem
       if (int.TryParse(rawAvatarId, out var avatarItemId) && avatarMap.TryGetValue(avatarItemId, out var imageUrl))
         return imageUrl;
 
-      return "bear";
+      return "0";
     }
 
     var dtos = members
