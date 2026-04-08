@@ -315,8 +315,8 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("JoinCode")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)");
 
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("timestamp with time zone");
@@ -1179,6 +1179,62 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.ToTable("RoleClaims", "usr");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.User.StudentCredential", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClassroomId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastFailedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastSuccessfulLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StudentLoginCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VisualPasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentLoginCode")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ClassroomId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("StudentCredentials", "usr");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.User.User", b =>
                 {
                     b.Property<int>("Id")
@@ -1192,6 +1248,9 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("AvatarId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AvatarUrl")
                         .HasColumnType("text");
 
                     b.Property<string>("ConcurrencyStamp")
@@ -1210,6 +1269,9 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Experience")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("ExternalUuid")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("FamilyName")
                         .HasColumnType("text");
@@ -1266,6 +1328,9 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalUuid")
+                        .IsUnique();
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -1391,6 +1456,25 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("UserTokens", "usr");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.User.VisualIcon", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Emoji")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("VisualIcons");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Word.Word", b =>
@@ -1768,6 +1852,25 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.User.StudentCredential", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Classroom.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.User.UserClaim", b =>

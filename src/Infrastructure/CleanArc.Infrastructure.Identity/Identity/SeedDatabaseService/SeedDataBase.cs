@@ -1,4 +1,4 @@
-﻿using CleanArc.Domain.Entities.User;
+using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Identity.Identity.Manager;
 using Microsoft.EntityFrameworkCore;
 
@@ -72,5 +72,21 @@ public class SeedDataBase : ISeedDataBase
             await _userManager.CreateAsync(user, "qw123321");
             await _userManager.AddToRoleAsync(user, "admin");
         }
+
+        // Seed test teacher user
+        if (!_userManager.Users.AsNoTracking().Any(u => u.UserName.Equals("teacher_test")))
+        {
+            var user = new User
+            {
+                UserName = "teacher_test",
+                Email = "teacher@test.com",
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true
+            };
+
+            await _userManager.CreateAsync(user, "Teacher@123");
+            await _userManager.AddToRoleAsync(user, "teacher");
+        }
+
     }
 }

@@ -27,6 +27,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
         services.AddScoped<IChallengeRepository, ChallengeRepository>();
         services.AddScoped<IAchievementTrackingService, AchievementTrackingService>();
+        services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomGeneratorService, ClassroomGeneratorService>();
+        services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IStudentImportService, StudentImportService>();
+        services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IRosterPdfGenerator, RosterPdfGenerator>();
+        services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomSetupWizardService, ClassroomSetupWizardService>();
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {

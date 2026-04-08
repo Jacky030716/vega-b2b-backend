@@ -33,9 +33,11 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
 
   public async Task<Classroom> GetClassroomByJoinCodeAsync(string joinCode)
   {
+    var normalizedJoinCode = joinCode?.Trim().ToUpperInvariant() ?? string.Empty;
+
     return await TableNoTracking
         .Include(c => c.Teacher)
-        .FirstOrDefaultAsync(c => c.JoinCode == joinCode && c.IsActive);
+      .FirstOrDefaultAsync(c => c.JoinCode == normalizedJoinCode && c.IsActive);
   }
 
   public async Task<Classroom> CreateClassroomAsync(Classroom classroom)

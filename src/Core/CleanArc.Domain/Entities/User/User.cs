@@ -1,4 +1,4 @@
-﻿using CleanArc.Domain.Common;
+using CleanArc.Domain.Common;
 using CleanArc.Domain.Entities.Word;
 using Microsoft.AspNetCore.Identity;
 
@@ -8,6 +8,7 @@ public class User : IdentityUser<int>, IEntity
 {
     public User()
     {
+        this.ExternalUuid = Guid.NewGuid();
         this.GeneratedCode = Guid.NewGuid().ToString().Substring(0, 8);
         this.Level = 1;
         this.Experience = 0;
@@ -17,6 +18,7 @@ public class User : IdentityUser<int>, IEntity
 
     public string Name { get; set; }
     public string FamilyName { get; set; }
+    public Guid ExternalUuid { get; set; }
     public string GeneratedCode { get; set; }
 
     // User Profile Data
@@ -24,6 +26,7 @@ public class User : IdentityUser<int>, IEntity
     public int Experience { get; set; } = 0;
     public int Diamonds { get; set; } = 0;
     public string AvatarId { get; set; } = "0";
+    public string AvatarUrl { get; set; }
 
     // Password reset tracking (store hashed token only)
     public DateTime? PasswordResetTokenExpiresAt { get; set; }

@@ -16,7 +16,8 @@ internal class JoinClassroomCommandHandler : IRequestHandler<JoinClassroomComman
 
   public async ValueTask<OperationResult<int>> Handle(JoinClassroomCommand request, CancellationToken cancellationToken)
   {
-    var classroom = await _unitOfWork.ClassroomRepository.GetClassroomByJoinCodeAsync(request.JoinCode);
+    var normalizedJoinCode = request.JoinCode?.Trim().ToUpperInvariant() ?? string.Empty;
+    var classroom = await _unitOfWork.ClassroomRepository.GetClassroomByJoinCodeAsync(normalizedJoinCode);
     if (classroom == null)
       return OperationResult<int>.NotFoundResult("Invalid join code or classroom not found");
 

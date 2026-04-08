@@ -43,7 +43,7 @@ public class ClassroomJoinAndMembersTest
       Description = "Basic Math",
       Subject = "Mathematics",
       TeacherId = teacher.Id,
-      JoinCode = "ABC12345",
+      JoinCode = "AB12",
       IsActive = true
     };
 
@@ -89,7 +89,7 @@ public class ClassroomJoinAndMembersTest
       Description = "Basic Physics",
       Subject = "Physics",
       TeacherId = teacher.Id,
-      JoinCode = "PHY12345",
+      JoinCode = "PH12",
       IsActive = true
     };
 
@@ -141,7 +141,7 @@ public class ClassroomJoinAndMembersTest
       Description = "No students",
       Subject = "Testing",
       TeacherId = teacher.Id,
-      JoinCode = "EMPTY01",
+      JoinCode = "EM01",
       IsActive = true
     };
 
@@ -174,7 +174,7 @@ public class ClassroomJoinAndMembersTest
       Description = "Testing",
       Subject = "Testing",
       TeacherId = teacher.Id,
-      JoinCode = "INT12345",
+      JoinCode = "IN12",
       IsActive = true
     };
 

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Carter;
 using CleanArc.Application.Features.Classrooms.Commands;
+using CleanArc.Application.Features.Classrooms.Commands.SetupClassroom;
 using CleanArc.Application.Features.Classrooms.Queries;
 using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.WebExtensions;
@@ -79,9 +80,59 @@ public class ClassroomEndpoints : ICarterModule
       var result = await sender.Send(new AssignQuizCommand(classroomId, userId, request.QuizId, request.DueDate));
       return result.ToEndpointResult();
     }), _version, "AssignQuiz", _tag).RequireAuthorization();
+
+    // Classroom setup wizard (teacher): create class + import students + assign initial challenge
+    app.MapEndpoint(builder => builder.MapPost("/api/v{version:apiVersion}/classrooms/wizard-setup", async (
+        [FromForm] WizardSetupRequest request,
+        ClaimsPrincipal user,
+        ISender sender,
+        CancellationToken cancellationToken) =>
+    {
+      if ((request.CsvFile is null || request.CsvFile.Length == 0) && string.IsNullOrWhiteSpace(request.CsvContent))
+        return Results.BadRequest(new Dictionary<string, List<string>>
+        {
+          { "CsvFile", new() { "CSV file or csvContent is required" } }
+        });
+
+      string csvContent = request.CsvContent;
+      if (request.CsvFile is not null && request.CsvFile.Length > 0)
+      {
+        await using var stream = request.CsvFile.OpenReadStream();
+        using var reader = new StreamReader(stream);
+        csvContent = await reader.ReadToEndAsync(cancellationToken);
+      }
+
+      var teacherId = int.Parse(user.Identity.GetUserId());
+      var result = await sender.Send(new SetupClassroomCommand(
+          teacherId,
+          request.ClassName,
+          request.Subject,
+          request.ChallengeId,
+          csvContent), cancellationToken);
+
+      return result.ToEndpointResult();
+    }).DisableAntiforgery(), _version, "SetupClassroomWizard", _tag).RequireAuthorization();
   }
 }
 
 public record CreateClassroomRequest(string Name, string Description, string Subject, string? Thumbnail);
 public record JoinClassroomRequest(string JoinCode);
 public record AssignQuizRequest(string QuizId, DateTime? DueDate);
+
+public class WizardSetupRequest
+{
+  [FromForm(Name = "className")]
+  public string ClassName { get; set; } = string.Empty;
+
+  [FromForm(Name = "subject")]
+  public string Subject { get; set; } = string.Empty;
+
+  [FromForm(Name = "challengeId")]
+  public int ChallengeId { get; set; }
+
+  [FromForm(Name = "csvFile")]
+  public IFormFile? CsvFile { get; set; }
+
+  [FromForm(Name = "csvContent")]
+  public string CsvContent { get; set; } = string.Empty;
+}

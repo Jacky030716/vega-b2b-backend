@@ -4,10 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CleanArc.Infrastructure.Persistence.Configuration.UserConfig;
 
-internal class UserConfig:IEntityTypeConfiguration<User>
+internal class UserConfig : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("Users","usr").Property(p => p.Id).HasColumnName("UserId");
+        builder.ToTable("Users", "usr").Property(p => p.Id).HasColumnName("UserId");
+        builder.Property(u => u.ExternalUuid).IsRequired();
+        builder.HasIndex(u => u.ExternalUuid).IsUnique();
     }
 }

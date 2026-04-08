@@ -102,7 +102,19 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-app.UseExceptionHandler(_ => { });
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            success = false,
+            message = "Server Error"
+        });
+    });
+});
 app.UseSwaggerAndUI();
 
 app.MapCarter();

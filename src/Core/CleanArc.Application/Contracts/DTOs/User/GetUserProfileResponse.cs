@@ -3,6 +3,7 @@ namespace CleanArc.Application.Contracts.DTOs.User;
 public class GetUserProfileResponse
 {
   public int UserId { get; set; }
+  public Guid ExternalUuid { get; set; }
   public string UserName { get; set; }
   public string Email { get; set; }
   public string Name { get; set; }

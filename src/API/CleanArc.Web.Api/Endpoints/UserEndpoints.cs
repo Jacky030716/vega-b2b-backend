@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Carter;
 using CleanArc.Application.Contracts.DTOs.User;
 using CleanArc.Application.Features.Users.Commands.Create;
@@ -9,6 +9,8 @@ using CleanArc.Application.Features.Users.Commands.UpdateUserProfile;
 using CleanArc.Application.Features.Users.Queries.GenerateUserToken;
 using CleanArc.Application.Features.Users.Queries.PasswordLogin;
 using CleanArc.Application.Features.Users.Queries.GetUserProfile;
+using CleanArc.Application.Features.Users.Queries.StudentVisualChallenge;
+using CleanArc.Application.Features.Users.Queries.StudentVisualLogin;
 using CleanArc.Application.Features.Users.Queries.TokenRequest;
 using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.WebExtensions;
@@ -55,6 +57,27 @@ public class UserEndpoints : ICarterModule
                 var result = await sender.Send(model);
                 return result.ToEndpointResult();
             }), _version, "Login", _tag);
+
+        app.MapEndpoint(
+            builder => builder.MapPost($"{_routePrefix}Student/Challenge", async ([FromBody] StudentVisualChallengeQuery model, ISender sender) =>
+            {
+                var result = await sender.Send(model);
+                return result.ToEndpointResult();
+            }), _version, "StudentChallenge", _tag);
+
+        app.MapEndpoint(
+            builder => builder.MapPost($"{_routePrefix}Student/Login", async ([FromBody] StudentVisualLoginQuery model, ISender sender) =>
+            {
+                var result = await sender.Send(model);
+                return result.ToEndpointResult();
+            }), _version, "StudentVisualLogin", _tag);
+
+        app.MapEndpoint(
+            builder => builder.MapGet($"{_routePrefix}Student/VisualIcons", async (ISender sender) =>
+            {
+                var result = await sender.Send(new CleanArc.Application.Features.Users.Queries.StudentVisualIcons.GetStudentVisualIconsQuery());
+                return result.ToEndpointResult();
+            }), _version, "GetStudentVisualIcons", _tag);
 
         app.MapEndpoint(
             builder => builder.MapGet($"{_routePrefix}RefreshSignIn", async (Guid userRefreshToken, ISender sender) =>

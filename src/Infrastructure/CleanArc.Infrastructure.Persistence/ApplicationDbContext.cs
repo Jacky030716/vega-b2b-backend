@@ -24,6 +24,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
         base.SavingChanges += OnSavingChanges;
     }
 
+    public DbSet<VisualIcon> VisualIcons { get; set; }
+
     // Word
     public DbSet<Word> Words { get; set; }
 
@@ -55,6 +57,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<ClassroomStudent> ClassroomStudents { get; set; }
     public DbSet<ClassroomQuiz> ClassroomQuizzes { get; set; }
     public DbSet<LeaderboardEntry> LeaderboardEntries { get; set; }
+    public DbSet<StudentCredential> StudentCredentials { get; set; }
 
     // Progression
     public DbSet<Level> Levels { get; set; }

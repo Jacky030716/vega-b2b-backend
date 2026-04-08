@@ -27,11 +27,18 @@ internal class UserPasswordLoginQueryHandler : IRequestHandler<UserPasswordLogin
       UserPasswordLoginQuery request,
       CancellationToken cancellationToken)
   {
+    // Support both username and email login
     var user = await _userManager.GetByUserName(request.UserName);
 
     if (user == null)
     {
-      _logger.LogWarning("Invalid login attempt for username: {UserName}", request.UserName);
+      // Try lookup by email if username lookup fails
+      user = await _userManager.FindUserByEmail(request.UserName);
+    }
+
+    if (user == null)
+    {
+      _logger.LogWarning("Invalid login attempt for username/email: {UserName}", request.UserName);
       return OperationResult<AccessToken>.UnauthorizedResult("Invalid credentials");
     }
 

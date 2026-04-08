@@ -505,7 +505,7 @@ public class SeedGameData : ISeedGameData
                     Description = "Learn English fundamentals including vocabulary, grammar, and reading comprehension.",
                     Subject = "English",
                     Thumbnail = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fenglish.png?alt=media",
-                    JoinCode = "ENG5ABCD",
+                    JoinCode = "E5A1",
                     TeacherId = testTeacher.Id,
                     IsActive = true
                 },
@@ -515,7 +515,7 @@ public class SeedGameData : ISeedGameData
                     Description = "Master mathematics with interactive lessons covering basic arithmetic, fractions, and geometry.",
                     Subject = "Mathematics",
                     Thumbnail = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fmath.png?alt=media",
-                    JoinCode = "MATH5XYZ",
+                    JoinCode = "M5X2",
                     TeacherId = testTeacher.Id,
                     IsActive = true
                 },
@@ -525,13 +525,36 @@ public class SeedGameData : ISeedGameData
                     Description = "Explore the wonders of science through fun and interactive lessons!",
                     Subject = "Science",
                     Thumbnail = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fscience.png?alt=media",
-                    JoinCode = "SCI4TEST",
+                    JoinCode = "S4T3",
                     TeacherId = testTeacher.Id,
                     IsActive = true
                 }
             };
 
             _dbContext.Classrooms.AddRange(classrooms);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        // ── Visual Icons (Picture Passwords) ────────────────────────────────
+        if (!await _dbContext.VisualIcons.AnyAsync())
+        {
+            var icons = new[]
+            {
+                new VisualIcon { Emoji = "🍎", Label = "Apple" },
+                new VisualIcon { Emoji = "🐶", Label = "Dog" },
+                new VisualIcon { Emoji = "🐱", Label = "Cat" },
+                new VisualIcon { Emoji = "🌞", Label = "Sun" },
+                new VisualIcon { Emoji = "🌙", Label = "Moon" },
+                new VisualIcon { Emoji = "⭐", Label = "Star" },
+                new VisualIcon { Emoji = "📚", Label = "Book" },
+                new VisualIcon { Emoji = "🌳", Label = "Tree" },
+                new VisualIcon { Emoji = "🚗", Label = "Car" },
+                new VisualIcon { Emoji = "🐦", Label = "Bird" },
+                new VisualIcon { Emoji = "🚤", Label = "Boat" },
+                new VisualIcon { Emoji = "🔑", Label = "Key" }
+            };
+
+            await _dbContext.VisualIcons.AddRangeAsync(icons);
             await _dbContext.SaveChangesAsync();
         }
     }

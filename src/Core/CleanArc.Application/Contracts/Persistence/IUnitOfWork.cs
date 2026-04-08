@@ -13,6 +13,8 @@ public interface IUnitOfWork
     public IActivityLogRepository ActivityLogRepository { get; }
     public IChallengeRepository ChallengeRepository { get; }
     public IBadgeRepository BadgeRepository { get; }
+    public IStudentCredentialRepository StudentCredentialRepository { get; }
+    public IVisualIconRepository VisualIconRepository { get; }
 
     Task CommitAsync();
     ValueTask RollBackAsync();

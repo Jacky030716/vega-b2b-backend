@@ -11,7 +11,7 @@
 	  <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
 	  <PackageReference Include="Pluralize.NET" Version="1.0.2" />
 	  <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="8.0.10" />
-	  <PackageReference Include="AutoMapper" Version="13.0.1" />
+	  <PackageReference Include="AutoMapper" Version="15.1.1" />
 	  <PackageReference Include="FluentValidation" Version="11.10.0" />
   </ItemGroup>
 

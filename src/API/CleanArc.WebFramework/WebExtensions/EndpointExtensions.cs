@@ -1,4 +1,4 @@
-﻿using CleanArc.Application.Models.Common;
+using CleanArc.Application.Models.Common;
 using CleanArc.WebFramework.EndpointFilters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,17 +14,28 @@ public static class EndpointExtensions
     {
         ArgumentNullException.ThrowIfNull(result, nameof(OperationResult<TModel>));
 
-        if (result.IsSuccess) return result.Result is bool ?  Results.Ok() :Results.Ok(result.Result);
+        if (result.IsSuccess) return result.Result is bool ? Results.Ok() : Results.Ok(result.Result);
 
-        if (result.IsNotFound) return string.IsNullOrEmpty(result.ErrorMessage) ? Results.NotFound() : Results.NotFound(new Dictionary<string, List<string>>()
-        {
-            {"GeneralError",new (){result.ErrorMessage}}
-        });
+        if (result.IsNotFound) return string.IsNullOrEmpty(result.ErrorMessage)
+            ? Results.NotFound()
+            : Results.NotFound(new Dictionary<string, List<string>>
+            {
+                { "GeneralError", new() { result.ErrorMessage } }
+            });
 
-        return string.IsNullOrEmpty(result.ErrorMessage) ? Results.BadRequest() : Results.BadRequest(new Dictionary<string,List<string>>()
-        {
-            {"GeneralError",new (){result.ErrorMessage}}
-        });
+        if (result.IsUnauthorized) return string.IsNullOrEmpty(result.ErrorMessage)
+            ? Results.Unauthorized()
+            : Results.Json(new Dictionary<string, List<string>>
+            {
+                { "GeneralError", new() { result.ErrorMessage } }
+            }, statusCode: 401);
+
+        return string.IsNullOrEmpty(result.ErrorMessage)
+            ? Results.BadRequest()
+            : Results.BadRequest(new Dictionary<string, List<string>>
+            {
+                { "GeneralError", new() { result.ErrorMessage } }
+            });
     }
 
 
