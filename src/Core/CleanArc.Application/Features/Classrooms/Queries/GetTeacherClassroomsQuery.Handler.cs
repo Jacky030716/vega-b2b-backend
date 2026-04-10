@@ -23,7 +23,7 @@ internal class GetTeacherClassroomsQueryHandler : IRequestHandler<GetTeacherClas
       var studentCount = await _unitOfWork.ClassroomRepository.GetStudentCountAsync(c.Id);
       var quizCount = await _unitOfWork.ClassroomRepository.GetQuizCountAsync(c.Id);
       result.Add(new ClassroomDto(c.Id, c.Name, c.Description, c.Subject, c.Thumbnail,
-          c.JoinCode, c.TeacherId, "", studentCount, quizCount));
+          c.JoinCode, c.TeacherId, c.Teacher?.Name ?? c.Teacher?.UserName ?? "Teacher", studentCount, quizCount));
     }
 
     return OperationResult<List<ClassroomDto>>.SuccessResult(result);

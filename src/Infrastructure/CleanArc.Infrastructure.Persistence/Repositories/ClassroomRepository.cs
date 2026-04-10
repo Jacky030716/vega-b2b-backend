@@ -20,6 +20,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   public async Task<List<Classroom>> GetTeacherClassroomsAsync(int teacherId)
   {
     return await TableNoTracking
+        .Include(c => c.Teacher)
         .Where(c => c.TeacherId == teacherId && c.IsActive)
         .ToListAsync();
   }

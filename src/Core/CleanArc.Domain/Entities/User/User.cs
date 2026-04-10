@@ -27,6 +27,8 @@ public class User : IdentityUser<int>, IEntity
     public int Diamonds { get; set; } = 0;
     public string AvatarId { get; set; } = "0";
     public string AvatarUrl { get; set; }
+    public bool WeeklyAiInsightsEmail { get; set; } = true;
+    public bool InactiveStudentAlerts { get; set; } = true;
 
     // Password reset tracking (store hashed token only)
     public DateTime? PasswordResetTokenExpiresAt { get; set; }

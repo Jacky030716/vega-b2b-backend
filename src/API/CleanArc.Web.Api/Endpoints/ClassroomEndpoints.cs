@@ -50,6 +50,18 @@ public class ClassroomEndpoints : ICarterModule
       return result.ToEndpointResult();
     }), _version, "GetClassroomMembers", _tag).RequireAuthorization();
 
+    // Get educator-facing student diagnostics inside a classroom
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId}}/students/{{studentId}}/diagnostics", async (
+        int classroomId,
+        int studentId,
+        ClaimsPrincipal user,
+        ISender sender) =>
+    {
+      var teacherId = int.Parse(user.Identity.GetUserId());
+      var result = await sender.Send(new GetClassroomStudentDiagnosticsQuery(classroomId, studentId, teacherId));
+      return result.ToEndpointResult();
+    }), _version, "GetClassroomStudentDiagnostics", _tag).RequireAuthorization();
+
     // Get leaderboard
     app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}leaderboard/{{quizId}}", async (string quizId, [FromQuery] int? classroomId, ISender sender) =>
     {
