@@ -48,9 +48,9 @@ public class SeedGameData : ISeedGameData
                 SkillsTaught = "spelling"
             };
 
-            var storyRecallGame = new Game
+            var wordPairGame = new Game
             {
-                Key = "story_recall",
+                Key = "word_pair",
                 Name = "Word Twins",
                 Description = "Flip the cards and match the word with the image!",
                 ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fwordpair.png?alt=media",
@@ -58,7 +58,7 @@ public class SeedGameData : ISeedGameData
                 SkillsTaught = "memory"
             };
 
-            await _dbContext.Games.AddRangeAsync(magicBackpackGame, wordBridgeGame, storyRecallGame);
+            await _dbContext.Games.AddRangeAsync(magicBackpackGame, wordBridgeGame, wordPairGame);
             await _dbContext.SaveChangesAsync();
 
             // ── Magic Backpack: 3 adventure map nodes ──────────────────────────
@@ -186,7 +186,7 @@ public class SeedGameData : ISeedGameData
             await _dbContext.Challenges.AddRangeAsync(
                 new Challenge
                 {
-                    GameId = storyRecallGame.Id,
+                    GameId = wordPairGame.Id,
                     Title = "4 Pairs",
                     Description = "Match 4 words with their pictures. Flip and find!",
                     DifficultyLevel = 1,
@@ -206,7 +206,7 @@ public class SeedGameData : ISeedGameData
                 },
                 new Challenge
                 {
-                    GameId = storyRecallGame.Id,
+                    GameId = wordPairGame.Id,
                     Title = "6 Pairs",
                     Description = "6 pairs now — stay focused and remember where they are!",
                     DifficultyLevel = 2,
@@ -228,7 +228,7 @@ public class SeedGameData : ISeedGameData
                 },
                 new Challenge
                 {
-                    GameId = storyRecallGame.Id,
+                    GameId = wordPairGame.Id,
                     Title = "8 Pairs — Speed Match",
                     Description = "8 pairs with a time limit. Match as fast as you can!",
                     DifficultyLevel = 3,
@@ -287,12 +287,12 @@ public class SeedGameData : ISeedGameData
             await _dbContext.SaveChangesAsync();
         }
 
-        var storyRecall = await _dbContext.Games.FirstOrDefaultAsync(g => g.Key == "story_recall");
-        if (storyRecall is null)
+        var wordPair = await _dbContext.Games.FirstOrDefaultAsync(g => g.Key == "word_pair");
+        if (wordPair is null)
         {
-            storyRecall = new Game
+            wordPair = new Game
             {
-                Key = "story_recall",
+                Key = "word_pair",
                 Name = "Word Twins",
                 Description = "Flip the cards and match the word with the image!",
                 ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fwordpair.png?alt=media",
@@ -300,7 +300,7 @@ public class SeedGameData : ISeedGameData
                 SkillsTaught = "memory"
             };
 
-            await _dbContext.Games.AddAsync(storyRecall);
+            await _dbContext.Games.AddAsync(wordPair);
             await _dbContext.SaveChangesAsync();
         }
 
@@ -328,12 +328,12 @@ public class SeedGameData : ISeedGameData
             });
         }
 
-        var hasStoryRecallChallenge = await _dbContext.Challenges.AnyAsync(c => c.GameId == storyRecall.Id);
-        if (!hasStoryRecallChallenge)
+        var hasWordPairChallenge = await _dbContext.Challenges.AnyAsync(c => c.GameId == wordPair.Id);
+        if (!hasWordPairChallenge)
         {
             await _dbContext.Challenges.AddAsync(new Challenge
             {
-                GameId = storyRecall.Id,
+                GameId = wordPair.Id,
                 Title = "School Word Twins (Starter)",
                 Description = "Match each school word with its picture pair.",
                 DifficultyLevel = 1,
@@ -353,7 +353,7 @@ public class SeedGameData : ISeedGameData
             });
         }
 
-        if (!hasWordBridgeChallenge || !hasStoryRecallChallenge)
+        if (!hasWordBridgeChallenge || !hasWordPairChallenge)
         {
             await _dbContext.SaveChangesAsync();
         }

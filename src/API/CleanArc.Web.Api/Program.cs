@@ -94,8 +94,6 @@ var app = builder.Build();
 
 
 await app.ApplyMigrationsAsync();
-await app.SeedDefaultUsersAsync();
-await app.SeedGameDataAsync();
 
 if (app.Environment.IsDevelopment())
 {

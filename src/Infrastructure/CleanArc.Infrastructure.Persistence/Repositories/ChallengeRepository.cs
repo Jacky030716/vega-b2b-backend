@@ -8,86 +8,96 @@ namespace CleanArc.Infrastructure.Persistence.Repositories;
 internal class ChallengeRepository(ApplicationDbContext dbContext)
     : BaseAsyncRepository<Challenge>(dbContext), IChallengeRepository
 {
-  // ── Games ────────────────────────────────────────────────────────────────
+    // ── Games ────────────────────────────────────────────────────────────────
 
-  public async Task<List<Game>> GetAllGamesAsync()
-      => await DbContext.Games.AsNoTracking()
-          .OrderBy(g => g.Id)
-          .ToListAsync();
+    public async Task<List<Game>> GetAllGamesAsync()
+        => await DbContext.Games.AsNoTracking()
+            .OrderBy(g => g.Id)
+            .ToListAsync();
 
-  public async Task<Game?> GetGameByKeyAsync(string gameKey)
-      => await DbContext.Games.AsNoTracking()
-          .FirstOrDefaultAsync(g => g.Key == gameKey);
+    public async Task<Game?> GetGameByKeyAsync(string gameKey)
+        => await DbContext.Games.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.Key == gameKey);
 
-  // ── Challenges ────────────────────────────────────────────────────────────
+    // ── Challenges ────────────────────────────────────────────────────────────
 
-  public async Task<List<Challenge>> GetChallengesForGameAsync(int gameId)
-      => await DbContext.Challenges.AsNoTracking()
-          .Where(c => c.GameId == gameId)
-          .OrderBy(c => c.OrderIndex)
-          .ThenBy(c => c.DifficultyLevel)
-          .ToListAsync();
+    public async Task<List<Challenge>> GetChallengesForGameAsync(int gameId)
+        => await DbContext.Challenges.AsNoTracking()
+            .Where(c => c.GameId == gameId)
+            .OrderBy(c => c.OrderIndex)
+            .ThenBy(c => c.DifficultyLevel)
+            .ToListAsync();
 
-  public async Task<Challenge?> GetChallengeByIdAsync(int challengeId)
-      => await DbContext.Challenges.AsNoTracking()
-          .Include(c => c.Game)
-          .FirstOrDefaultAsync(c => c.Id == challengeId);
+    public async Task<int> GetNextOrderIndexForGameAsync(int gameId)
+    {
+        var currentMax = await DbContext.Challenges.AsNoTracking()
+            .Where(c => c.GameId == gameId)
+            .Select(c => (int?)c.OrderIndex)
+            .MaxAsync();
 
-  public async Task<Challenge> CreateChallengeAsync(Challenge challenge)
-  {
-    DbContext.Challenges.Add(challenge);
-    await DbContext.SaveChangesAsync();
-    return challenge;
-  }
+        return (currentMax ?? 0) + 1;
+    }
 
-  public async Task UpdateChallengeAsync(Challenge challenge)
-  {
-    DbContext.Challenges.Update(challenge);
-    await DbContext.SaveChangesAsync();
-  }
+    public async Task<Challenge?> GetChallengeByIdAsync(int challengeId)
+        => await DbContext.Challenges.AsNoTracking()
+            .Include(c => c.Game)
+            .FirstOrDefaultAsync(c => c.Id == challengeId);
 
-  // ── Attempts ─────────────────────────────────────────────────────────────
+    public async Task<Challenge> CreateChallengeAsync(Challenge challenge)
+    {
+        DbContext.Challenges.Add(challenge);
+        await DbContext.SaveChangesAsync();
+        return challenge;
+    }
 
-  public async Task<Attempt> CreateAttemptAsync(Attempt attempt)
-  {
-    DbContext.Attempts.Add(attempt);
-    await DbContext.SaveChangesAsync();
-    return attempt;
-  }
+    public async Task UpdateChallengeAsync(Challenge challenge)
+    {
+        DbContext.Challenges.Update(challenge);
+        await DbContext.SaveChangesAsync();
+    }
 
-  public async Task<Attempt?> GetAttemptByIdAsync(int attemptId)
-      => await DbContext.Attempts.AsNoTracking()
-          .FirstOrDefaultAsync(a => a.Id == attemptId);
+    // ── Attempts ─────────────────────────────────────────────────────────────
 
-  public async Task UpdateAttemptAsync(Attempt attempt)
-  {
-    DbContext.Attempts.Update(attempt);
-    await DbContext.SaveChangesAsync();
-  }
+    public async Task<Attempt> CreateAttemptAsync(Attempt attempt)
+    {
+        DbContext.Attempts.Add(attempt);
+        await DbContext.SaveChangesAsync();
+        return attempt;
+    }
 
-  public async Task<Attempt?> GetPriorCompletedAttemptForChallengeAsync(int userId, int challengeId, int excludeAttemptId)
-      => await DbContext.Attempts.AsNoTracking()
-          .Where(a => a.UserId == userId
-                   && a.ChallengeId == challengeId
-                   && a.IsCompleted
-                   && a.Id != excludeAttemptId)
-          .FirstOrDefaultAsync();
+    public async Task<Attempt?> GetAttemptByIdAsync(int attemptId)
+        => await DbContext.Attempts.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == attemptId);
 
-  public async Task<List<Attempt>> GetUserBestAttemptsForGameAsync(int userId, int gameId)
-  {
-    // Get all challenge IDs for this game
-    var challengeIds = await DbContext.Challenges.AsNoTracking()
-        .Where(c => c.GameId == gameId)
-        .Select(c => c.Id)
-        .ToListAsync();
+    public async Task UpdateAttemptAsync(Attempt attempt)
+    {
+        DbContext.Attempts.Update(attempt);
+        await DbContext.SaveChangesAsync();
+    }
 
-    // For each challenge, return the best (highest score) completed attempt
-    return await DbContext.Attempts.AsNoTracking()
-        .Where(a => a.UserId == userId
-                 && challengeIds.Contains(a.ChallengeId)
-                 && a.IsCompleted)
-        .GroupBy(a => a.ChallengeId)
-        .Select(g => g.OrderByDescending(a => a.Score).First())
-        .ToListAsync();
-  }
+    public async Task<Attempt?> GetPriorCompletedAttemptForChallengeAsync(int userId, int challengeId, int excludeAttemptId)
+        => await DbContext.Attempts.AsNoTracking()
+            .Where(a => a.UserId == userId
+                     && a.ChallengeId == challengeId
+                     && a.IsCompleted
+                     && a.Id != excludeAttemptId)
+            .FirstOrDefaultAsync();
+
+    public async Task<List<Attempt>> GetUserBestAttemptsForGameAsync(int userId, int gameId)
+    {
+        // Get all challenge IDs for this game
+        var challengeIds = await DbContext.Challenges.AsNoTracking()
+            .Where(c => c.GameId == gameId)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        // For each challenge, return the best (highest score) completed attempt
+        return await DbContext.Attempts.AsNoTracking()
+            .Where(a => a.UserId == userId
+                     && challengeIds.Contains(a.ChallengeId)
+                     && a.IsCompleted)
+            .GroupBy(a => a.ChallengeId)
+            .Select(g => g.OrderByDescending(a => a.Score).First())
+            .ToListAsync();
+    }
 }

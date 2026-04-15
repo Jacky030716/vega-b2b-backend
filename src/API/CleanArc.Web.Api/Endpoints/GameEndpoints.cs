@@ -18,7 +18,7 @@ namespace CleanArc.Web.Api.Endpoints;
 ///   3. POST /Games/{key}/challenges/{id}/attempts  → start a play session
 ///   4. POST /Games/attempts/{id}/complete   → finish the session (score, stars, XP)
 ///
-/// Teacher flow (future dashboard):
+/// Teacher flow:
 ///   - POST /Games/{key}/challenges          → create a custom challenge (inherits gameKey)
 /// </summary>
 public class GameEndpoints : ICarterModule
@@ -49,6 +49,31 @@ public class GameEndpoints : ICarterModule
         }
     ), _version, "GetAdventureMap", _tag).RequireAuthorization();
 
+    // ── Teacher: create a custom challenge for a game ───────────────────────
+
+    app.MapEndpoint(builder => builder.MapPost(
+        $"{_routePrefix}{{gameKey}}/challenges",
+        async (string gameKey, [FromBody] CreateChallengeRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+          var userId = int.Parse(user.Identity!.GetUserId());
+          var result = await sender.Send(new CreateChallengeCommand(
+              userId,
+              gameKey,
+              request.Title,
+              request.Description,
+              request.DifficultyLevel,
+              request.ContentData,
+              request.IsAIGenerated,
+              request.CreationMode,
+              request.SourcePrompt,
+              request.SourceDocumentName
+          ));
+
+          return result.ToEndpointResult();
+        }
+    ), _version, "CreateChallenge", _tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
     // ── Student: start an attempt on a specific challenge ────────────────────
 
     app.MapEndpoint(builder => builder.MapPost(
@@ -77,3 +102,14 @@ public class GameEndpoints : ICarterModule
 }
 
 public record CompleteAttemptRequest(int Score, int StarsEarned, string? AttemptData);
+
+public record CreateChallengeRequest(
+  string Title,
+  string Description,
+  int DifficultyLevel,
+  string ContentData,
+  bool IsAIGenerated,
+  string? CreationMode,
+  string? SourcePrompt,
+  string? SourceDocumentName
+);

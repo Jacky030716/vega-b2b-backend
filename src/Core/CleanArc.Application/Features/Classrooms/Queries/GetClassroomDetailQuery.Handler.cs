@@ -1,6 +1,7 @@
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using Mediator;
+using System.Globalization;
 
 namespace CleanArc.Application.Features.Classrooms.Queries;
 
@@ -22,7 +23,21 @@ internal class GetClassroomDetailQueryHandler : IRequestHandler<GetClassroomDeta
     var studentCount = await _unitOfWork.ClassroomRepository.GetStudentCountAsync(request.ClassroomId);
     var quizzes = await _unitOfWork.ClassroomRepository.GetClassroomQuizzesAsync(request.ClassroomId);
 
-    var quizDtos = quizzes.Select(q => new ClassroomQuizDto(q.Id, q.QuizId, q.AssignedDate, q.DueDate)).ToList();
+    var quizDtos = new List<ClassroomQuizDto>(quizzes.Count);
+    foreach (var q in quizzes)
+    {
+      string? title = null;
+      string? gameKey = null;
+
+      if (int.TryParse(q.QuizId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var challengeId))
+      {
+        var challenge = await _unitOfWork.ChallengeRepository.GetChallengeByIdAsync(challengeId);
+        title = challenge?.Title;
+        gameKey = challenge?.Game?.Key;
+      }
+
+      quizDtos.Add(new ClassroomQuizDto(q.Id, q.QuizId, q.AssignedDate, q.DueDate, title, gameKey));
+    }
 
     var result = new ClassroomDetailDto(classroom.Id, classroom.Name, classroom.Description, classroom.Subject,
         classroom.Thumbnail, classroom.JoinCode, classroom.TeacherId, classroom.Teacher?.UserName ?? "",

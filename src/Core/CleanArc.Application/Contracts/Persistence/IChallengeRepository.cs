@@ -10,6 +10,7 @@ public interface IChallengeRepository
 
   // Challenges
   Task<List<Challenge>> GetChallengesForGameAsync(int gameId);
+  Task<int> GetNextOrderIndexForGameAsync(int gameId);
   Task<Challenge?> GetChallengeByIdAsync(int challengeId);
   Task<Challenge> CreateChallengeAsync(Challenge challenge);
   Task UpdateChallengeAsync(Challenge challenge);

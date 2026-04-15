@@ -21,7 +21,7 @@
                3. POST /Games/{key}/challenges/{id}/attempts  → start a play session
                4. POST /Games/attempts/{id}/complete   → finish the session (score, stars, XP)
             
-             Teacher flow (future dashboard):
+             Teacher flow:
                - POST /Games/{key}/challenges          → create a custom challenge (inherits gameKey)
              </summary>
         </member>

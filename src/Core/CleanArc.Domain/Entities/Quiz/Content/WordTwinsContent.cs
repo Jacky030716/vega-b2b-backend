@@ -1,7 +1,7 @@
 namespace CleanArc.Domain.Entities.Quiz.Content;
 
 /// <summary>
-/// ContentData schema for the "story_recall" game (Word Twins / memory card matching).
+/// ContentData schema for the "word_pair" game (Word Twins / memory card matching).
 /// Serialized to jsonb in the Challenges table.
 /// </summary>
 public class WordTwinsContent
