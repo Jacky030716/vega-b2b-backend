@@ -1,4 +1,5 @@
 using CleanArc.Domain.Common;
+using CleanArc.Domain.Entities.Quiz;
 
 namespace CleanArc.Domain.Entities.Classroom;
 
@@ -16,7 +17,7 @@ public class Classroom : BaseEntity<int>
 
   public User.User Teacher { get; set; }
   public ICollection<ClassroomStudent> Students { get; set; } = new List<ClassroomStudent>();
-  public ICollection<ClassroomQuiz> Quizzes { get; set; } = new List<ClassroomQuiz>();
+  public ICollection<Challenge> Challenges { get; set; } = new List<Challenge>();
 
   #endregion
 }

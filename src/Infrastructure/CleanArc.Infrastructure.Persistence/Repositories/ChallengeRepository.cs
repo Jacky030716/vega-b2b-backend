@@ -43,6 +43,10 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
             .Include(c => c.Game)
             .FirstOrDefaultAsync(c => c.Id == challengeId);
 
+    public async Task<int> CountChallengesCreatedByTeacherAsync(int teacherId)
+        => await DbContext.Challenges.AsNoTracking()
+            .CountAsync(c => c.CreatedById == teacherId);
+
     public async Task<Challenge> CreateChallengeAsync(Challenge challenge)
     {
         DbContext.Challenges.Add(challenge);
@@ -100,4 +104,50 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
             .Select(g => g.OrderByDescending(a => a.Score).First())
             .ToListAsync();
     }
+
+    // ── Challenge Progress (leaderboard aggregates) ───────────────────────────
+
+    public async Task UpsertChallengeProgressAsync(ChallengeProgress incoming)
+    {
+        var existing = await DbContext.ChallengeProgresses
+            .FirstOrDefaultAsync(cp =>
+                cp.UserId == incoming.UserId &&
+                cp.ChallengeId == incoming.ChallengeId &&
+                cp.ClassroomId == incoming.ClassroomId);
+
+        if (existing is null)
+        {
+            DbContext.ChallengeProgresses.Add(incoming);
+        }
+        else
+        {
+            existing.AttemptCount = incoming.AttemptCount;
+            existing.HasCompleted = incoming.HasCompleted;
+            existing.BestScore = incoming.BestScore;
+            existing.BestStars = incoming.BestStars;
+            existing.BestAccuracy = incoming.BestAccuracy;
+            existing.BestDurationSeconds = incoming.BestDurationSeconds;
+            existing.TotalXpEarned = incoming.TotalXpEarned;
+            existing.LastAttemptAt = incoming.LastAttemptAt;
+            existing.FirstCompletedAt = incoming.FirstCompletedAt;
+        }
+
+        await DbContext.SaveChangesAsync();
+    }
+
+    public async Task<List<ChallengeProgress>> GetChallengeLeaderboardAsync(int challengeId, int classroomId)
+        => await DbContext.ChallengeProgresses.AsNoTracking()
+            .Include(cp => cp.User)
+            .Where(cp => cp.ChallengeId == challengeId && cp.ClassroomId == classroomId)
+            .OrderByDescending(cp => cp.BestScore)
+            .ThenBy(cp => cp.BestDurationSeconds)
+            .ThenBy(cp => cp.AttemptCount)
+            .ToListAsync();
+
+    public async Task<ChallengeProgress?> GetStudentChallengeProgressAsync(int userId, int challengeId, int classroomId)
+        => await DbContext.ChallengeProgresses.AsNoTracking()
+            .FirstOrDefaultAsync(cp =>
+                cp.UserId == userId &&
+                cp.ChallengeId == challengeId &&
+                cp.ClassroomId == classroomId);
 }

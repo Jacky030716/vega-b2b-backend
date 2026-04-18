@@ -1,0 +1,13 @@
+# Vega Backend (.NET 8 Clean Architecture) Rules
+
+## Architectural Layout
+- **Presentation:** Located in `src/API/CleanArc.Web.Api`. We use a hybrid routing approach. Features can be registered via `ICarterModule` (Minimal APIs, preferred for new simple features) or via standard `Controllers`.
+- **Application Logic:** Located in `src/Core/CleanArc.Application/Features`. This strictly utilizes the Mediator pattern (CQRS). Organize code into entity-specific folders (e.g., `Achievements`, `Classrooms`). DTOs, Handlers, and AutoMapper Profiles live here.
+- **Domain:** Located in `src/Core/CleanArc.Domain`. Absolutely NO external dependencies are permitted. Do not inject `IdentityUser`, `DbContext`, or `EntityFrameworkCore`.
+- **Infrastructure:** Located in `src/Infrastructure`. `CleanArc.Infrastructure.Persistence` holds the `ApplicationDbContext`. `CleanArc.Infrastructure.Identity` holds JWT and external integrations.
+
+## Best Practices
+1. **Error Handling:** Rely on the global `ExceptionHandler` middleware registered in `Program.cs`. Do not clutter handlers with manual generic try-catch HTTP response logic.
+2. **Logging:** `Serilog` is globally registered. Inject `ILogger<T>` into handlers to leverage structured logging, do not use `Console.WriteLine`.
+3. **Database Security:** Avoid data leaks. Never return raw password tokens or database flags directly to endpoints; always map to DTOs using AutoMapper. 
+4. **Cleanup:** Temporary scripts generated during testing MUST be removed.

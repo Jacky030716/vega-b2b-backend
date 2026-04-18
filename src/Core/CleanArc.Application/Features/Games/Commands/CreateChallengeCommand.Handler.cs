@@ -50,7 +50,8 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork)
       OrderIndex = nextOrderIndex,
       MaxStars = 3,
       CreatedById = request.UserId,
-      IsAIGenerated = request.IsAIGenerated
+      IsAIGenerated = request.IsAIGenerated,
+      ClassroomId = request.ClassroomId
     });
 
     return OperationResult<CreateChallengeDto>.SuccessResult(new CreateChallengeDto(
@@ -61,7 +62,8 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork)
       challenge.DifficultyLevel,
       challenge.OrderIndex,
       challenge.IsAIGenerated,
-      challenge.CreatedById
+      challenge.CreatedById,
+      challenge.ClassroomId
     ));
   }
 

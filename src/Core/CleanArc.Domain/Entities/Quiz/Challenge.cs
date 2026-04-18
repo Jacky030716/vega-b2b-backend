@@ -30,6 +30,15 @@ public class Challenge : BaseEntity<int>
 
     public bool IsAIGenerated { get; set; } = false;
 
+    /// <summary>
+    /// The classroom this challenge was created for.
+    /// Null for global/platform challenges; set for teacher-created classroom challenges.
+    /// Replaces the legacy ClassroomQuiz string-keyed join table.
+    /// </summary>
+    public int? ClassroomId { get; set; }
+    public Classroom.Classroom? Classroom { get; set; }
+
     // Navigation properties
     public ICollection<Attempt> Attempts { get; set; } = new List<Attempt>();
+    public ICollection<ChallengeProgress> Progresses { get; set; } = new List<ChallengeProgress>();
 }

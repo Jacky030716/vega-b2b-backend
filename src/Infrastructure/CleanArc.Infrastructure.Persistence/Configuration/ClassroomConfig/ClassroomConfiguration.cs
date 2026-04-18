@@ -15,6 +15,5 @@ public class ClassroomConfiguration : IEntityTypeConfiguration<Classroom>
     builder.Property(c => c.IsActive).HasDefaultValue(true);
     builder.HasOne(c => c.Teacher).WithMany().HasForeignKey(c => c.TeacherId);
     builder.HasMany(c => c.Students).WithOne(s => s.Classroom).HasForeignKey(s => s.ClassroomId).OnDelete(DeleteBehavior.Cascade);
-    builder.HasMany(c => c.Quizzes).WithOne(q => q.Classroom).HasForeignKey(q => q.ClassroomId).OnDelete(DeleteBehavior.Cascade);
   }
 }

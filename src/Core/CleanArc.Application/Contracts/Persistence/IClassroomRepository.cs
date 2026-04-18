@@ -1,4 +1,5 @@
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.Quiz;
 
 namespace CleanArc.Application.Contracts.Persistence;
 
@@ -19,12 +20,7 @@ public interface IClassroomRepository
   Task<int> GetStudentCountAsync(int classroomId);
   Task<List<ClassroomStudent>> GetClassroomMembersAsync(int classroomId);
 
-  // Quizzes
-  Task<List<ClassroomQuiz>> GetClassroomQuizzesAsync(int classroomId);
-  Task<ClassroomQuiz> AssignQuizAsync(ClassroomQuiz quiz);
-  Task<int> GetQuizCountAsync(int classroomId);
-
-  // Leaderboard
-  Task<List<LeaderboardEntry>> GetLeaderboardAsync(string quizId, int? classroomId = null);
-  Task<LeaderboardEntry> AddLeaderboardEntryAsync(LeaderboardEntry entry);
+  // Challenges assigned to this classroom
+  Task<List<Challenge>> GetClassroomChallengesAsync(int classroomId);
 }
+

@@ -33,6 +33,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<Game> Games { get; set; }
     public DbSet<Challenge> Challenges { get; set; }
     public DbSet<Attempt> Attempts { get; set; }
+    public DbSet<ChallengeProgress> ChallengeProgresses { get; set; }
 
     // Streak
     public DbSet<DailyCheckIn> DailyCheckIns { get; set; }
@@ -55,8 +56,6 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     // Classroom
     public DbSet<Classroom> Classrooms { get; set; }
     public DbSet<ClassroomStudent> ClassroomStudents { get; set; }
-    public DbSet<ClassroomQuiz> ClassroomQuizzes { get; set; }
-    public DbSet<LeaderboardEntry> LeaderboardEntries { get; set; }
     public DbSet<StudentCredential> StudentCredentials { get; set; }
 
     // Progression

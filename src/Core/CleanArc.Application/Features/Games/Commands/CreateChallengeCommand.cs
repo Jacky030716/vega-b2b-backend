@@ -14,7 +14,8 @@ public record CreateChallengeDto(
     int DifficultyLevel,
     int OrderIndex,
     bool IsAIGenerated,
-    int? CreatedById
+    int? CreatedById,
+    int? ClassroomId
 );
 
 /// <summary>
@@ -30,5 +31,7 @@ public record CreateChallengeCommand(
     bool IsAIGenerated,
     string? CreationMode,
     string? SourcePrompt,
-    string? SourceDocumentName
+    string? SourceDocumentName,
+    /// <summary>When set, the challenge belongs to this classroom (teacher-created).</summary>
+    int? ClassroomId = null
 ) : IRequest<OperationResult<CreateChallengeDto>>;

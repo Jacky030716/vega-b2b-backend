@@ -33,25 +33,31 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
     var userProgress = await unitOfWork.ProgressionRepository.GetUserProgressAsync(request.StudentId);
     var userBadges = await unitOfWork.BadgeRepository.GetUserBadgesAsync(request.StudentId);
     var recentActivities = await unitOfWork.ActivityLogRepository.GetRecentActivityAsync(request.StudentId, 5);
-    var classroomQuizzes = await unitOfWork.ClassroomRepository.GetClassroomQuizzesAsync(request.ClassroomId);
 
     var recentClassroomPerformances = new List<ClassroomPerformanceItemDto>();
-    foreach (var classroomQuiz in classroomQuizzes.Take(5))
+    var classroomChallenges = await unitOfWork.ClassroomRepository.GetClassroomChallengesAsync(request.ClassroomId);
+
+    foreach (var challenge in classroomChallenges.Take(5))
     {
-      var leaderboard = await unitOfWork.ClassroomRepository.GetLeaderboardAsync(
-          classroomQuiz.QuizId,
-          request.ClassroomId);
-      var studentRow = leaderboard.FirstOrDefault(entry => entry.UserId == request.StudentId);
-      if (studentRow is null)
+      var progressRow = await unitOfWork.ChallengeRepository
+          .GetStudentChallengeProgressAsync(request.StudentId, challenge.Id, request.ClassroomId);
+
+      if (progressRow is null || !progressRow.HasCompleted)
         continue;
 
+      // Derive a percentage from BestScore vs MaxStars as a proxy total (MaxStars * 100 pts per star)
+      var estimatedTotal = challenge.MaxStars * 100;
+      var percentage = estimatedTotal > 0
+          ? Math.Round((double)progressRow.BestScore / estimatedTotal * 100.0, 1)
+          : 0;
+
       recentClassroomPerformances.Add(new ClassroomPerformanceItemDto(
-          classroomQuiz.QuizId,
-          studentRow.CompletedAt,
-          studentRow.Percentage,
-          studentRow.Score,
-          studentRow.TotalPoints,
-          studentRow.TimeSpent));
+          challenge.Id.ToString(),
+          progressRow.FirstCompletedAt ?? progressRow.LastAttemptAt,
+          progressRow.BestAccuracy.HasValue ? (double)progressRow.BestAccuracy.Value : percentage,
+          progressRow.BestScore,
+          estimatedTotal,
+          progressRow.BestDurationSeconds.HasValue ? (int)progressRow.BestDurationSeconds.Value : 0));
     }
 
     var latestPerformance = recentClassroomPerformances

@@ -15,5 +15,12 @@ public class ChallengeConfiguration : IEntityTypeConfiguration<Challenge>
     builder.Property(c => c.ContentData)
         .HasColumnType("jsonb")
         .IsRequired();
+
+    // Link the challenge to its classroom (nullable — null = global platform challenge)
+    builder.HasOne(c => c.Classroom)
+        .WithMany(cr => cr.Challenges)
+        .HasForeignKey(c => c.ClassroomId)
+        .OnDelete(DeleteBehavior.SetNull)
+        .IsRequired(false);
   }
 }

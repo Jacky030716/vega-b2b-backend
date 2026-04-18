@@ -136,6 +136,41 @@ internal class CompleteAttemptCommandHandler(
           cancellationToken);
     }
 
+    // ── Update aggregated leaderboard progress ────────────────────────────────
+    // Only applicable when the challenge was created for a specific classroom.
+    if (challenge?.ClassroomId is int classroomId)
+    {
+      try
+      {
+        var existing = await unitOfWork.ChallengeRepository
+            .GetStudentChallengeProgressAsync(request.UserId, attempt.ChallengeId, classroomId);
+
+        var isBetter = existing is null || attempt.Score > existing.BestScore;
+
+        var progress = new CleanArc.Domain.Entities.Quiz.ChallengeProgress
+        {
+          UserId            = request.UserId,
+          ChallengeId       = attempt.ChallengeId,
+          ClassroomId       = classroomId,
+          AttemptCount      = (existing?.AttemptCount ?? 0) + 1,
+          HasCompleted      = existing?.HasCompleted == true || isFirstCompletion,
+          BestScore         = isBetter ? attempt.Score : (existing?.BestScore ?? 0),
+          BestStars         = Math.Max(clampedStars, existing?.BestStars ?? 0),
+          BestAccuracy      = isBetter && accuracy.HasValue ? accuracy : existing?.BestAccuracy,
+          BestDurationSeconds = isBetter && durationSeconds.HasValue ? durationSeconds : existing?.BestDurationSeconds,
+          TotalXpEarned     = (existing?.TotalXpEarned ?? 0) + xp,
+          LastAttemptAt     = DateTime.UtcNow,
+          FirstCompletedAt  = existing?.FirstCompletedAt ?? (isFirstCompletion ? DateTime.UtcNow : null),
+        };
+
+        await unitOfWork.ChallengeRepository.UpsertChallengeProgressAsync(progress);
+      }
+      catch
+      {
+        // Non-fatal — attempt record is authoritative; progress is an aggregate view
+      }
+    }
+
     return OperationResult<CompleteAttemptDto>.SuccessResult(
         new CompleteAttemptDto(attempt.Id, attempt.Score, clampedStars, xp, coins, isFirstCompletion));
   }

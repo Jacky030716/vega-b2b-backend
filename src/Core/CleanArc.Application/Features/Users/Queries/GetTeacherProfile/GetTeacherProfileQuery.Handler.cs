@@ -20,7 +20,6 @@ internal class GetTeacherProfileQueryHandler(
 
     var classrooms = await unitOfWork.ClassroomRepository.GetTeacherClassroomsAsync(request.TeacherId);
     var uniqueStudents = new Dictionary<int, (int Diamonds, string UserName)>();
-    var challengesLaunched = 0;
 
     foreach (var classroom in classrooms)
     {
@@ -32,9 +31,9 @@ internal class GetTeacherProfileQueryHandler(
           uniqueStudents[member.UserId] = (member.User.Diamonds, member.User.UserName);
         }
       }
-
-      challengesLaunched += await unitOfWork.ClassroomRepository.GetQuizCountAsync(classroom.Id);
     }
+
+    var challengesLaunched = await unitOfWork.ChallengeRepository.CountChallengesCreatedByTeacherAsync(request.TeacherId);
 
     var avatarUrl = teacher.AvatarUrl;
     if (string.IsNullOrWhiteSpace(avatarUrl) &&

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CleanArc.Application.Models.Common;
 using Mediator;
 
@@ -7,7 +8,7 @@ public record TrackAchievementEventCommand(
     int UserId,
     string EventType,
     string EventId,
-    string PropertiesJson
+    JsonElement Properties
 ) : IRequest<OperationResult<TrackAchievementEventResult>>;
 
 public record TrackAchievementEventResult(

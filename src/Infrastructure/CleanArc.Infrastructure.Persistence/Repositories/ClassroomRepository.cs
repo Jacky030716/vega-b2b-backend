@@ -1,7 +1,9 @@
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace CleanArc.Infrastructure.Persistence.Repositories;
 
@@ -92,46 +94,96 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
         .ToListAsync();
   }
 
-  // Quizzes
-  public async Task<List<ClassroomQuiz>> GetClassroomQuizzesAsync(int classroomId)
+  // Challenges
+  public async Task<List<Challenge>> GetClassroomChallengesAsync(int classroomId)
   {
-    return await DbContext.ClassroomQuizzes.AsNoTracking()
-        .Where(cq => cq.ClassroomId == classroomId)
-        .OrderByDescending(cq => cq.AssignedDate)
+    var classroom = await DbContext.Classrooms.AsNoTracking()
+        .Where(c => c.Id == classroomId)
+        .Select(c => new { c.Id, c.TeacherId })
+        .FirstOrDefaultAsync();
+
+    if (classroom is null)
+    {
+      return new List<Challenge>();
+    }
+
+    var directClassroomChallenges = await DbContext.Challenges.AsNoTracking()
+        .Include(c => c.Game)
+        .Where(c => c.ClassroomId == classroomId && c.CreatedById == classroom.TeacherId)
         .ToListAsync();
+
+    // Legacy bridge support should only be used when no direct classroom links exist,
+    // otherwise stale legacy rows can inflate challenge counts for newer classrooms.
+    if (directClassroomChallenges.Count == 0)
+    {
+      var legacyChallengeIds = await GetLegacyClassroomChallengeIdsAsync(classroomId);
+      if (legacyChallengeIds.Count > 0)
+      {
+        var legacyChallenges = await DbContext.Challenges.AsNoTracking()
+            .Include(c => c.Game)
+            .Where(c => legacyChallengeIds.Contains(c.Id) && c.CreatedById == classroom.TeacherId)
+            .ToListAsync();
+
+        directClassroomChallenges.AddRange(legacyChallenges);
+      }
+    }
+
+    return directClassroomChallenges
+        .GroupBy(c => c.Id)
+        .Select(group => group.First())
+        .OrderBy(c => c.OrderIndex)
+        .ThenBy(c => c.DifficultyLevel)
+        .ToList();
   }
 
-  public async Task<ClassroomQuiz> AssignQuizAsync(ClassroomQuiz quiz)
+  private async Task<HashSet<int>> GetLegacyClassroomChallengeIdsAsync(int classroomId)
   {
-    DbContext.ClassroomQuizzes.Add(quiz);
-    await DbContext.SaveChangesAsync();
-    return quiz;
-  }
+    var challengeIds = new HashSet<int>();
+    var connection = DbContext.Database.GetDbConnection();
+    var shouldCloseConnection = connection.State != ConnectionState.Open;
 
-  public async Task<int> GetQuizCountAsync(int classroomId)
-  {
-    return await DbContext.ClassroomQuizzes.CountAsync(cq => cq.ClassroomId == classroomId);
-  }
+    try
+    {
+      if (shouldCloseConnection)
+      {
+        await connection.OpenAsync();
+      }
 
-  // Leaderboard
-  public async Task<List<LeaderboardEntry>> GetLeaderboardAsync(string quizId, int? classroomId = null)
-  {
-    var query = DbContext.LeaderboardEntries.AsNoTracking()
-        .Include(le => le.User)
-        .Where(le => le.QuizId == quizId);
+      await using var command = connection.CreateCommand();
+      command.CommandText = "SELECT \"QuizId\" FROM \"ClassroomQuizzes\" WHERE \"ClassroomId\" = @classroomId";
 
-    if (classroomId.HasValue)
-      query = query.Where(le => le.ClassroomId == classroomId.Value);
+      var classroomIdParameter = command.CreateParameter();
+      classroomIdParameter.ParameterName = "@classroomId";
+      classroomIdParameter.Value = classroomId;
+      command.Parameters.Add(classroomIdParameter);
 
-    return await query.OrderByDescending(le => le.Score)
-        .ThenBy(le => le.TimeSpent)
-        .ToListAsync();
-  }
+      await using var reader = await command.ExecuteReaderAsync();
+      while (await reader.ReadAsync())
+      {
+        if (reader.IsDBNull(0))
+        {
+          continue;
+        }
 
-  public async Task<LeaderboardEntry> AddLeaderboardEntryAsync(LeaderboardEntry entry)
-  {
-    DbContext.LeaderboardEntries.Add(entry);
-    await DbContext.SaveChangesAsync();
-    return entry;
+        var rawQuizId = reader.GetString(0);
+        if (int.TryParse(rawQuizId, out var challengeId))
+        {
+          challengeIds.Add(challengeId);
+        }
+      }
+    }
+    catch
+    {
+      // Legacy table might not exist in newer databases; ignore when unavailable.
+    }
+    finally
+    {
+      if (shouldCloseConnection && connection.State == ConnectionState.Open)
+      {
+        await connection.CloseAsync();
+      }
+    }
+
+    return challengeIds;
   }
 }

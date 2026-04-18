@@ -12,6 +12,7 @@ public interface IChallengeRepository
   Task<List<Challenge>> GetChallengesForGameAsync(int gameId);
   Task<int> GetNextOrderIndexForGameAsync(int gameId);
   Task<Challenge?> GetChallengeByIdAsync(int challengeId);
+  Task<int> CountChallengesCreatedByTeacherAsync(int teacherId);
   Task<Challenge> CreateChallengeAsync(Challenge challenge);
   Task UpdateChallengeAsync(Challenge challenge);
 
@@ -31,4 +32,23 @@ public interface IChallengeRepository
   /// or null if this is their first completion.
   /// </summary>
   Task<Attempt?> GetPriorCompletedAttemptForChallengeAsync(int userId, int challengeId, int excludeAttemptId);
+
+  // Challenge Progress (leaderboard aggregates)
+
+  /// <summary>
+  /// Inserts or updates the aggregated progress row for a (student, challenge, classroom) triple.
+  /// Called on every successful attempt completion.
+  /// </summary>
+  Task UpsertChallengeProgressAsync(ChallengeProgress progress);
+
+  /// <summary>
+  /// Returns all student progress rows for a challenge in a classroom, ranked by BestScore desc.
+  /// </summary>
+  Task<List<ChallengeProgress>> GetChallengeLeaderboardAsync(int challengeId, int classroomId);
+
+  /// <summary>
+  /// Returns a single student's progress row for a (challenge, classroom) pair, or null if none.
+  /// </summary>
+  Task<ChallengeProgress?> GetStudentChallengeProgressAsync(int userId, int challengeId, int classroomId);
 }
+
