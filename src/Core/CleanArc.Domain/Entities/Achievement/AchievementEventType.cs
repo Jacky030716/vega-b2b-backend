@@ -48,6 +48,11 @@ public enum AchievementEventType
   SessionEnded = 161,
   GameLaunched = 162,
   AdventureMapProgressed = 163,
+
+  // Discovery interaction events
+  AchievementScreenOpened = 170,
+  FavoriteBadgeAssigned = 171,
+  BadgeDetailOpened = 172,
 }
 
 /// <summary>
@@ -55,10 +60,54 @@ public enum AchievementEventType
 /// </summary>
 public static class AchievementEventTypeExtensions
 {
+  private static readonly Dictionary<string, AchievementEventType> EventAliases =
+    new(StringComparer.OrdinalIgnoreCase)
+    {
+      ["achievement_screen_opened"] = AchievementEventType.AchievementScreenOpened,
+      ["favorite_badge_assigned"] = AchievementEventType.FavoriteBadgeAssigned,
+      ["badge_detail_opened"] = AchievementEventType.BadgeDetailOpened,
+      ["classroom_joined"] = AchievementEventType.ClassroomJoined,
+      ["daily_check_in"] = AchievementEventType.daily_check_in,
+      ["attempt_completed"] = AchievementEventType.attempt_completed,
+      ["diamond_earned"] = AchievementEventType.diamond_earned,
+      ["diamond_spent"] = AchievementEventType.diamond_spent,
+    };
+
   /// <summary>Gets the string representation of an event type for storage/API.</summary>
   public static string GetEventTypeString(this AchievementEventType eventType)
   {
     return eventType.ToString();
+  }
+
+  /// <summary>
+  /// Converts an incoming event type string into the canonical enum-backed event type string.
+  /// Returns null when the value cannot be recognized.
+  /// </summary>
+  public static string? NormalizeEventType(string? value)
+  {
+    if (string.IsNullOrWhiteSpace(value))
+      return null;
+
+    if (TryParseEventType(value, out var parsed))
+      return parsed.GetEventTypeString();
+
+    var key = value.Trim();
+    if (EventAliases.TryGetValue(key, out var aliasType))
+      return aliasType.GetEventTypeString();
+
+    return null;
+  }
+
+  /// <summary>
+  /// Compares two event type strings by normalizing both sides to canonical enum-backed values.
+  /// </summary>
+  public static bool EventTypeMatches(string? left, string? right)
+  {
+    var normalizedLeft = NormalizeEventType(left);
+    var normalizedRight = NormalizeEventType(right);
+
+    return !string.IsNullOrWhiteSpace(normalizedLeft)
+      && string.Equals(normalizedLeft, normalizedRight, StringComparison.OrdinalIgnoreCase);
   }
 
   /// <summary>Tries to parse a string to an AchievementEventType.</summary>
@@ -70,6 +119,9 @@ public static class AchievementEventTypeExtensions
       return false;
     }
 
-    return Enum.TryParse<AchievementEventType>(value, ignoreCase: true, out eventType);
+    if (Enum.TryParse<AchievementEventType>(value, ignoreCase: true, out eventType))
+      return true;
+
+    return EventAliases.TryGetValue(value.Trim(), out eventType);
   }
 }

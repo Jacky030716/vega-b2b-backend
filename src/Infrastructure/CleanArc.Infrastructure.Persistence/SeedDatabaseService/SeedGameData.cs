@@ -361,110 +361,189 @@ public class SeedGameData : ISeedGameData
         // ── Badge catalog ─────────────────────────────────────────────────────
         // ImageRef stores a Firebase Storage relative path.
         // The frontend resolves it with resolveStorageRefToUrl(imageRef).
-        if (!await _dbContext.Badges.AnyAsync())
+        var badgeSeeds = new List<Badge>
         {
-            var badges = new List<Badge>
+            // ── Streak ───────────────────────────────────────────────────────
+            new()
             {
-                // ── Streak Badges ────────────────────────────────────────────
-                new()
-                {
-                    Name        = "Week Warrior",
-                    Description = "Check in to the app for 7 days in a row.",
-                    ImageRef    = "badges/7_day_streak.png",
-                    Category    = "streak",
-                    Rarity      = "silver",
-                    Requirement = "Check in for 7 consecutive days",
-                    RuleJson    = "{\"eventType\":\"daily_check_in\",\"aggregation\":\"count\",\"threshold\":7}",
-                    IsSecret    = false,
-                },
+                Name = "Week Warrior",
+                Description = "Check in to the app for 7 days in a row.",
+                ImageRef = "badges/7_day_streak.png",
+                Category = "streak",
+                Rarity = "silver",
+                Requirement = "Check in for 7 consecutive days",
+                RuleJson = "{\"eventType\":\"daily_check_in\",\"aggregation\":\"count\",\"threshold\":7}",
+                IsSecret = false,
+                RewardXp = 80,
+                RewardDiamonds = 12,
+            },
 
-                // ── Quiz Badges ──────────────────────────────────────────────
-                new()
-                {
-                    Name        = "Perfect Score",
-                    Description = "Achieve 100% on any quiz.",
-                    ImageRef    = "badges/perfect_score.png",
-                    Category    = "quiz",
-                    Rarity      = "gold",
-                    Requirement = "Get 100% on a quiz",
-                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"accuracy\",\"operator\":\"gte\",\"value\":1}}",
-                    IsSecret    = false,
-                },
-                new()
-                {
-                    Name        = "Speed Demon",
-                    Description = "Complete a quiz in under 30 seconds.",
-                    ImageRef    = "badges/speed_demon.png",
-                    Category    = "quiz",
-                    Rarity      = "gold",
-                    Requirement = "Finish a quiz in under 30 seconds",
-                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"durationSeconds\",\"operator\":\"lte\",\"value\":30}}",
-                    IsSecret    = false,
-                },
-                new()
-                {
-                    Name        = "Quick Finisher",
-                    Description = "Complete any quiz within 2 minutes, 3 times.",
-                    ImageRef    = "badges/speed_demon.png",
-                    Category    = "quiz",
-                    Rarity      = "silver",
-                    Requirement = "Complete a quiz within 2 minutes for three times",
-                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":3,\"predicate\":{\"field\":\"durationSeconds\",\"operator\":\"lte\",\"value\":120}}",
-                    IsSecret    = false,
-                },
+            // ── Mastery ─────────────────────────────────────────────────────
+            new()
+            {
+                Name = "Perfect Score",
+                Description = "Achieve 100% on any quiz.",
+                ImageRef = "badges/perfect_score.png",
+                Category = "mastery",
+                Rarity = "gold",
+                Requirement = "Get 100% on a quiz",
+                RuleJson = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"accuracy\",\"operator\":\"gte\",\"value\":1}}",
+                IsSecret = false,
+                RewardXp = 140,
+                RewardDiamonds = 20,
+            },
+            new()
+            {
+                Name = "Speed Demon",
+                Description = "Complete a quiz in under 30 seconds.",
+                ImageRef = "badges/speed_demon.png",
+                Category = "mastery",
+                Rarity = "gold",
+                Requirement = "Finish a quiz in under 30 seconds",
+                RuleJson = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"durationSeconds\",\"operator\":\"lte\",\"value\":30}}",
+                IsSecret = false,
+                RewardXp = 160,
+                RewardDiamonds = 24,
+            },
+            new()
+            {
+                Name = "Quick Finisher",
+                Description = "Complete any quiz within 2 minutes, 3 times.",
+                ImageRef = "badges/speed_demon.png",
+                Category = "mastery",
+                Rarity = "silver",
+                Requirement = "Complete a quiz within 2 minutes for three times",
+                RuleJson = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":3,\"predicate\":{\"field\":\"durationSeconds\",\"operator\":\"lte\",\"value\":120}}",
+                IsSecret = false,
+                RewardXp = 120,
+                RewardDiamonds = 16,
+            },
 
-                // ── Milestone Badges ─────────────────────────────────────────
-                new()
-                {
-                    Name        = "First Step",
-                    Description = "Complete your very first quiz.",
-                    ImageRef    = "badges/first_step.png",
-                    Category    = "milestone",
-                    Rarity      = "wood",
-                    Requirement = "Complete your first quiz",
-                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"isFirstCompletion\",\"operator\":\"eq\",\"value\":true}}",
-                    IsSecret    = false,
-                },
-                new()
-                {
-                    Name        = "Word Collector",
-                    Description = "Learn or write 50 words in total.",
-                    ImageRef    = "badges/50_words.png",
-                    Category    = "milestone",
-                    Rarity      = "silver",
-                    Requirement = "Learn or write 50 words",
-                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":50}",
-                    IsSecret    = false,
-                },
+            // ── Milestones ──────────────────────────────────────────────────
+            new()
+            {
+                Name = "First Step",
+                Description = "Complete your very first quiz.",
+                ImageRef = "badges/first_step.png",
+                Category = "milestone",
+                Rarity = "wood",
+                Requirement = "Complete your first quiz",
+                RuleJson = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"isFirstCompletion\",\"operator\":\"eq\",\"value\":true}}",
+                IsSecret = false,
+                RewardXp = 60,
+                RewardDiamonds = 8,
+            },
+            new()
+            {
+                Name = "Word Collector",
+                Description = "Learn or write 50 words in total.",
+                ImageRef = "badges/50_words.png",
+                Category = "milestone",
+                Rarity = "silver",
+                Requirement = "Learn or write 50 words",
+                RuleJson = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":50}",
+                IsSecret = false,
+                RewardXp = 180,
+                RewardDiamonds = 28,
+            },
 
-                // ── Social Badges ────────────────────────────────────────────
-                new()
-                {
-                    Name        = "Team Player",
-                    Description = "Join a classroom and collaborate with classmates.",
-                    ImageRef    = "badges/team_player.png",
-                    Category    = "social",
-                    Rarity      = "silver",
-                    Requirement = "Join a classroom",
-                    RuleJson    = "{\"eventType\":\"classroom_joined\",\"aggregation\":\"count\",\"threshold\":1}",
-                    IsSecret    = false,
-                },
+            // ── Discovery ───────────────────────────────────────────────────
+            new()
+            {
+                Name = "Team Player",
+                Description = "Join a classroom and collaborate with classmates.",
+                ImageRef = "badges/team_player.png",
+                Category = "discovery",
+                Rarity = "silver",
+                Requirement = "Join a classroom",
+                RuleJson = "{\"eventType\":\"ClassroomJoined\",\"aggregation\":\"count\",\"threshold\":1}",
+                IsSecret = false,
+                RewardXp = 80,
+                RewardDiamonds = 10,
+            },
+            new()
+            {
+                Name = "Sticker Explorer",
+                Description = "Open the Sticker Book for the first time.",
+                ImageRef = "badges/first_step.png",
+                Category = "discovery",
+                Rarity = "wood",
+                Requirement = "Open the sticker book once",
+                RuleJson = "{\"eventType\":\"AchievementScreenOpened\",\"aggregation\":\"count\",\"threshold\":1}",
+                IsSecret = false,
+                RewardXp = 40,
+                RewardDiamonds = 5,
+            },
+            new()
+            {
+                Name = "Badge Curator",
+                Description = "Assign your first favorite badge.",
+                ImageRef = "badges/team_player.png",
+                Category = "discovery",
+                Rarity = "silver",
+                Requirement = "Set one featured badge",
+                RuleJson = "{\"eventType\":\"FavoriteBadgeAssigned\",\"aggregation\":\"count\",\"threshold\":1}",
+                IsSecret = false,
+                RewardXp = 70,
+                RewardDiamonds = 9,
+            },
+            new()
+            {
+                Name = "Detail Detective",
+                Description = "Open your first badge detail modal.",
+                ImageRef = "badges/perfect_score.png",
+                Category = "discovery",
+                Rarity = "wood",
+                Requirement = "Inspect one badge detail",
+                RuleJson = "{\"eventType\":\"BadgeDetailOpened\",\"aggregation\":\"count\",\"threshold\":1}",
+                IsSecret = false,
+                RewardXp = 50,
+                RewardDiamonds = 7,
+            },
+            new()
+            {
+                Name = "Night Owl",
+                Description = "???",
+                ImageRef = "badges/night_owl.png",
+                Category = "discovery",
+                Rarity = "crystal",
+                Requirement = "Complete a quiz after 11 PM",
+                RuleJson = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"completedHourUtc\",\"operator\":\"gte\",\"value\":23}}",
+                IsSecret = true,
+                RewardXp = 220,
+                RewardDiamonds = 40,
+            },
+        };
 
-                // ── Secret Badges ────────────────────────────────────────────
-                new()
-                {
-                    Name        = "Night Owl",
-                    Description = "???",
-                    ImageRef    = "badges/night_owl.png",
-                    Category    = "secret",
-                    Rarity      = "crystal",
-                    Requirement = "Complete a quiz after 11 PM",
-                    RuleJson    = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"completedHourUtc\",\"operator\":\"gte\",\"value\":23}}",
-                    IsSecret    = true,
-                },
-            };
+        var existingBadges = await _dbContext.Badges.ToDictionaryAsync(
+            badge => badge.Name,
+            badge => badge,
+            StringComparer.OrdinalIgnoreCase);
 
-            await _dbContext.Badges.AddRangeAsync(badges);
+        var hasBadgeChanges = false;
+        foreach (var seedBadge in badgeSeeds)
+        {
+            if (!existingBadges.TryGetValue(seedBadge.Name, out var existingBadge))
+            {
+                await _dbContext.Badges.AddAsync(seedBadge);
+                hasBadgeChanges = true;
+                continue;
+            }
+
+            existingBadge.Description = seedBadge.Description;
+            existingBadge.ImageRef = seedBadge.ImageRef;
+            existingBadge.Category = seedBadge.Category;
+            existingBadge.Rarity = seedBadge.Rarity;
+            existingBadge.Requirement = seedBadge.Requirement;
+            existingBadge.RuleJson = seedBadge.RuleJson;
+            existingBadge.IsSecret = seedBadge.IsSecret;
+            existingBadge.RewardXp = seedBadge.RewardXp;
+            existingBadge.RewardDiamonds = seedBadge.RewardDiamonds;
+            hasBadgeChanges = true;
+        }
+
+        if (hasBadgeChanges)
+        {
             await _dbContext.SaveChangesAsync();
         }
 

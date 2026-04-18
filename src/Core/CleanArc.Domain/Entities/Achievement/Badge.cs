@@ -34,6 +34,12 @@ public class Badge : BaseEntity<int>
 
   public bool IsSecret { get; set; }
 
+  /// <summary>Experience points awarded when this badge is unlocked.</summary>
+  public int RewardXp { get; set; }
+
+  /// <summary>Diamonds awarded when this badge is unlocked.</summary>
+  public int RewardDiamonds { get; set; }
+
   #region Navigation Properties
   public ICollection<UserBadge> UserBadges { get; set; } = new List<UserBadge>();
   public ICollection<UserBadgeProgress> UserBadgeProgresses { get; set; } = new List<UserBadgeProgress>();

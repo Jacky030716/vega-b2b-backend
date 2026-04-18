@@ -17,5 +17,7 @@ public record UserBadgeDto(
     bool IsSecret,
     DateTime EarnedAt,
     bool IsFeatured,
-    int? SlotIndex
+    int? SlotIndex,
+    int RewardXp,
+    int RewardDiamonds
 );

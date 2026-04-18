@@ -18,5 +18,7 @@ public record BadgeDto(
     string Rarity,
     string Requirement,
     bool IsSecret,
-    string? RuleJson
+    string? RuleJson,
+    int RewardXp,
+    int RewardDiamonds
 );
