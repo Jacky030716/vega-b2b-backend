@@ -49,4 +49,17 @@ internal class StreakRepository(ApplicationDbContext dbContext) : BaseAsyncRepos
     DbContext.UserStreaks.Update(streak);
     await DbContext.SaveChangesAsync();
   }
+
+  public async Task<bool> HasClaimedMysteryRewardForDateAsync(int userId, DateOnly claimDate)
+  {
+    var streak = await DbContext.UserStreaks.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == userId);
+    return streak?.LastMysteryRewardClaimedDate == claimDate;
+  }
+
+  public async Task MarkMysteryRewardClaimedAsync(UserStreak streak, DateOnly claimDate)
+  {
+    streak.LastMysteryRewardClaimedDate = claimDate;
+    DbContext.UserStreaks.Update(streak);
+    await DbContext.SaveChangesAsync();
+  }
 }

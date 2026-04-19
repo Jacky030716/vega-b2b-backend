@@ -8,6 +8,7 @@ public class UserStreak : BaseEntity<int>
   public int CurrentStreak { get; set; }
   public int BestStreak { get; set; }
   public DateOnly? LastCheckInDate { get; set; }
+  public DateOnly? LastMysteryRewardClaimedDate { get; set; }
 
   #region Navigation Properties
 

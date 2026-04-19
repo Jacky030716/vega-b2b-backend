@@ -12,6 +12,7 @@ public class UserStreakConfiguration : IEntityTypeConfiguration<UserStreak>
     builder.HasIndex(c => c.UserId).IsUnique();
     builder.Property(c => c.CurrentStreak).HasDefaultValue(0);
     builder.Property(c => c.BestStreak).HasDefaultValue(0);
+    builder.Property(c => c.LastMysteryRewardClaimedDate).IsRequired(false);
     builder.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId);
   }
 }

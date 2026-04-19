@@ -29,5 +29,12 @@ public class StreakEndpoints : ICarterModule
       var result = await sender.Send(new CheckInCommand(userId));
       return result.ToEndpointResult();
     }), _version, "CheckIn", _tag).RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}mystery-reward", async (ClaimsPrincipal user, ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var result = await sender.Send(new ClaimWeeklyMysteryRewardCommand(userId));
+      return result.ToEndpointResult();
+    }), _version, "ClaimWeeklyMysteryReward", _tag).RequireAuthorization();
   }
 }

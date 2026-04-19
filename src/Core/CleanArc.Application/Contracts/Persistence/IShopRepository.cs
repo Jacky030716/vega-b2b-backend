@@ -6,6 +6,7 @@ public interface IShopRepository
 {
   // Shop items
   Task<List<ShopItem>> GetShopItemsAsync(string category = null);
+  Task<List<ShopItem>> GetShopItemsByCategoryAndRaritiesAsync(string category, params string[] rarities);
   Task<ShopItem> GetShopItemByIdAsync(int itemId);
   Task<ShopItem> CreateShopItemAsync(ShopItem item);
   Task UpdateShopItemAsync(ShopItem item);

@@ -16,6 +16,28 @@ internal class ShopRepository(ApplicationDbContext dbContext) : BaseAsyncReposit
     return await query.ToListAsync();
   }
 
+  public async Task<List<ShopItem>> GetShopItemsByCategoryAndRaritiesAsync(string category, params string[] rarities)
+  {
+    var normalizedRarities = rarities
+      .Where(r => !string.IsNullOrWhiteSpace(r))
+      .Select(r => r.Trim().ToLowerInvariant())
+      .ToHashSet();
+
+    if (string.IsNullOrWhiteSpace(category) || normalizedRarities.Count == 0)
+    {
+      return new List<ShopItem>();
+    }
+
+    var normalizedCategory = category.Trim().ToLowerInvariant();
+
+    return await TableNoTracking
+      .Where(s =>
+        s.IsAvailable &&
+        s.Category.ToLower() == normalizedCategory &&
+        normalizedRarities.Contains(s.Rarity.ToLower()))
+      .ToListAsync();
+  }
+
   public async Task<ShopItem> GetShopItemByIdAsync(int itemId)
   {
     return await TableNoTracking.FirstOrDefaultAsync(s => s.Id == itemId);
