@@ -7,6 +7,7 @@ using CleanArc.Domain.Entities.Mission;
 using CleanArc.Domain.Entities.Progression;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.Shop;
+using CleanArc.Domain.Entities.Sticker;
 using CleanArc.Domain.Entities.Streak;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Domain.Entities.Word;
@@ -52,6 +53,10 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<UserEquippedItem> UserEquippedItems { get; set; }
     public DbSet<DailySpecial> DailySpecials { get; set; }
     public DbSet<DiamondTransaction> DiamondTransactions { get; set; }
+
+    // Stickers
+    public DbSet<StickerInventoryItem> StickerInventoryItems { get; set; }
+    public DbSet<StickerGiftTransaction> StickerGiftTransactions { get; set; }
 
     // Classroom
     public DbSet<Classroom> Classrooms { get; set; }

@@ -15,7 +15,9 @@ public interface IUnitOfWork
     public IBadgeRepository BadgeRepository { get; }
     public IStudentCredentialRepository StudentCredentialRepository { get; }
     public IVisualIconRepository VisualIconRepository { get; }
+    public IStickerRepository StickerRepository { get; }
 
+    Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);
     Task CommitAsync();
     ValueTask RollBackAsync();
 }

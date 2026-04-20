@@ -377,6 +377,34 @@ public class SeedGameData : ISeedGameData
                 RewardXp = 80,
                 RewardDiamonds = 12,
             },
+            new()
+            {
+                Name = "5-Day Streak",
+                Description = "Check in to the app for 5 days in a row.",
+                ImageRef = "badges/7_day_streak.png",
+                Category = "streak",
+                Rarity = "silver",
+                Requirement = "Check in for 5 consecutive days",
+                RuleJson = "{\"eventType\":\"daily_check_in\",\"aggregation\":\"count\",\"threshold\":5}",
+                IsSecret = false,
+                RewardXp = 60,
+                RewardDiamonds = 10,
+                RewardDreamTokens = 1,
+            },
+            new()
+            {
+                Name = "Level Up",
+                Description = "Reach level 2 for the first time.",
+                ImageRef = "badges/first_step.png",
+                Category = "milestone",
+                Rarity = "wood",
+                Requirement = "Reach level 2",
+                RuleJson = "{\"eventType\":\"LevelMilestone\",\"aggregation\":\"count\",\"threshold\":1,\"predicate\":{\"field\":\"level\",\"operator\":\"gte\",\"value\":2}}",
+                IsSecret = false,
+                RewardXp = 50,
+                RewardDiamonds = 8,
+                RewardDreamTokens = 1,
+            },
 
             // ── Mastery ─────────────────────────────────────────────────────
             new()
@@ -391,6 +419,20 @@ public class SeedGameData : ISeedGameData
                 IsSecret = false,
                 RewardXp = 140,
                 RewardDiamonds = 20,
+            },
+            new()
+            {
+                Name = "Subject Mastery",
+                Description = "Complete 5 high-accuracy quiz attempts.",
+                ImageRef = "badges/perfect_score.png",
+                Category = "mastery",
+                Rarity = "gold",
+                Requirement = "Complete 5 quizzes with at least 90% accuracy",
+                RuleJson = "{\"eventType\":\"attempt_completed\",\"aggregation\":\"count\",\"threshold\":5,\"predicate\":{\"field\":\"accuracy\",\"operator\":\"gte\",\"value\":0.9}}",
+                IsSecret = false,
+                RewardXp = 180,
+                RewardDiamonds = 30,
+                RewardDreamTokens = 1,
             },
             new()
             {
@@ -539,6 +581,7 @@ public class SeedGameData : ISeedGameData
             existingBadge.IsSecret = seedBadge.IsSecret;
             existingBadge.RewardXp = seedBadge.RewardXp;
             existingBadge.RewardDiamonds = seedBadge.RewardDiamonds;
+            existingBadge.RewardDreamTokens = seedBadge.RewardDreamTokens;
             hasBadgeChanges = true;
         }
 

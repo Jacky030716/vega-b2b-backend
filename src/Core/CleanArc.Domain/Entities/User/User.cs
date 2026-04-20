@@ -25,6 +25,8 @@ public class User : IdentityUser<int>, IEntity
     public int Level { get; set; } = 1;
     public int Experience { get; set; } = 0;
     public int Diamonds { get; set; } = 0;
+    public int DreamTokensCount { get; set; } = 0;
+    public DateTime? LastStickerGeneratedAtUtc { get; set; }
     public string AvatarId { get; set; } = "0";
     public string AvatarUrl { get; set; }
     public bool WeeklyAiInsightsEmail { get; set; } = true;

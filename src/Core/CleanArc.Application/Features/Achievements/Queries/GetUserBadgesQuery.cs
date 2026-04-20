@@ -19,5 +19,6 @@ public record UserBadgeDto(
     bool IsFeatured,
     int? SlotIndex,
     int RewardXp,
-    int RewardDiamonds
+    int RewardDiamonds,
+    int RewardDreamTokens
 );

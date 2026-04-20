@@ -20,5 +20,6 @@ public record BadgeDto(
     bool IsSecret,
     string? RuleJson,
     int RewardXp,
-    int RewardDiamonds
+    int RewardDiamonds,
+    int RewardDreamTokens
 );

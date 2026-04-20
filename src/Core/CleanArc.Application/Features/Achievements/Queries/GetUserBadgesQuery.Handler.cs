@@ -20,7 +20,7 @@ internal class GetUserBadgesQueryHandler : IRequestHandler<GetUserBadgesQuery, O
         ub.Badge.Id, ub.Badge.Name, ub.Badge.Description, ub.Badge.ImageRef,
         ub.Badge.Category, ub.Badge.Rarity, ub.Badge.Requirement, ub.Badge.IsSecret,
         ub.EarnedAt, ub.IsFeatured, ub.SlotIndex,
-        ub.Badge.RewardXp, ub.Badge.RewardDiamonds
+        ub.Badge.RewardXp, ub.Badge.RewardDiamonds, ub.Badge.RewardDreamTokens
     )).ToList();
     return OperationResult<List<UserBadgeDto>>.SuccessResult(result);
   }

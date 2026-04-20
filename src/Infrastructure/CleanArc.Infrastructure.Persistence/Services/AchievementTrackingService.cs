@@ -230,7 +230,7 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
       CancellationToken cancellationToken)
   {
     var rewardBadges = await dbContext.Badges
-        .Where(b => unlockedBadgeIds.Contains(b.Id) && (b.RewardXp > 0 || b.RewardDiamonds > 0))
+      .Where(b => unlockedBadgeIds.Contains(b.Id) && (b.RewardXp > 0 || b.RewardDiamonds > 0 || b.RewardDreamTokens > 0))
         .ToListAsync(cancellationToken);
 
     if (rewardBadges.Count == 0)
@@ -238,8 +238,9 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
 
     var totalXp = rewardBadges.Sum(b => b.RewardXp);
     var totalDiamonds = rewardBadges.Sum(b => b.RewardDiamonds);
+    var totalDreamTokens = rewardBadges.Sum(b => b.RewardDreamTokens);
 
-    if (totalXp <= 0 && totalDiamonds <= 0)
+    if (totalXp <= 0 && totalDiamonds <= 0 && totalDreamTokens <= 0)
       return;
 
     var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
@@ -287,6 +288,11 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
     if (totalDiamonds > 0)
     {
       user.Diamonds += totalDiamonds;
+    }
+
+    if (totalDreamTokens > 0)
+    {
+      user.DreamTokensCount += totalDreamTokens;
     }
 
     await dbContext.SaveChangesAsync(cancellationToken);

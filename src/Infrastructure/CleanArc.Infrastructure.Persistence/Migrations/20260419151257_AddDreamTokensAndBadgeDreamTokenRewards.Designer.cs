@@ -3,6 +3,7 @@ using System;
 using CleanArc.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanArc.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260419151257_AddDreamTokensAndBadgeDreamTokenRewards")]
+    partial class AddDreamTokensAndBadgeDreamTokenRewards
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1044,112 +1047,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.ToTable("UserInventoryItems");
                 });
 
-            modelBuilder.Entity("CleanArc.Domain.Entities.Sticker.StickerGiftTransaction", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ClaimedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("DiamondCost")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("RecipientStickerId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RecipientUserId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SenderUserId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SourceStickerId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RecipientStickerId")
-                        .IsUnique();
-
-                    b.HasIndex("RecipientUserId");
-
-                    b.HasIndex("SenderUserId");
-
-                    b.HasIndex("SourceStickerId");
-
-                    b.HasIndex("RecipientUserId", "Status");
-
-                    b.ToTable("StickerGiftTransactions");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Sticker.StickerInventoryItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("CreatorUserId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("GeneratedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("GenerationModel")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("OwnerUserId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("OwnershipSource")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("PromptChoicesJson")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("{}");
-
-                    b.Property<int?>("SourceStickerId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatorUserId");
-
-                    b.HasIndex("OwnerUserId");
-
-                    b.HasIndex("SourceStickerId");
-
-                    b.ToTable("StickerInventoryItems");
-                });
-
             modelBuilder.Entity("CleanArc.Domain.Entities.Streak.DailyCheckIn", b =>
                 {
                     b.Property<int>("Id")
@@ -1941,67 +1838,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("CleanArc.Domain.Entities.Sticker.StickerGiftTransaction", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.Sticker.StickerInventoryItem", "RecipientSticker")
-                        .WithMany()
-                        .HasForeignKey("RecipientStickerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "RecipientUser")
-                        .WithMany()
-                        .HasForeignKey("RecipientUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "SenderUser")
-                        .WithMany()
-                        .HasForeignKey("SenderUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.Sticker.StickerInventoryItem", "SourceSticker")
-                        .WithMany("SourceGiftTransactions")
-                        .HasForeignKey("SourceStickerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("RecipientSticker");
-
-                    b.Navigation("RecipientUser");
-
-                    b.Navigation("SenderUser");
-
-                    b.Navigation("SourceSticker");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Sticker.StickerInventoryItem", b =>
-                {
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "CreatorUser")
-                        .WithMany()
-                        .HasForeignKey("CreatorUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.User.User", "OwnerUser")
-                        .WithMany()
-                        .HasForeignKey("OwnerUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CleanArc.Domain.Entities.Sticker.StickerInventoryItem", "SourceSticker")
-                        .WithMany("ClonedStickers")
-                        .HasForeignKey("SourceStickerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("CreatorUser");
-
-                    b.Navigation("OwnerUser");
-
-                    b.Navigation("SourceSticker");
-                });
-
             modelBuilder.Entity("CleanArc.Domain.Entities.Streak.DailyCheckIn", b =>
                 {
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
@@ -2175,13 +2011,6 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CleanArc.Domain.Entities.Shop.ShopItem", b =>
                 {
                     b.Navigation("UserInventoryItems");
-                });
-
-            modelBuilder.Entity("CleanArc.Domain.Entities.Sticker.StickerInventoryItem", b =>
-                {
-                    b.Navigation("ClonedStickers");
-
-                    b.Navigation("SourceGiftTransactions");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.User.Role", b =>

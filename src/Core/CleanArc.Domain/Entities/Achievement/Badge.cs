@@ -40,6 +40,9 @@ public class Badge : BaseEntity<int>
   /// <summary>Diamonds awarded when this badge is unlocked.</summary>
   public int RewardDiamonds { get; set; }
 
+  /// <summary>Dream tokens awarded when this badge is unlocked.</summary>
+  public int RewardDreamTokens { get; set; }
+
   #region Navigation Properties
   public ICollection<UserBadge> UserBadges { get; set; } = new List<UserBadge>();
   public ICollection<UserBadgeProgress> UserBadgeProgresses { get; set; } = new List<UserBadgeProgress>();

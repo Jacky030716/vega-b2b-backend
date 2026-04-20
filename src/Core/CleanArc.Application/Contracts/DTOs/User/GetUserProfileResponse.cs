@@ -12,5 +12,7 @@ public class GetUserProfileResponse
   public int Level { get; set; }
   public int Experience { get; set; }
   public int Diamonds { get; set; }
+  public int DreamTokensCount { get; set; }
+  public DateTime? LastStickerGeneratedAtUtc { get; set; }
   public string AvatarId { get; set; }
 }

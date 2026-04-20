@@ -1,4 +1,5 @@
 using CleanArc.Application.Contracts.Persistence;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CleanArc.Infrastructure.Persistence.Repositories.Common;
 
@@ -19,6 +20,7 @@ public class UnitOfWork : IUnitOfWork
     public IBadgeRepository BadgeRepository { get; }
     public IStudentCredentialRepository StudentCredentialRepository { get; }
     public IVisualIconRepository VisualIconRepository { get; }
+    public IStickerRepository StickerRepository { get; }
 
     public UnitOfWork(ApplicationDbContext db)
     {
@@ -36,6 +38,12 @@ public class UnitOfWork : IUnitOfWork
         BadgeRepository = new BadgeRepository(_db);
         StudentCredentialRepository = new StudentCredentialRepository(_db);
         VisualIconRepository = new VisualIconRepository(_db);
+        StickerRepository = new StickerRepository(_db);
+    }
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken)
+    {
+        return _db.Database.BeginTransactionAsync(cancellationToken);
     }
 
     public Task CommitAsync()

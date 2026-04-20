@@ -1,9 +1,12 @@
 using CleanArc.Application.Contracts.Achievements;
+using CleanArc.Application.Contracts.Infrastructure.Stickers;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using CleanArc.Infrastructure.Persistence.Repositories;
 using CleanArc.Infrastructure.Persistence.SeedDatabaseService;
 using CleanArc.Infrastructure.Persistence.Services;
+using CleanArc.Infrastructure.Persistence.Services.Stickers;
+using CleanArc.Infrastructure.Persistence.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,11 +29,25 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProgressionRepository, ProgressionRepository>();
         services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
         services.AddScoped<IChallengeRepository, ChallengeRepository>();
+        services.AddScoped<IStickerRepository, StickerRepository>();
         services.AddScoped<IAchievementTrackingService, AchievementTrackingService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomGeneratorService, ClassroomGeneratorService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IStudentImportService, StudentImportService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IRosterPdfGenerator, RosterPdfGenerator>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomSetupWizardService, ClassroomSetupWizardService>();
+
+        services.Configure<HuggingFaceStickerOptions>(configuration.GetSection(HuggingFaceStickerOptions.SectionName));
+        services.Configure<CloudinaryStickerOptions>(configuration.GetSection(CloudinaryStickerOptions.SectionName));
+
+        services.AddScoped<IStickerPromptCatalogService, StickerPromptCatalogService>();
+        services.AddHttpClient<IStickerImageGenerationService, HuggingFaceStickerImageGenerationService>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<HuggingFaceStickerOptions>>().Value;
+            client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds > 0 ? options.RequestTimeoutSeconds : 60);
+        });
+
+        services.AddHttpClient<IStickerImageStorageService, CloudinaryStickerImageStorageService>();
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
