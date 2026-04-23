@@ -59,6 +59,21 @@ internal class UserPasswordLoginQueryHandler : IRequestHandler<UserPasswordLogin
 
     await _userManager.ResetUserLockoutAsync(user);
 
+    var roles = await _userManager.GetUserRolesAsync(user);
+    var hasAllowedRole = roles.Any(role =>
+        role.Equals("teacher", StringComparison.OrdinalIgnoreCase)
+        || role.Equals("admin", StringComparison.OrdinalIgnoreCase)
+        || role.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase));
+
+    if (!hasAllowedRole)
+    {
+      _logger.LogWarning(
+          "Password login rejected for user {UserName} due to unsupported role set: {Roles}",
+          request.UserName,
+          string.Join(",", roles));
+      return OperationResult<AccessToken>.UnauthorizedResult("Invalid credentials");
+    }
+
     var token = await _jwtService.GenerateAsync(user);
     return OperationResult<AccessToken>.SuccessResult(token);
   }

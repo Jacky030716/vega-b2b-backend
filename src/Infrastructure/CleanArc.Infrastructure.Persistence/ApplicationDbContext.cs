@@ -1,8 +1,10 @@
 using System.Reflection;
 using CleanArc.Domain.Common;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Activity;
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.Institution;
 using CleanArc.Domain.Entities.Mission;
 using CleanArc.Domain.Entities.Progression;
 using CleanArc.Domain.Entities.Quiz;
@@ -27,6 +29,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
 
     public DbSet<VisualIcon> VisualIcons { get; set; }
 
+    // Admin & Billing
+    public DbSet<Institution> Institutions { get; set; }
+
     // Word
     public DbSet<Word> Words { get; set; }
 
@@ -35,6 +40,17 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<Challenge> Challenges { get; set; }
     public DbSet<Attempt> Attempts { get; set; }
     public DbSet<ChallengeProgress> ChallengeProgresses { get; set; }
+
+    // Adaptive learning
+    public DbSet<SyllabusModule> SyllabusModules { get; set; }
+    public DbSet<VocabularyItem> VocabularyItems { get; set; }
+    public DbSet<GameTemplate> GameTemplates { get; set; }
+    public DbSet<ChallengeItem> ChallengeItems { get; set; }
+    public DbSet<StudentChallengeAttempt> StudentChallengeAttempts { get; set; }
+    public DbSet<StudentChallengeItemAttempt> StudentChallengeItemAttempts { get; set; }
+    public DbSet<StudentWordMastery> StudentWordMasteries { get; set; }
+    public DbSet<StudentSkillProfile> StudentSkillProfiles { get; set; }
+    public DbSet<ErrorPatternLog> ErrorPatternLogs { get; set; }
 
     // Streak
     public DbSet<DailyCheckIn> DailyCheckIns { get; set; }
@@ -126,6 +142,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         modelBuilder.AddRestrictDeleteBehaviorConvention();
         modelBuilder.AddPluralizingTableNameConvention();
+        modelBuilder.Entity<StudentWordMastery>().ToTable("student_word_mastery");
     }
 
     private void ConfigureEntityDates()

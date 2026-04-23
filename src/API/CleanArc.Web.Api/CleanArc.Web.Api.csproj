@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
 	  <ImplicitUsings>enable</ImplicitUsings>
 	  <IsPackable>true</IsPackable>
+    <UserSecretsId>45a0a8af-0952-4dc8-9a7b-57b1d7d67dab</UserSecretsId>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DocumentationFile>Project.xml</DocumentationFile>

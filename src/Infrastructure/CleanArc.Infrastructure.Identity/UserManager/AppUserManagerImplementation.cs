@@ -1,4 +1,4 @@
-﻿using CleanArc.Application.Contracts.Identity;
+using CleanArc.Application.Contracts.Identity;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Identity.Identity.Dtos;
 using CleanArc.Infrastructure.Identity.Identity.Manager;
@@ -100,6 +100,18 @@ public class AppUserManagerImplementation : IAppUserManager
         ArgumentNullException.ThrowIfNull(role.Name, nameof(role.Name));
 
         return await _userManager.AddToRoleAsync(user, role.Name);
+    }
+
+    public async Task<IdentityResult> AddUserToRoleAsync(User user, string roleName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(roleName, nameof(roleName));
+
+        return await _userManager.AddToRoleAsync(user, roleName);
+    }
+
+    public async Task<IList<string>> GetUserRolesAsync(User user)
+    {
+        return await _userManager.GetRolesAsync(user);
     }
 
     public async Task<IdentityResult> IncrementAccessFailedCountAsync(User user)

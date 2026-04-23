@@ -1,4 +1,4 @@
-﻿using CleanArc.Domain.Entities.User;
+using CleanArc.Domain.Entities.User;
 using Microsoft.AspNetCore.Identity;
 
 namespace CleanArc.Application.Contracts.Identity;
@@ -20,6 +20,8 @@ public interface IAppUserManager
     Task<List<User>> GetAllUsersAsync();
     Task<IdentityResult> CreateUserWithPasswordAsync(User user, string password);
     Task<IdentityResult> AddUserToRoleAsync(User user, Role role);
+    Task<IdentityResult> AddUserToRoleAsync(User user, string roleName);
+    Task<IList<string>> GetUserRolesAsync(User user);
     Task<IdentityResult> IncrementAccessFailedCountAsync(User user);
     Task<bool> IsUserLockedOutAsync(User user);
     Task ResetUserLockoutAsync(User user);

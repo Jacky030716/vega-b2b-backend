@@ -303,6 +303,727 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.ToTable("ActivityLogs");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.ChallengeItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("challenge_id");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("SequenceNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence_no");
+
+                    b.Property<string>("SettingsJson")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("settings_json");
+
+                    b.Property<int?>("VocabularyItemId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vocabulary_item_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VocabularyItemId");
+
+                    b.HasIndex("ChallengeId", "SequenceNo")
+                        .IsUnique();
+
+                    b.ToTable("challenge_items", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.ErrorPatternLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ChallengeItemAttemptId")
+                        .HasColumnType("integer")
+                        .HasColumnName("challenge_item_attempt_id");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ExpectedValue")
+                        .HasColumnType("text")
+                        .HasColumnName("expected_value");
+
+                    b.Property<string>("MetadataJson")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("metadata_json");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("ObservedValue")
+                        .HasColumnType("text")
+                        .HasColumnName("observed_value");
+
+                    b.Property<string>("PatternType")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("pattern_type");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("student_id");
+
+                    b.Property<int?>("VocabularyItemId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vocabulary_item_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeItemAttemptId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("VocabularyItemId");
+
+                    b.ToTable("error_pattern_logs", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.GameTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("SupportsAdaptiveDifficulty")
+                        .HasColumnType("boolean")
+                        .HasColumnName("supports_adaptive_difficulty");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("game_templates", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentChallengeAttempt", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttemptNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_no");
+
+                    b.Property<int?>("AverageResponseTimeMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("average_response_time_ms");
+
+                    b.Property<int>("ChallengeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("challenge_id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("CompletionStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("completion_status");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DeviceInfo")
+                        .HasColumnType("text")
+                        .HasColumnName("device_info");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("student_id");
+
+                    b.Property<int>("TotalHintsUsed")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_hints_used");
+
+                    b.Property<int>("TotalRetries")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_retries");
+
+                    b.Property<int>("TotalScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_score");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("ChallengeId", "StudentId", "AttemptNo")
+                        .IsUnique();
+
+                    b.ToTable("student_challenge_attempts", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentChallengeItemAttempt", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnswerText")
+                        .HasColumnType("text")
+                        .HasColumnName("answer_text");
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("answered_at");
+
+                    b.Property<int>("ChallengeItemId")
+                        .HasColumnType("integer")
+                        .HasColumnName("challenge_item_id");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorType")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("error_type");
+
+                    b.Property<string>("ExpectedAnswerText")
+                        .HasColumnType("text")
+                        .HasColumnName("expected_answer_text");
+
+                    b.Property<bool>("FirstAttemptCorrect")
+                        .HasColumnType("boolean")
+                        .HasColumnName("first_attempt_correct");
+
+                    b.Property<int?>("GameTemplateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("game_template_id");
+
+                    b.Property<int>("HintsUsed")
+                        .HasColumnType("integer")
+                        .HasColumnName("hints_used");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTime>("PresentedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("presented_at");
+
+                    b.Property<string>("RawTelemetryJson")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("raw_telemetry_json");
+
+                    b.Property<int?>("ResponseTimeMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_time_ms");
+
+                    b.Property<int>("RetriesCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retries_count");
+
+                    b.Property<decimal?>("SpeechConfidence")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("speech_confidence");
+
+                    b.Property<int>("StudentChallengeAttemptId")
+                        .HasColumnType("integer")
+                        .HasColumnName("student_challenge_attempt_id");
+
+                    b.Property<int?>("VocabularyItemId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vocabulary_item_id");
+
+                    b.Property<bool>("WasCorrect")
+                        .HasColumnType("boolean")
+                        .HasColumnName("was_correct");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeItemId");
+
+                    b.HasIndex("GameTemplateId");
+
+                    b.HasIndex("StudentChallengeAttemptId");
+
+                    b.HasIndex("VocabularyItemId");
+
+                    b.ToTable("student_challenge_item_attempts", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentSkillProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AuditoryMemoryScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("auditory_memory_score");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("language");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("PronunciationRecallScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("pronunciation_recall_score");
+
+                    b.Property<int>("SpellingRecallScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("spelling_recall_score");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("student_id");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("subject");
+
+                    b.Property<int>("SyllableAssemblyScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("syllable_assembly_score");
+
+                    b.Property<int>("VisualMemoryScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("visual_memory_score");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "Subject", "Language")
+                        .IsUnique();
+
+                    b.ToTable("student_skill_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentWordMastery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AverageResponseTimeMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("average_response_time_ms");
+
+                    b.Property<int>("CorrectAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("correct_attempts");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("FirstTryCorrectCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("first_try_correct_count");
+
+                    b.Property<int?>("LastGameTemplateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_game_template_id");
+
+                    b.Property<DateTime?>("LastPracticedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_practiced_at");
+
+                    b.Property<string>("MasteryLevel")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("mastery_level");
+
+                    b.Property<int>("MasteryScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("mastery_score");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("ModuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("module_id");
+
+                    b.Property<DateTime?>("NextReviewAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_review_at");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("student_id");
+
+                    b.Property<int>("TotalAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_attempts");
+
+                    b.Property<int>("TotalHintsUsed")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_hints_used");
+
+                    b.Property<int>("TotalRetries")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_retries");
+
+                    b.Property<int>("VocabularyItemId")
+                        .HasColumnType("integer")
+                        .HasColumnName("vocabulary_item_id");
+
+                    b.Property<string>("WeaknessTagsJson")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("weakness_tags_json");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastGameTemplateId");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("VocabularyItemId");
+
+                    b.HasIndex("StudentId", "VocabularyItemId")
+                        .IsUnique();
+
+                    b.ToTable("student_word_mastery", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.SyllabusModule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("language");
+
+                    b.Property<string>("ModuleCode")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("module_code");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("PublicId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasColumnName("public_id");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source_type");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Term")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("term");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int?>("UnitNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("unit_number");
+
+                    b.Property<string>("UnitTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("unit_title");
+
+                    b.Property<int?>("Week")
+                        .HasColumnType("integer")
+                        .HasColumnName("week");
+
+                    b.Property<int>("YearLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("year_level");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuleCode")
+                        .IsUnique();
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
+
+                    b.HasIndex("Subject", "Language", "YearLevel", "Term", "Week");
+
+                    b.ToTable("syllabus_modules", (string)null);
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.VocabularyItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("BmText")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("bm_text");
+
+                    b.Property<int>("DifficultyLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("difficulty_level");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("EnText")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("en_text");
+
+                    b.Property<string>("ExampleSentence")
+                        .HasColumnType("text")
+                        .HasColumnName("example_sentence");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("ItemType")
+                        .ValueGeneratedOnAdd()
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("WORD")
+                        .HasColumnName("item_type");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("language");
+
+                    b.Property<string>("MeaningText")
+                        .HasColumnType("text")
+                        .HasColumnName("meaning_text");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("ModuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("module_id");
+
+                    b.Property<string>("NormalizedWord")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("normalized_word");
+
+                    b.Property<string>("PhoneticHint")
+                        .HasColumnType("text")
+                        .HasColumnName("phonetic_hint");
+
+                    b.Property<string>("PronunciationText")
+                        .HasColumnType("text")
+                        .HasColumnName("pronunciation_text");
+
+                    b.Property<Guid>("PublicId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasColumnName("public_id");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("SyllablesJson")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("syllables_json");
+
+                    b.Property<string>("SyllableText")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("syllable_text");
+
+                    b.Property<string>("Word")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("word");
+
+                    b.Property<int>("YearLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("year_level");
+
+                    b.Property<string>("ZhText")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("zh_text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuleId", "DisplayOrder");
+
+                    b.HasIndex("ModuleId", "NormalizedWord")
+                        .IsUnique();
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
+
+                    b.ToTable("vocabulary_items", (string)null);
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.Classroom.Classroom", b =>
                 {
                     b.Property<int>("Id")
@@ -387,6 +1108,37 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("ClassroomStudents");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Institution.Institution", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("MaxSeats")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("RenewalDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SeatsUsed")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SubscriptionTier")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Institutions");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Mission.Mission", b =>
@@ -690,8 +1442,23 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<string>("ChallengeMode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("challenge_mode");
+
                     b.Property<int?>("ClassroomId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ConfigJson")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("config_json");
 
                     b.Property<string>("ContentData")
                         .IsRequired()
@@ -709,8 +1476,16 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Property<int>("DifficultyLevel")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("DueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at");
+
                     b.Property<int>("GameId")
                         .HasColumnType("integer");
+
+                    b.Property<int?>("GameTemplateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("game_template_id");
 
                     b.Property<bool>("IsAIGenerated")
                         .HasColumnType("boolean");
@@ -721,8 +1496,28 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("ModuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("module_id");
+
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SourceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source_type");
+
+                    b.Property<string>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("assigned")
+                        .HasColumnName("status");
+
+                    b.Property<int?>("StudentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("student_id");
 
                     b.Property<string>("Title")
                         .HasColumnType("text");
@@ -734,6 +1529,12 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("GameId");
+
+                    b.HasIndex("GameTemplateId");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("StudentId");
 
                     b.ToTable("Challenges");
                 });
@@ -1387,6 +2188,9 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Property<bool>("InactiveStudentAlerts")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("InstitutionId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("LastStickerGeneratedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1445,6 +2249,8 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ExternalUuid")
                         .IsUnique();
+
+                    b.HasIndex("InstitutionId");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -1732,6 +2538,149 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.ChallengeItem", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.Challenge", "Challenge")
+                        .WithMany("ChallengeItems")
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.VocabularyItem", "VocabularyItem")
+                        .WithMany()
+                        .HasForeignKey("VocabularyItemId");
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("VocabularyItem");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.ErrorPatternLog", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.StudentChallengeItemAttempt", "ChallengeItemAttempt")
+                        .WithMany()
+                        .HasForeignKey("ChallengeItemAttemptId");
+
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.VocabularyItem", "VocabularyItem")
+                        .WithMany()
+                        .HasForeignKey("VocabularyItemId");
+
+                    b.Navigation("ChallengeItemAttempt");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("VocabularyItem");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentChallengeAttempt", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.Challenge", "Challenge")
+                        .WithMany()
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentChallengeItemAttempt", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.ChallengeItem", "ChallengeItem")
+                        .WithMany()
+                        .HasForeignKey("ChallengeItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.GameTemplate", "GameTemplate")
+                        .WithMany()
+                        .HasForeignKey("GameTemplateId");
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.StudentChallengeAttempt", "StudentChallengeAttempt")
+                        .WithMany("ItemAttempts")
+                        .HasForeignKey("StudentChallengeAttemptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.VocabularyItem", "VocabularyItem")
+                        .WithMany()
+                        .HasForeignKey("VocabularyItemId");
+
+                    b.Navigation("ChallengeItem");
+
+                    b.Navigation("GameTemplate");
+
+                    b.Navigation("StudentChallengeAttempt");
+
+                    b.Navigation("VocabularyItem");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentSkillProfile", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentWordMastery", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.GameTemplate", "LastGameTemplate")
+                        .WithMany()
+                        .HasForeignKey("LastGameTemplateId");
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.SyllabusModule", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId");
+
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.VocabularyItem", "VocabularyItem")
+                        .WithMany()
+                        .HasForeignKey("VocabularyItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LastGameTemplate");
+
+                    b.Navigation("Module");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("VocabularyItem");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.VocabularyItem", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.SyllabusModule", "Module")
+                        .WithMany("VocabularyItems")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Module");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.Classroom.Classroom", b =>
                 {
                     b.HasOne("CleanArc.Domain.Entities.User.User", "Teacher")
@@ -1847,11 +2796,32 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.GameTemplate", "GameTemplate")
+                        .WithMany("Challenges")
+                        .HasForeignKey("GameTemplateId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CleanArc.Domain.Entities.Adaptive.SyllabusModule", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Classroom");
 
                     b.Navigation("CreatedBy");
 
                     b.Navigation("Game");
+
+                    b.Navigation("GameTemplate");
+
+                    b.Navigation("Module");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.ChallengeProgress", b =>
@@ -2054,6 +3024,15 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.User.User", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Institution.Institution", "Institution")
+                        .WithMany("Users")
+                        .HasForeignKey("InstitutionId");
+
+                    b.Navigation("Institution");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.User.UserClaim", b =>
                 {
                     b.HasOne("CleanArc.Domain.Entities.User.User", "User")
@@ -2146,11 +3125,31 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("UserBadges");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.GameTemplate", b =>
+                {
+                    b.Navigation("Challenges");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.StudentChallengeAttempt", b =>
+                {
+                    b.Navigation("ItemAttempts");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.SyllabusModule", b =>
+                {
+                    b.Navigation("VocabularyItems");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.Classroom.Classroom", b =>
                 {
                     b.Navigation("Challenges");
 
                     b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Institution.Institution", b =>
+                {
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Mission.Mission", b =>
@@ -2163,6 +3162,8 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.Challenge", b =>
                 {
                     b.Navigation("Attempts");
+
+                    b.Navigation("ChallengeItems");
 
                     b.Navigation("Progresses");
                 });

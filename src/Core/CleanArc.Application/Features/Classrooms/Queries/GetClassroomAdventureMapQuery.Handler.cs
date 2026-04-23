@@ -26,32 +26,8 @@ internal class GetClassroomAdventureMapQueryHandler(IUnitOfWork unitOfWork)
       return OperationResult<List<ChallengeNodeDto>>.SuccessResult(new List<ChallengeNodeDto>());
 
     var requestedGameKey = request.GameKey?.Trim() ?? string.Empty;
-    var game = string.IsNullOrWhiteSpace(requestedGameKey)
-      ? null
-      : await unitOfWork.ChallengeRepository.GetGameByKeyAsync(requestedGameKey);
 
-    var assignedChallenges = game is not null
-      ? classroomChallenges.Where(c => c.GameId == game.Id).ToList()
-      : classroomChallenges
-          .Where(c => string.Equals(c.Game?.Key, requestedGameKey, StringComparison.OrdinalIgnoreCase))
-          .ToList();
-
-    // Fallback for stale or mismatched gameKey values sent by older clients.
-    // We keep the experience usable by defaulting to the first assigned game's sequence.
-    if (assignedChallenges.Count == 0)
-    {
-      var fallbackGameId = classroomChallenges
-          .OrderBy(c => c.OrderIndex)
-          .ThenBy(c => c.DifficultyLevel)
-          .Select(c => c.GameId)
-          .FirstOrDefault();
-
-      assignedChallenges = fallbackGameId > 0
-        ? classroomChallenges.Where(c => c.GameId == fallbackGameId).ToList()
-        : classroomChallenges.ToList();
-    }
-
-    assignedChallenges = assignedChallenges
+    var assignedChallenges = classroomChallenges
         .OrderBy(c => c.OrderIndex)
         .ThenBy(c => c.DifficultyLevel)
         .ToList();

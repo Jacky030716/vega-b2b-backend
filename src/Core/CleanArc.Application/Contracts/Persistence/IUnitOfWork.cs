@@ -11,6 +11,7 @@ public interface IUnitOfWork
     public IClassroomRepository ClassroomRepository { get; }
     public IProgressionRepository ProgressionRepository { get; }
     public IActivityLogRepository ActivityLogRepository { get; }
+    public IInstitutionRepository InstitutionRepository { get; }
     public IChallengeRepository ChallengeRepository { get; }
     public IBadgeRepository BadgeRepository { get; }
     public IStudentCredentialRepository StudentCredentialRepository { get; }

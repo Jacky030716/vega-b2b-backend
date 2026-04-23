@@ -53,7 +53,12 @@ public record UserCreateCommand
         validator.RuleFor(c => c.Role)
             .NotEmpty()
             .NotNull().WithMessage("Role is required.")
-            .Must(r => r == "student" || r == "teacher" || r == "admin").WithMessage("Role must be either 'student', 'teacher', or 'admin'.");
+            .Must(r =>
+                r.Equals("student", StringComparison.OrdinalIgnoreCase)
+                || r.Equals("teacher", StringComparison.OrdinalIgnoreCase)
+                || r.Equals("admin", StringComparison.OrdinalIgnoreCase)
+                || r.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Role must be one of 'student', 'teacher', 'admin', or 'InstitutionAdmin'.");
 
         validator.RuleFor(c => c.PhoneNumber)
             .Must(phone => string.IsNullOrEmpty(phone) || Regex.IsMatch(phone, @"^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$"))

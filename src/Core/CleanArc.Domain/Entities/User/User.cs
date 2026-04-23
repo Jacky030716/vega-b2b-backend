@@ -1,5 +1,6 @@
 using CleanArc.Domain.Common;
 using CleanArc.Domain.Entities.Word;
+using CleanArc.Domain.Entities.Institution;
 using Microsoft.AspNetCore.Identity;
 
 namespace CleanArc.Domain.Entities.User;
@@ -20,6 +21,10 @@ public class User : IdentityUser<int>, IEntity
     public string FamilyName { get; set; }
     public Guid ExternalUuid { get; set; }
     public string GeneratedCode { get; set; }
+
+    // Institution Link
+    public int? InstitutionId { get; set; }
+    public Institution.Institution Institution { get; set; }
 
     // User Profile Data
     public int Level { get; set; } = 1;

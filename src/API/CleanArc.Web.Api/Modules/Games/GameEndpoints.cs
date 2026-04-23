@@ -1,10 +1,13 @@
 using System.Security.Claims;
 using Carter;
+using CleanArc.Application.Contracts.Infrastructure.Documents;
 using CleanArc.Application.Features.Games.Commands;
 using CleanArc.Application.Features.Games.Queries;
 using CleanArc.SharedKernel.Extensions;
+using CleanArc.Web.Api.Contracts.Requests.Games;
 using CleanArc.WebFramework.WebExtensions;
 using Mediator;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CleanArc.Web.Api.Endpoints;
@@ -75,6 +78,35 @@ public class GameEndpoints : ICarterModule
     ), _version, "CreateChallenge", _tag)
       .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
+    // ── Teacher: generate AI draft challenge (prompt + optional syllabus) ───
+
+    app.MapEndpoint(builder => builder.MapPost(
+        $"{_routePrefix}{{gameKey}}/challenges/ai-draft",
+        async (
+          string gameKey,
+          [FromForm] GenerateAiChallengeDraftRequest request,
+          ClaimsPrincipal user,
+          ISender sender,
+          CancellationToken cancellationToken) =>
+        {
+          var userId = int.Parse(user.Identity!.GetUserId());
+
+          var documentPayload = await BuildDocumentPayloadAsync(request.SyllabusFile, cancellationToken);
+          var result = await sender.Send(new GenerateAiChallengeDraftCommand(
+              userId,
+              gameKey,
+              request.ClassroomId,
+              request.Prompt,
+              documentPayload
+            ),
+            cancellationToken);
+
+          return result.ToEndpointResult();
+        }
+    ), _version, "GenerateAiChallengeDraft", _tag)
+      .DisableAntiforgery()
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
     // ── Student: start an attempt on a specific challenge ────────────────────
 
     app.MapEndpoint(builder => builder.MapPost(
@@ -99,6 +131,16 @@ public class GameEndpoints : ICarterModule
           return result.ToEndpointResult();
         }
     ), _version, "CompleteAttempt", _tag).RequireAuthorization();
+  }
+
+  private static async Task<ChallengeDocumentPayload?> BuildDocumentPayloadAsync(IFormFile? file, CancellationToken cancellationToken)
+  {
+    if (file is null || file.Length == 0)
+      return null;
+
+    await using var memoryStream = new MemoryStream();
+    await file.CopyToAsync(memoryStream, cancellationToken);
+    return new ChallengeDocumentPayload(file.FileName, file.ContentType, memoryStream.ToArray());
   }
 }
 

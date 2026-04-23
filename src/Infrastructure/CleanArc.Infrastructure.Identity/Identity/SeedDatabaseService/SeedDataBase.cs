@@ -58,6 +58,18 @@ public class SeedDataBase : ISeedDataBase
             await _roleManager.CreateAsync(role);
         }
 
+        // Seed institution admin role
+        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.Equals("InstitutionAdmin")))
+        {
+            var role = new Role
+            {
+                Name = "InstitutionAdmin",
+                DisplayName = "Institution Admin",
+                CreatedDate = DateTime.UtcNow
+            };
+            await _roleManager.CreateAsync(role);
+        }
+
         // Seed admin user
         if (!_userManager.Users.AsNoTracking().Any(u => u.UserName.Equals("admin")))
         {
@@ -86,6 +98,21 @@ public class SeedDataBase : ISeedDataBase
 
             await _userManager.CreateAsync(user, "Teacher@123");
             await _userManager.AddToRoleAsync(user, "teacher");
+        }
+
+        // Seed institution admin user
+        if (!_userManager.Users.AsNoTracking().Any(u => u.UserName.Equals("inst_admin")))
+        {
+            var user = new User
+            {
+                UserName = "inst_admin",
+                Email = "inst_admin@site.com",
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true
+            };
+
+            await _userManager.CreateAsync(user, "Admin@123");
+            await _userManager.AddToRoleAsync(user, "InstitutionAdmin");
         }
 
     }

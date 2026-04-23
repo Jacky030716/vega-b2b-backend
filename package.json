@@ -1,1 +1,6 @@
-{ "dependencies": { "expo-speech": "^55.0.13" } }
+{
+  "scripts": {
+    "seed:syllabus": "dotnet build src/API/CleanArc.Web.Api/CleanArc.Web.Api.csproj -m:1 -v minimal && dotnet run --no-build --project src/API/CleanArc.Web.Api/CleanArc.Web.Api.csproj -- --seed-syllabus seeds/syllabus.seed.json"
+  },
+  "private": true
+}

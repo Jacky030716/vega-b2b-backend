@@ -34,7 +34,7 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork)
     if (game is null)
       return OperationResult<CreateChallengeDto>.NotFoundResult($"Game '{request.GameKey}' not found");
 
-    var normalizedContentResult = NormalizeAndValidateContentData(game.Key, request.ContentData);
+    var normalizedContentResult = ChallengeContentNormalizer.NormalizeAndValidate(game.Key, request.ContentData);
     if (!normalizedContentResult.IsSuccess)
       return OperationResult<CreateChallengeDto>.FailureResult(normalizedContentResult.ErrorMessage!);
 

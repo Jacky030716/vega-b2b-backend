@@ -1,4 +1,5 @@
 using CleanArc.Domain.Common;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.User;
 
 namespace CleanArc.Domain.Entities.Quiz;
@@ -30,6 +31,20 @@ public class Challenge : BaseEntity<int>
 
     public bool IsAIGenerated { get; set; } = false;
 
+    // Nullable adaptive-layer metadata. Existing challenges keep these null.
+    public int? StudentId { get; set; }
+    public User.User? Student { get; set; }
+    public int? ModuleId { get; set; }
+    public SyllabusModule? Module { get; set; }
+    public int? GameTemplateId { get; set; }
+    public GameTemplate? GameTemplate { get; set; }
+    public string? ChallengeMode { get; set; }
+    public string? SourceType { get; set; }
+    public string ConfigJson { get; set; } = "{}";
+    public string Status { get; set; } = "assigned";
+    public DateTime? AssignedAt { get; set; }
+    public DateTime? DueAt { get; set; }
+
     /// <summary>
     /// The classroom this challenge was created for.
     /// Null for global/platform challenges; set for teacher-created classroom challenges.
@@ -41,4 +56,5 @@ public class Challenge : BaseEntity<int>
     // Navigation properties
     public ICollection<Attempt> Attempts { get; set; } = new List<Attempt>();
     public ICollection<ChallengeProgress> Progresses { get; set; } = new List<ChallengeProgress>();
+    public ICollection<ChallengeItem> ChallengeItems { get; set; } = new List<ChallengeItem>();
 }

@@ -1,0 +1,646 @@
+{
+  "sourceType": "PREDEFINED_OFFICIAL_SEED",
+  "subject": "Bahasa Melayu",
+  "modules": [
+    {
+      "moduleCode": "BM-U2-MARI-SAYANG",
+      "unitNumber": 2,
+      "unitTitle": "Mari Sayang",
+      "language": {
+        "primary": "ms",
+        "translations": ["zh", "en"]
+      },
+      "items": [
+        {
+          "displayOrder": 1,
+          "text": {
+            "ms": "ibu",
+            "zh": "妈妈",
+            "en": "mother"
+          },
+          "syllables": ["i", "bu"],
+          "syllableText": "i/bu",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 2,
+          "text": {
+            "ms": "buku",
+            "zh": "书",
+            "en": "book"
+          },
+          "syllables": ["bu", "ku"],
+          "syllableText": "bu/ku",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 3,
+          "text": {
+            "ms": "roti",
+            "zh": "面包",
+            "en": "bread"
+          },
+          "syllables": ["ro", "ti"],
+          "syllableText": "ro/ti",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 4,
+          "text": {
+            "ms": "susu",
+            "zh": "牛奶",
+            "en": "milk"
+          },
+          "syllables": ["su", "su"],
+          "syllableText": "su/su",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 5,
+          "text": {
+            "ms": "meja",
+            "zh": "桌子",
+            "en": "table"
+          },
+          "syllables": ["me", "ja"],
+          "syllableText": "me/ja",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 6,
+          "text": {
+            "ms": "baju",
+            "zh": "衣服",
+            "en": "shirt"
+          },
+          "syllables": ["ba", "ju"],
+          "syllableText": "ba/ju",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 7,
+          "text": {
+            "ms": "topi",
+            "zh": "帽子",
+            "en": "cap"
+          },
+          "syllables": ["to", "pi"],
+          "syllableText": "to/pi",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 8,
+          "text": {
+            "ms": "ceri",
+            "zh": "樱桃",
+            "en": "cherry"
+          },
+          "syllables": ["ce", "ri"],
+          "syllableText": "ce/ri",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 9,
+          "text": {
+            "ms": "lidi",
+            "zh": "（椰叶的）中筋",
+            "en": "(coconut) leave’s bone"
+          },
+          "syllables": ["li", "di"],
+          "syllableText": "li/di",
+          "itemType": "WORD",
+          "notes": "English gloss copied as closely as possible from screenshot; should be reviewed."
+        },
+        {
+          "displayOrder": 10,
+          "text": {
+            "ms": "nasi",
+            "zh": "米饭",
+            "en": "rice"
+          },
+          "syllables": ["na", "si"],
+          "syllableText": "na/si",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 11,
+          "text": {
+            "ms": "mi sup",
+            "zh": "汤面",
+            "en": "noodle soup"
+          },
+          "syllables": ["mi", "sup"],
+          "syllableText": null,
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 12,
+          "text": {
+            "ms": "bubur",
+            "zh": "粥",
+            "en": "porridge"
+          },
+          "syllables": ["bu", "bur"],
+          "syllableText": "bu/bur",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 13,
+          "text": {
+            "ms": "teh",
+            "zh": "茶",
+            "en": "tea"
+          },
+          "syllables": null,
+          "syllableText": null,
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 14,
+          "text": {
+            "ms": "kopi",
+            "zh": "咖啡",
+            "en": "coffee"
+          },
+          "syllables": ["ko", "pi"],
+          "syllableText": "ko/pi",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 15,
+          "text": {
+            "ms": "kedai",
+            "zh": "店",
+            "en": "shop"
+          },
+          "syllables": ["ke", "dai"],
+          "syllableText": "ke/dai",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 16,
+          "text": {
+            "ms": "pasar",
+            "zh": "菜市",
+            "en": "market"
+          },
+          "syllables": ["pa", "sar"],
+          "syllableText": "pa/sar",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 17,
+          "text": {
+            "ms": "adik",
+            "zh": "弟弟",
+            "en": "brother"
+          },
+          "syllables": ["a", "dik"],
+          "syllableText": "a/dik",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 18,
+          "text": {
+            "ms": "bapa",
+            "zh": "爸爸",
+            "en": "father"
+          },
+          "syllables": ["ba", "pa"],
+          "syllableText": "ba/pa",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 19,
+          "text": {
+            "ms": "van",
+            "zh": "货车",
+            "en": "van"
+          },
+          "syllables": null,
+          "syllableText": null,
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 20,
+          "text": {
+            "ms": "jalan",
+            "zh": "马路",
+            "en": "road"
+          },
+          "syllables": ["ja", "lan"],
+          "syllableText": "ja/lan",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 21,
+          "text": {
+            "ms": "kereta",
+            "zh": "汽车",
+            "en": "car"
+          },
+          "syllables": ["ke", "re", "ta"],
+          "syllableText": "ke/re/ta",
+          "itemType": "WORD"
+        }
+      ]
+    },
+    {
+      "moduleCode": "BM-U3-KELUARGA-PRIHATIN",
+      "unitNumber": 3,
+      "unitTitle": "Keluarga Prihatin",
+      "language": {
+        "primary": "ms",
+        "translations": ["zh", "en"]
+      },
+      "items": [
+        {
+          "displayOrder": 1,
+          "text": {
+            "ms": "sarung bantal",
+            "zh": "枕头套",
+            "en": "pillow case"
+          },
+          "syllables": ["sa", "rung", "ban", "tal"],
+          "syllableText": "sa/rung ban/tal",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 2,
+          "text": {
+            "ms": "bekal makanan",
+            "zh": "餐盒",
+            "en": "meal box/lunch box"
+          },
+          "syllables": ["be", "kal", "ma", "ka", "nan"],
+          "syllableText": "be/kal ma/ka/nan",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 3,
+          "text": {
+            "ms": "bagasi",
+            "zh": "行李",
+            "en": "luggage"
+          },
+          "syllables": ["ba", "ga", "si"],
+          "syllableText": "ba/ga/si",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 4,
+          "text": {
+            "ms": "pendidikan khas",
+            "zh": "特殊教育",
+            "en": "special education (for special need)"
+          },
+          "syllables": ["pen", "di", "di", "kan", "khas"],
+          "syllableText": "pen/di/di/kan khas",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 5,
+          "text": {
+            "ms": "bahasa isyarat tangan",
+            "zh": "手语",
+            "en": "sign language"
+          },
+          "syllables": ["ba", "ha", "sa", "i", "sya", "rat", "ta", "ngan"],
+          "syllableText": "ba/ha/sa i/sya/rat ta/ngan",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 6,
+          "text": {
+            "ms": "berkomunikasi",
+            "zh": "沟通",
+            "en": "communicate"
+          },
+          "syllables": ["ber", "ko", "mu", "ni", "ka", "si"],
+          "syllableText": "ber/ko/mu/ni/ka/si",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 7,
+          "text": {
+            "ms": "membimbing",
+            "zh": "督导",
+            "en": "guide"
+          },
+          "syllables": ["mem", "bim", "bing"],
+          "syllableText": "mem/bim/bing",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 8,
+          "text": {
+            "ms": "menyayangi",
+            "zh": "疼爱",
+            "en": "love"
+          },
+          "syllables": ["me", "nya", "yang", "ngi"],
+          "syllableText": "me/nya/yang/ngi",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 9,
+          "text": {
+            "ms": "teruja",
+            "zh": "惊呆",
+            "en": "be thrilled"
+          },
+          "syllables": ["ter", "u", "ja"],
+          "syllableText": "ter/u/ja",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 10,
+          "text": {
+            "ms": "menjahit kostum",
+            "zh": "缝制服装",
+            "en": "sewing costume"
+          },
+          "syllables": ["men", "ja", "hit", "kos", "tum"],
+          "syllableText": "men/ja/hit kos/tum",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 11,
+          "text": {
+            "ms": "menyaksikan",
+            "zh": "观赏",
+            "en": "witnessed"
+          },
+          "syllables": ["me", "nyak", "si", "kan"],
+          "syllableText": "me/nyak/si/kan",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 12,
+          "text": {
+            "ms": "memberikan sokongan",
+            "zh": "给予支持",
+            "en": "giving support"
+          },
+          "syllables": ["mem", "be", "ri", "kan", "so", "ko", "ngan"],
+          "syllableText": "mem/be/ri/kan so/ko/ngan",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 13,
+          "text": {
+            "ms": "lawatan sambil belajar",
+            "zh": "游学",
+            "en": "learning tour"
+          },
+          "syllables": ["la", "wa", "tan", "sam", "bil", "be", "la", "jar"],
+          "syllableText": "la/wa/tan sam/bil be/la/jar",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 14,
+          "text": {
+            "ms": "menyediakan sarapan",
+            "zh": "准备早餐",
+            "en": "prepare breakfast"
+          },
+          "syllables": ["me", "nye", "di", "a", "kan", "sa", "ra", "pan"],
+          "syllableText": "me/nye/di/a/kan sa/ra/pan",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 15,
+          "text": {
+            "ms": "mendengar taklimat",
+            "zh": "聆听简报",
+            "en": "listen to the briefing"
+          },
+          "syllables": ["men", "de", "ngar", "tak", "li", "mat"],
+          "syllableText": "men/de/ngar tak/li/mat",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 16,
+          "text": {
+            "ms": "jaga diri",
+            "zh": "保重/照顾自己",
+            "en": "take care oneself"
+          },
+          "syllables": ["ja", "ga", "di", "ri"],
+          "syllableText": "ja/ga di/ri",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 17,
+          "text": {
+            "ms": "mendengar arahan",
+            "zh": "聆听指示",
+            "en": "listen to the instructions"
+          },
+          "syllables": ["men", "de", "ngar", "a", "ra", "han"],
+          "syllableText": "men/de/ngar a/ra/han",
+          "itemType": "PHRASE"
+        }
+      ]
+    },
+    {
+      "moduleCode": "BM-U2-KAMI-GEMBIRA",
+      "unitNumber": 2,
+      "unitTitle": "Kami Gembira",
+      "language": {
+        "primary": "ms",
+        "translations": ["zh", "en"]
+      },
+      "items": [
+        {
+          "displayOrder": 1,
+          "text": {
+            "ms": "bercuti",
+            "zh": "度假",
+            "en": "on vacation"
+          },
+          "syllables": ["ber", "cu", "ti"],
+          "syllableText": "ber/cu/ti",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 2,
+          "text": {
+            "ms": "membuat persiapan",
+            "zh": "准备",
+            "en": "preparation"
+          },
+          "syllables": ["mem", "bu", "at", "per", "si", "a", "pan"],
+          "syllableText": "mem/bu/at per/si/a/pan",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 3,
+          "text": {
+            "ms": "mengemas pakaian",
+            "zh": "整理衣物",
+            "en": "packing clothes"
+          },
+          "syllables": ["me", "nge", "mas", "pa", "kai", "an"],
+          "syllableText": "me/nge/mas pa/kai/an",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 4,
+          "text": {
+            "ms": "menyediakan",
+            "zh": "准备",
+            "en": "prepare"
+          },
+          "syllables": ["me", "nye", "di", "a", "kan"],
+          "syllableText": "me/nye/di/a/kan",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 5,
+          "text": {
+            "ms": "mengangkat barang",
+            "zh": "拿东西",
+            "en": "lifting things"
+          },
+          "syllables": ["meng", "ang", "kat", "ba", "rang"],
+          "syllableText": "meng/ang/kat ba/rang",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 6,
+          "text": {
+            "ms": "menaiki",
+            "zh": "搭乘",
+            "en": "boarding"
+          },
+          "syllables": ["me", "nai", "ki"],
+          "syllableText": "me/nai/ki",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 7,
+          "text": {
+            "ms": "berenang",
+            "zh": "游泳",
+            "en": "swimming"
+          },
+          "syllables": ["be", "re", "nang"],
+          "syllableText": "be/re/nang",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 8,
+          "text": {
+            "ms": "hidangan",
+            "zh": "食物/佳肴",
+            "en": "dish"
+          },
+          "syllables": ["hi", "da", "ngan"],
+          "syllableText": "hi/da/ngan",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 9,
+          "text": {
+            "ms": "restoran",
+            "zh": "餐馆",
+            "en": "restaurant"
+          },
+          "syllables": ["res", "to", "ran"],
+          "syllableText": "res/to/ran",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 10,
+          "text": {
+            "ms": "makanan laut",
+            "zh": "海鲜",
+            "en": "seafood"
+          },
+          "syllables": ["ma", "ka", "nan", "la", "ut"],
+          "syllableText": "ma/ka/nan la/ut",
+          "itemType": "PHRASE"
+        },
+        {
+          "displayOrder": 11,
+          "text": {
+            "ms": "kagum",
+            "zh": "佩服",
+            "en": "amazed"
+          },
+          "syllables": ["ka", "gum"],
+          "syllableText": "ka/gum",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 12,
+          "text": {
+            "ms": "bergambar",
+            "zh": "拍照",
+            "en": "take photo"
+          },
+          "syllables": ["ber", "gam", "bar"],
+          "syllableText": "ber/gam/bar",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 13,
+          "text": {
+            "ms": "kenderaan",
+            "zh": "交通工具",
+            "en": "transportation"
+          },
+          "syllables": ["ken", "de", "ra", "an"],
+          "syllableText": "ken/de/ra/an",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 14,
+          "text": {
+            "ms": "bertolak",
+            "zh": "出发",
+            "en": "depart"
+          },
+          "syllables": ["ber", "to", "lak"],
+          "syllableText": "ber/to/lak",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 15,
+          "text": {
+            "ms": "jeti",
+            "zh": "码头",
+            "en": "jetty"
+          },
+          "syllables": ["je", "ti"],
+          "syllableText": "je/ti",
+          "itemType": "WORD"
+        },
+        {
+          "displayOrder": 16,
+          "text": {
+            "ms": "sesak",
+            "zh": "阻塞",
+            "en": "pier"
+          },
+          "syllables": ["se", "sak"],
+          "syllableText": "se/sak",
+          "itemType": "WORD",
+          "notes": "English gloss appears as 'pier' in screenshot, but should be verified."
+        },
+        {
+          "displayOrder": 17,
+          "text": {
+            "ms": "lambat seperti kura-kura",
+            "zh": "行动很慢",
+            "en": "as slow as a tortoise (very slow)"
+          },
+          "syllables": ["lam", "bat", "se", "per", "ti", "ku", "ra", "ku", "ra"],
+          "syllableText": "lam/bat se/per/ti ku/ra ku/ra",
+          "itemType": "PHRASE"
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
@@ -657,6 +658,8 @@ public class SeedGameData : ISeedGameData
             await _dbContext.SaveChangesAsync();
         }
 
+        await SeedAdaptiveLayerAsync();
+
         // ── Visual Icons (Picture Passwords) ────────────────────────────────
         if (!await _dbContext.VisualIcons.AnyAsync())
         {
@@ -679,5 +682,90 @@ public class SeedGameData : ISeedGameData
             await _dbContext.VisualIcons.AddRangeAsync(icons);
             await _dbContext.SaveChangesAsync();
         }
+    }
+
+    private async Task SeedAdaptiveLayerAsync()
+    {
+        var templates = new[]
+        {
+            new GameTemplate { Code = "SPELL_CATCHER", Category = "RECALL", Name = "Spell Catcher", Description = "Catch and order letters to recall full spelling.", SupportsAdaptiveDifficulty = true, IsActive = true },
+            new GameTemplate { Code = "VOICE_BRIDGE", Category = "SPEAKING", Name = "Voice Bridge", Description = "Speak target words and receive pronunciation recall feedback.", SupportsAdaptiveDifficulty = true, IsActive = true },
+            new GameTemplate { Code = "SYLLABLE_SUSHI", Category = "STRUCTURE", Name = "Syllable Sushi", Description = "Assemble words from syllable chunks.", SupportsAdaptiveDifficulty = true, IsActive = true },
+            new GameTemplate { Code = "word_bridge", Category = "RECALL", Name = "Word Bridge", Description = "Existing spelling bridge game.", SupportsAdaptiveDifficulty = false, IsActive = true },
+            new GameTemplate { Code = "word_pair", Category = "RECOGNITION", Name = "Word Twins", Description = "Existing recognition and memory matching game.", SupportsAdaptiveDifficulty = false, IsActive = true },
+            new GameTemplate { Code = "magic_backpack", Category = "RECALL", Name = "Magic Backpack", Description = "Existing sequence memory game.", SupportsAdaptiveDifficulty = false, IsActive = true }
+        };
+
+        foreach (var template in templates)
+        {
+            if (!await _dbContext.GameTemplates.AnyAsync(t => t.Code == template.Code))
+            {
+                await _dbContext.GameTemplates.AddAsync(template);
+            }
+        }
+
+        var adaptiveGames = new[]
+        {
+            new Game { Key = "spell_catcher", Name = "Spell Catcher", Description = "Catch letters and spell syllabus words.", ImageUrl = string.Empty, Category = "RECALL", SkillsTaught = "spelling recall" },
+            new Game { Key = "voice_bridge", Name = "Voice Bridge", Description = "Practice oral recall and pronunciation.", ImageUrl = string.Empty, Category = "SPEAKING", SkillsTaught = "pronunciation recall" },
+            new Game { Key = "syllable_sushi", Name = "Syllable Sushi", Description = "Build words from syllables.", ImageUrl = string.Empty, Category = "STRUCTURE", SkillsTaught = "syllable assembly" }
+        };
+
+        foreach (var game in adaptiveGames)
+        {
+            if (!await _dbContext.Games.AnyAsync(g => g.Key == game.Key))
+            {
+                await _dbContext.Games.AddAsync(game);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        if (await _dbContext.SyllabusModules.AnyAsync())
+        {
+            return;
+        }
+
+        var bmModule = new SyllabusModule
+        {
+            Subject = "Bahasa Melayu",
+            Language = "ms",
+            YearLevel = 1,
+            Term = "Term 1",
+            Week = 1,
+            Title = "Perkataan Asas Tahun 1",
+            Description = "Starter Bahasa Melayu words for Malaysian primary learners.",
+            SourceType = "predefined",
+            IsActive = true
+        };
+
+        var englishModule = new SyllabusModule
+        {
+            Subject = "English",
+            Language = "en",
+            YearLevel = 1,
+            Term = "Term 1",
+            Week = 1,
+            Title = "Year 1 Everyday Words",
+            Description = "Starter English words for Malaysian primary learners.",
+            SourceType = "predefined",
+            IsActive = true
+        };
+
+        await _dbContext.SyllabusModules.AddRangeAsync(bmModule, englishModule);
+        await _dbContext.SaveChangesAsync();
+
+        await _dbContext.VocabularyItems.AddRangeAsync(
+            new VocabularyItem { ModuleId = bmModule.Id, Word = "buku", NormalizedWord = "buku", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"bu\",\"ku\"]", PhoneticHint = "bu-ku", PronunciationText = "buku", DifficultyLevel = 1, MeaningText = "book", ExampleSentence = "Saya baca buku.", IsActive = true },
+            new VocabularyItem { ModuleId = bmModule.Id, Word = "mata", NormalizedWord = "mata", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"ma\",\"ta\"]", PhoneticHint = "ma-ta", PronunciationText = "mata", DifficultyLevel = 1, MeaningText = "eye", ExampleSentence = "Mata saya sihat.", IsActive = true },
+            new VocabularyItem { ModuleId = bmModule.Id, Word = "sekolah", NormalizedWord = "sekolah", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"se\",\"ko\",\"lah\"]", PhoneticHint = "se-ko-lah", PronunciationText = "sekolah", DifficultyLevel = 2, MeaningText = "school", ExampleSentence = "Saya pergi ke sekolah.", IsActive = true },
+            new VocabularyItem { ModuleId = bmModule.Id, Word = "makan", NormalizedWord = "makan", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"ma\",\"kan\"]", PhoneticHint = "ma-kan", PronunciationText = "makan", DifficultyLevel = 1, MeaningText = "eat", ExampleSentence = "Ali makan nasi.", IsActive = true },
+            new VocabularyItem { ModuleId = englishModule.Id, Word = "school", NormalizedWord = "school", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"school\"]", PhoneticHint = "skool", PronunciationText = "school", DifficultyLevel = 2, MeaningText = "place to learn", ExampleSentence = "I go to school.", IsActive = true },
+            new VocabularyItem { ModuleId = englishModule.Id, Word = "pencil", NormalizedWord = "pencil", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"pen\",\"cil\"]", PhoneticHint = "pen-sil", PronunciationText = "pencil", DifficultyLevel = 1, MeaningText = "tool for writing", ExampleSentence = "This is my pencil.", IsActive = true },
+            new VocabularyItem { ModuleId = englishModule.Id, Word = "friend", NormalizedWord = "friend", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"friend\"]", PhoneticHint = "frend", PronunciationText = "friend", DifficultyLevel = 2, MeaningText = "someone you like", ExampleSentence = "She is my friend.", IsActive = true },
+            new VocabularyItem { ModuleId = englishModule.Id, Word = "apple", NormalizedWord = "apple", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"ap\",\"ple\"]", PhoneticHint = "ap-pel", PronunciationText = "apple", DifficultyLevel = 1, MeaningText = "a fruit", ExampleSentence = "I eat an apple.", IsActive = true }
+        );
+
+        await _dbContext.SaveChangesAsync();
     }
 }

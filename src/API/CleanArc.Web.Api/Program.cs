@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Asp.Versioning.Builder;
 using Carter;
+using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Models.Common;
 using CleanArc.Application.ServiceConfiguration;
 using CleanArc.Domain.Entities.User;
@@ -95,6 +97,31 @@ var app = builder.Build();
 
 await app.ApplyMigrationsAsync();
 
+if (args.Length >= 2 && args[0].Equals("--seed-syllabus", StringComparison.OrdinalIgnoreCase))
+{
+    var seedPath = ResolveSeedPath(args[1], app.Environment.ContentRootPath);
+    if (!File.Exists(seedPath))
+        throw new FileNotFoundException("Syllabus seed file not found.", seedPath);
+
+    await using var scope = app.Services.CreateAsyncScope();
+    var ingestionService = scope.ServiceProvider.GetRequiredService<ISyllabusModuleIngestionService>();
+    await using var seedStream = File.OpenRead(seedPath);
+    var document = await JsonSerializer.DeserializeAsync<SyllabusSeedDocument>(
+        seedStream,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+    if (document is null)
+        throw new InvalidOperationException("Syllabus seed file is empty or invalid.");
+
+    var result = await ingestionService.IngestAsync(document, CancellationToken.None);
+    Console.WriteLine($"Syllabus seed completed. Modules created: {result.ModulesCreated}, modules updated: {result.ModulesUpdated}, items created: {result.ItemsCreated}, items updated: {result.ItemsUpdated}, items rejected: {result.ItemsRejected}.");
+    foreach (var line in result.Logs)
+        Console.WriteLine(line);
+    foreach (var error in result.Errors)
+        Console.Error.WriteLine(error);
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -128,5 +155,19 @@ app.ConfigureGrpcPipeline();
 
 await app.RunAsync();
 
+static string ResolveSeedPath(string inputPath, string contentRootPath)
+{
+    if (Path.IsPathRooted(inputPath))
+        return Path.GetFullPath(inputPath);
+
+    var candidates = new[]
+    {
+        Path.GetFullPath(inputPath),
+        Path.GetFullPath(Path.Combine(contentRootPath, inputPath)),
+        Path.GetFullPath(Path.Combine(contentRootPath, "..", "..", "..", inputPath))
+    };
+
+    return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
+}
 
 
