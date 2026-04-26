@@ -12,6 +12,7 @@ public record ClassroomDetailDto(
     string Subject,
     string? Thumbnail,
     string JoinCode,
+    int YearLevel,
     int TeacherId,
     string TeacherName,
     int StudentCount,

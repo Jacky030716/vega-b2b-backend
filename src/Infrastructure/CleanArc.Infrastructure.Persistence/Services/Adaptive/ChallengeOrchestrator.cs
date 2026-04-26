@@ -33,6 +33,7 @@ public class ChallengeOrchestrator(
             .Select(c => (int?)c.OrderIndex)
             .MaxAsync(cancellationToken) ?? 0;
 
+        var assignedAt = DateTime.UtcNow;
         var challenge = new Challenge
         {
             GameId = game.Id,
@@ -50,10 +51,14 @@ public class ChallengeOrchestrator(
             GameTemplateId = template.Id,
             ChallengeMode = preview.ChallengeMode,
             SourceType = preview.SourceType,
+            Subject = request.Subject,
+            CustomModuleId = request.CustomModuleId,
             ConfigJson = preview.ConfigJson,
             Status = "assigned",
-            AssignedAt = DateTime.UtcNow,
-            DueAt = request.DueAt
+            AssignedAt = assignedAt,
+            DueAt = request.DueAt,
+            LifecycleState = ChallengeLifecycleState.Active,
+            LastActivityAt = assignedAt
         };
 
         dbContext.Challenges.Add(challenge);

@@ -29,6 +29,7 @@ internal class GetClassroomDetailQueryHandler : IRequestHandler<GetClassroomDeta
         classroom.Subject,
         classroom.Thumbnail,
         classroom.JoinCode,
+        classroom.YearLevel,
         classroom.TeacherId,
         classroom.Teacher?.UserName ?? "",
         studentCount,

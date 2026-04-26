@@ -2,6 +2,7 @@ using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
@@ -97,6 +98,51 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   // Challenges
   public async Task<List<Challenge>> GetClassroomChallengesAsync(int classroomId)
   {
+    try
+    {
+      var classroom = await DbContext.Classrooms.AsNoTracking()
+          .Where(c => c.Id == classroomId)
+          .Select(c => new { c.Id, c.TeacherId })
+          .FirstOrDefaultAsync();
+
+      if (classroom is null)
+      {
+        return new List<Challenge>();
+      }
+
+      var directClassroomChallenges = await DbContext.Challenges.AsNoTracking()
+          .Include(c => c.Game)
+          .Include(c => c.GameTemplate)
+          .Where(c => c.ClassroomId == classroomId && c.CreatedById == classroom.TeacherId)
+          .ToListAsync();
+
+      var legacyChallengeIds = await GetLegacyClassroomChallengeIdsAsync(classroomId);
+      if (legacyChallengeIds.Count > 0)
+      {
+        var legacyChallenges = await DbContext.Challenges.AsNoTracking()
+            .Include(c => c.Game)
+            .Include(c => c.GameTemplate)
+            .Where(c => legacyChallengeIds.Contains(c.Id) && c.CreatedById == classroom.TeacherId)
+            .ToListAsync();
+
+        directClassroomChallenges.AddRange(legacyChallenges);
+      }
+
+      return directClassroomChallenges
+          .GroupBy(c => c.Id)
+          .Select(group => group.First())
+          .OrderBy(c => c.OrderIndex)
+          .ThenBy(c => c.DifficultyLevel)
+          .ToList();
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42703")
+    {
+      return await GetClassroomChallengesLegacySafeAsync(classroomId);
+    }
+  }
+
+  private async Task<List<Challenge>> GetClassroomChallengesLegacySafeAsync(int classroomId)
+  {
     var classroom = await DbContext.Classrooms.AsNoTracking()
         .Where(c => c.Id == classroomId)
         .Select(c => new { c.Id, c.TeacherId })
@@ -107,25 +153,43 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
       return new List<Challenge>();
     }
 
-    var directClassroomChallenges = await DbContext.Challenges.AsNoTracking()
+    var directClassroomChallenges = await DbContext.Challenges
+        .FromSqlInterpolated($"""
+          SELECT
+            c.*,
+            'Draft'::character varying(24) AS lifecycle_state,
+            FALSE AS is_pinned,
+            0::double precision AS recommended_score,
+            NULL::timestamp with time zone AS last_activity_at
+          FROM "Challenges" c
+          WHERE c."ClassroomId" = {classroomId}
+            AND c."CreatedById" = {classroom.TeacherId}
+          """)
+        .AsNoTracking()
         .Include(c => c.Game)
-        .Where(c => c.ClassroomId == classroomId && c.CreatedById == classroom.TeacherId)
         .ToListAsync();
 
-    // Legacy bridge support should only be used when no direct classroom links exist,
-    // otherwise stale legacy rows can inflate challenge counts for newer classrooms.
-    if (directClassroomChallenges.Count == 0)
+    var legacyChallengeIds = await GetLegacyClassroomChallengeIdsAsync(classroomId);
+    if (legacyChallengeIds.Count > 0)
     {
-      var legacyChallengeIds = await GetLegacyClassroomChallengeIdsAsync(classroomId);
-      if (legacyChallengeIds.Count > 0)
-      {
-        var legacyChallenges = await DbContext.Challenges.AsNoTracking()
-            .Include(c => c.Game)
-            .Where(c => legacyChallengeIds.Contains(c.Id) && c.CreatedById == classroom.TeacherId)
-            .ToListAsync();
+      var ids = legacyChallengeIds.ToArray();
+      var legacyChallenges = await DbContext.Challenges
+          .FromSqlInterpolated($"""
+            SELECT
+              c.*,
+              'Draft'::character varying(24) AS lifecycle_state,
+              FALSE AS is_pinned,
+              0::double precision AS recommended_score,
+              NULL::timestamp with time zone AS last_activity_at
+            FROM "Challenges" c
+            WHERE c."CreatedById" = {classroom.TeacherId}
+              AND c."Id" = ANY ({ids})
+            """)
+          .AsNoTracking()
+          .Include(c => c.Game)
+          .ToListAsync();
 
-        directClassroomChallenges.AddRange(legacyChallenges);
-      }
+      directClassroomChallenges.AddRange(legacyChallenges);
     }
 
     return directClassroomChallenges

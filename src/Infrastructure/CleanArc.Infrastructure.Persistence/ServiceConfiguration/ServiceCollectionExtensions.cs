@@ -46,6 +46,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRecommendationEngine, RecommendationEngine>();
         services.AddScoped<IMasteryEngine, MasteryEngine>();
         services.AddScoped<IChallengeOrchestrator, ChallengeOrchestrator>();
+        services.AddScoped<IClassroomModuleManagementService, ClassroomModuleManagementService>();
+        services.AddScoped<IStudentModuleProgressionService, StudentModuleProgressionService>();
         services.AddScoped<IAdaptiveAttemptService, AdaptiveAttemptService>();
         services.AddScoped<IAdaptiveAnalyticsService, AdaptiveAnalyticsService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomGeneratorService, ClassroomGeneratorService>();

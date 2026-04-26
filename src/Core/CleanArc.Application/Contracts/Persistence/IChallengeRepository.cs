@@ -47,8 +47,21 @@ public interface IChallengeRepository
   Task<List<ChallengeProgress>> GetChallengeLeaderboardAsync(int challengeId, int classroomId);
 
   /// <summary>
+  /// Returns lightweight aggregate stats for many challenge leaderboards in a single query.
+  /// Used by teacher-facing boards and classroom summaries to avoid N+1 leaderboard queries.
+  /// </summary>
+  Task<IReadOnlyDictionary<int, ChallengeLeaderboardSnapshot>> GetChallengeLeaderboardSnapshotsAsync(
+    int classroomId,
+    IReadOnlyCollection<int> challengeIds);
+
+  /// <summary>
   /// Returns a single student's progress row for a (challenge, classroom) pair, or null if none.
   /// </summary>
   Task<ChallengeProgress?> GetStudentChallengeProgressAsync(int userId, int challengeId, int classroomId);
 }
+
+public sealed record ChallengeLeaderboardSnapshot(
+  int ChallengeId,
+  int CompletedCount,
+  DateTime? LastAttemptAt);
 

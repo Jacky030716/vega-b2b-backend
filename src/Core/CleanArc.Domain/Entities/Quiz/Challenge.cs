@@ -1,5 +1,6 @@
 using CleanArc.Domain.Common;
 using CleanArc.Domain.Entities.Adaptive;
+using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.User;
 
 namespace CleanArc.Domain.Entities.Quiz;
@@ -40,10 +41,17 @@ public class Challenge : BaseEntity<int>
     public GameTemplate? GameTemplate { get; set; }
     public string? ChallengeMode { get; set; }
     public string? SourceType { get; set; }
+    public string? Subject { get; set; }
+    public int? CustomModuleId { get; set; }
+    public CustomModule? CustomModule { get; set; }
     public string ConfigJson { get; set; } = "{}";
     public string Status { get; set; } = "assigned";
     public DateTime? AssignedAt { get; set; }
     public DateTime? DueAt { get; set; }
+    public ChallengeLifecycleState LifecycleState { get; set; } = ChallengeLifecycleState.Draft;
+    public bool IsPinned { get; set; } = false;
+    public double RecommendedScore { get; set; } = 0;
+    public DateTime? LastActivityAt { get; set; }
 
     /// <summary>
     /// The classroom this challenge was created for.

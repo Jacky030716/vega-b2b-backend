@@ -23,6 +23,7 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
       Name = request.Name,
       Description = request.Description,
       Subject = request.Subject,
+      YearLevel = Math.Clamp(request.YearLevel, 1, 6),
       Thumbnail = request.Thumbnail,
       JoinCode = joinCode,
       TeacherId = request.TeacherId,

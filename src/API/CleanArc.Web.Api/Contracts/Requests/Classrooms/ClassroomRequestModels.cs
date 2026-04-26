@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CleanArc.Web.Api.Contracts.Requests.Classrooms;
 
-public record CreateClassroomRequest(string Name, string Description, string Subject, string? Thumbnail);
+public record CreateClassroomRequest(string Name, string Description, string Subject, string? Thumbnail, int? YearLevel);
 
 public record JoinClassroomRequest(string JoinCode);
 

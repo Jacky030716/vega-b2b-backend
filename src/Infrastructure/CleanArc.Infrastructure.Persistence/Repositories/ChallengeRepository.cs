@@ -2,6 +2,7 @@ using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace CleanArc.Infrastructure.Persistence.Repositories;
 
@@ -57,7 +58,45 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
     public async Task UpdateChallengeAsync(Challenge challenge)
     {
         DbContext.Challenges.Update(challenge);
-        await DbContext.SaveChangesAsync();
+
+        try
+        {
+            await DbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsMissingLifecycleColumn(ex))
+        {
+            // Backward compatibility:
+            // Older databases may not have lifecycle columns yet.
+            // Retry while skipping lifecycle fields so legacy behavior still works.
+            var entry = DbContext.Entry(challenge);
+            if (entry.State == EntityState.Detached)
+            {
+                DbContext.Challenges.Attach(challenge);
+                entry = DbContext.Entry(challenge);
+            }
+
+            entry.State = EntityState.Modified;
+            entry.Property(c => c.LifecycleState).IsModified = false;
+            entry.Property(c => c.IsPinned).IsModified = false;
+            entry.Property(c => c.RecommendedScore).IsModified = false;
+            entry.Property(c => c.LastActivityAt).IsModified = false;
+
+            await DbContext.SaveChangesAsync();
+        }
+    }
+
+    private static bool IsMissingLifecycleColumn(DbUpdateException ex)
+    {
+        if (ex.InnerException is not PostgresException pgEx || pgEx.SqlState != "42703")
+        {
+            return false;
+        }
+
+        var message = pgEx.MessageText ?? string.Empty;
+        return message.Contains("is_pinned", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("lifecycle_state", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("recommended_score", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("last_activity_at", StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Attempts ─────────────────────────────────────────────────────────────
@@ -143,6 +182,27 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
             .ThenBy(cp => cp.BestDurationSeconds)
             .ThenBy(cp => cp.AttemptCount)
             .ToListAsync();
+
+    public async Task<IReadOnlyDictionary<int, ChallengeLeaderboardSnapshot>> GetChallengeLeaderboardSnapshotsAsync(
+        int classroomId,
+        IReadOnlyCollection<int> challengeIds)
+    {
+        if (challengeIds.Count == 0)
+        {
+            return new Dictionary<int, ChallengeLeaderboardSnapshot>();
+        }
+
+        var snapshots = await DbContext.ChallengeProgresses.AsNoTracking()
+            .Where(cp => cp.ClassroomId == classroomId && challengeIds.Contains(cp.ChallengeId))
+            .GroupBy(cp => cp.ChallengeId)
+            .Select(group => new ChallengeLeaderboardSnapshot(
+                group.Key,
+                group.Count(cp => cp.HasCompleted),
+                group.Max(cp => cp.LastAttemptAt)))
+            .ToListAsync();
+
+        return snapshots.ToDictionary(snapshot => snapshot.ChallengeId);
+    }
 
     public async Task<ChallengeProgress?> GetStudentChallengeProgressAsync(int userId, int challengeId, int classroomId)
         => await DbContext.ChallengeProgresses.AsNoTracking()

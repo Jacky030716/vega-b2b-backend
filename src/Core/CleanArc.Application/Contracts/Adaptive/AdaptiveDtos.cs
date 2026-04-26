@@ -232,7 +232,9 @@ public record AssignAdaptiveChallengeRequest(
     int? StudentId,
     int? ClassId,
     DateTime? DueAt,
-    GeneratedAdaptiveChallengePreviewDto Preview);
+    GeneratedAdaptiveChallengePreviewDto Preview,
+    string? Subject = null,
+    int? CustomModuleId = null);
 
 public record AssignedAdaptiveChallengeDto(
     int ChallengeId,
@@ -317,3 +319,113 @@ public record StudentPerformanceDto(
     IReadOnlyList<StudentWordMasteryDto> Mastery,
     WeaknessSummaryDto WeaknessSummary,
     IReadOnlyList<AdaptiveRecommendationDto> RecommendedNextChallenges);
+
+public record RecommendedActionDto(
+    string Type,
+    string Title,
+    string Description);
+
+public record ClassroomModuleOverviewDto(
+    int ClassroomId,
+    string ClassroomName,
+    int YearLevel,
+    string JoinCode,
+    int StudentCount,
+    int ActiveChallengeCount,
+    IReadOnlyList<RecommendedActionDto> RecommendedActions,
+    IReadOnlyList<SubjectModuleGroupDto> SubjectGroups,
+    CustomModuleSummaryDto CustomModule);
+
+public record SubjectModuleGroupDto(
+    string Subject,
+    int ModuleCount,
+    int ProgressPercent,
+    IReadOnlyList<ModuleSummaryDto> Modules);
+
+public record ModuleSummaryDto(
+    int ModuleId,
+    string ModuleTitle,
+    int? UnitNumber,
+    string Subject,
+    int YearLevel,
+    int VocabularyCount,
+    int GeneratedChallengeCount,
+    int ActiveChallengeCount,
+    int ProgressPercent,
+    int WeakWordCount);
+
+public record CustomModuleSummaryDto(
+    int CustomModuleId,
+    string Name,
+    int ChallengeCount,
+    int ActiveChallengeCount);
+
+public record ModuleChallengeDto(
+    int ChallengeId,
+    string Title,
+    string GameKey,
+    string GameType,
+    string LifecycleState,
+    string Status,
+    int ProgressPercent,
+    DateTime LastUpdated,
+    bool CanDelete);
+
+public record GenerateModuleChallengeRequest(
+    int ClassroomId,
+    string GameType,
+    string Mode);
+
+public record CreateCustomModuleChallengeRequest(
+    string Title,
+    string GameType,
+    IReadOnlyList<string>? Items);
+
+public record RenameCustomModuleRequest(string Name);
+
+public record StudentModuleTrackDto(
+    int ModuleId,
+    string ModuleTitle,
+    string Subject,
+    int? UnitNumber,
+    int YearLevel,
+    int VocabularyCount,
+    int ActiveChallengeCount,
+    int CompletedChallengeCount,
+    int ProgressPercent,
+    bool Recommended);
+
+public record StudentModuleProgressionDto(
+    int ModuleId,
+    string ModuleTitle,
+    string Subject,
+    int? UnitNumber,
+    IReadOnlyList<StudentProgressionNodeDto> Nodes);
+
+public record StudentProgressionNodeDto(
+    string NodeId,
+    int ChallengeId,
+    string Type,
+    string GameKey,
+    string Title,
+    string Description,
+    string Status,
+    int Progress,
+    bool IsRecommended,
+    int BestStars,
+    string ContentData,
+    int DifficultyLevel,
+    int OrderIndex);
+
+public record StudentCustomChallengeDto(
+    int ChallengeId,
+    string Title,
+    string Description,
+    string GameKey,
+    string Type,
+    string Status,
+    int Progress,
+    bool IsRecommended,
+    int BestStars,
+    string ContentData,
+    DateTime LastUpdated);

@@ -17,6 +17,17 @@ public record ClassroomChallengeDto(
     int OrderIndex,
     bool IsAIGenerated,
     DateTime CreatedAt,
+    string LifecycleState,
+    bool IsPinned,
+    double RecommendedScore,
+    DateTime? LastActivityAt,
+    DateTime? AssignedAt,
+    DateTime? DueAt,
+    int? ModuleId,
+    string? SourceType,
+    string? ChallengeMode,
+    string? GameTemplateCode,
+    string? RecommendationReason,
     /// <summary>Number of students who have completed this challenge at least once.</summary>
     int CompletedStudentCount,
     /// <summary>Total number of students in the classroom.</summary>

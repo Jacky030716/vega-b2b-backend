@@ -53,3 +53,21 @@ public interface IAdaptiveAnalyticsService
     Task<IReadOnlyList<ModuleProgressDto>> GetModuleProgressAsync(int classId, CancellationToken cancellationToken);
     Task<StudentPerformanceDto> GetStudentPerformanceAsync(int studentId, CancellationToken cancellationToken);
 }
+
+public interface IClassroomModuleManagementService
+{
+    Task<ClassroomModuleOverviewDto> GetModuleOverviewAsync(int classroomId, int teacherId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ModuleChallengeDto>> GetModuleChallengesAsync(int moduleId, int classroomId, int teacherId, CancellationToken cancellationToken);
+    Task<AssignedAdaptiveChallengeDto> GenerateModuleChallengeAsync(int moduleId, GenerateModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ModuleChallengeDto>> GetCustomModuleChallengesAsync(int customModuleId, int teacherId, CancellationToken cancellationToken);
+    Task<CustomModuleSummaryDto> RenameCustomModuleAsync(int customModuleId, RenameCustomModuleRequest request, int teacherId, CancellationToken cancellationToken);
+    Task<AssignedAdaptiveChallengeDto> CreateCustomModuleChallengeAsync(int customModuleId, CreateCustomModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken);
+    Task<bool> DeleteChallengeAsync(int challengeId, int teacherId, CancellationToken cancellationToken);
+}
+
+public interface IStudentModuleProgressionService
+{
+    Task<IReadOnlyList<StudentModuleTrackDto>> GetClassroomModulesAsync(int classroomId, int studentId, CancellationToken cancellationToken);
+    Task<StudentModuleProgressionDto> GetModuleProgressionAsync(int moduleId, int classroomId, int studentId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<StudentCustomChallengeDto>> GetCustomChallengesAsync(int classroomId, int studentId, CancellationToken cancellationToken);
+}
