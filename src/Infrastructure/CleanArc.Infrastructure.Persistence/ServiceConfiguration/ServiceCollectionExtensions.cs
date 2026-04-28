@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISyllabusModuleService, SyllabusModuleService>();
         services.AddScoped<ISyllabusModuleIngestionService, SyllabusModuleIngestionService>();
         services.AddScoped<IChallengeGenerator, ChallengeGenerator>();
+        services.AddScoped<IChallengeAiPipelineService, ChallengeAiPipelineService>();
         services.AddScoped<IRecommendationEngine, RecommendationEngine>();
         services.AddScoped<IMasteryEngine, MasteryEngine>();
         services.AddScoped<IChallengeOrchestrator, ChallengeOrchestrator>();

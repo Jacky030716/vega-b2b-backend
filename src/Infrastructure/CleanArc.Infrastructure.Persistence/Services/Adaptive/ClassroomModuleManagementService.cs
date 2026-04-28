@@ -1,13 +1,20 @@
 using CleanArc.Application.Contracts.Adaptive;
+using CleanArc.Application.Contracts.Infrastructure.AI;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+#nullable enable
 
 namespace CleanArc.Infrastructure.Persistence.Services.Adaptive;
 
 public class ClassroomModuleManagementService(
     ApplicationDbContext dbContext,
-    IChallengeOrchestrator challengeOrchestrator) : IClassroomModuleManagementService
+    IChallengeOrchestrator challengeOrchestrator,
+    IChallengeAiPipelineService challengeAiPipelineService,
+    ILogger<ClassroomModuleManagementService> logger) : IClassroomModuleManagementService
 {
     private static readonly HashSet<ChallengeLifecycleState> ActiveStates = new()
     {
@@ -124,12 +131,80 @@ public class ClassroomModuleManagementService(
         if (module.YearLevel != classroom.YearLevel)
             throw new InvalidOperationException("Module year level does not match classroom year level");
 
+        var vocabulary = await dbContext.VocabularyItems.AsNoTracking()
+            .Where(v => v.ModuleId == module.Id && v.IsActive)
+            .OrderBy(v => v.DisplayOrder)
+            .ThenBy(v => v.Word)
+            .ToListAsync(cancellationToken);
+
+        var weakness = await GetModuleWeaknessAsync(classroom.Id, module.Id, cancellationToken);
+        var moduleTitle = string.IsNullOrWhiteSpace(module.UnitTitle) ? module.Title : module.UnitTitle;
+        var aiPlan = await challengeAiPipelineService.GenerateModuleChallengePlanAsync(
+            new ModuleChallengePlanRequest(
+                module.Id,
+                moduleTitle,
+                module.Subject,
+                module.YearLevel,
+                request.GameType,
+                request.Mode,
+                vocabulary.Select(ToAiItem).ToList(),
+                weakness.WeakWords,
+                weakness.WeakSkill),
+            cancellationToken);
+
+        if (aiPlan.IsSuccess)
+        {
+            var selectedItems = SelectVocabularyItems(vocabulary, aiPlan.Result.SelectedWords);
+            var config = await challengeAiPipelineService.GenerateGameConfigAsync(
+                new GameConfigGenerationRequest(
+                    module.Id,
+                    moduleTitle,
+                    module.Subject,
+                    classroom.Id,
+                    request.Mode,
+                    "PREDEFINED_MODULE",
+                    aiPlan.Result.RecommendedGameType,
+                    aiPlan.Result.DifficultyLevel,
+                    selectedItems.Select(ToAdaptiveItem).ToList()),
+                cancellationToken);
+
+            if (config.IsSuccess)
+            {
+                return await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
+                    teacherId, null, classroom.Id, null,
+                    config.Result with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id },
+                    module.Subject, null), cancellationToken);
+            }
+
+            logger.LogWarning(
+                "Gemini game config generation failed for module {ModuleId}: {Error}. Falling back to rule-based module generation.",
+                module.Id,
+                config.ErrorMessage);
+        }
+        else
+        {
+            logger.LogWarning(
+                "Gemini module plan generation failed for module {ModuleId}: {Error}. Falling back to rule-based module generation.",
+                module.Id,
+                aiPlan.ErrorMessage);
+        }
+
+        return await GenerateRuleBasedModuleChallengeAsync(module, classroom.Id, request, teacherId, cancellationToken);
+    }
+
+    private async Task<AssignedAdaptiveChallengeDto> GenerateRuleBasedModuleChallengeAsync(
+        SyllabusModule module,
+        int classroomId,
+        GenerateModuleChallengeRequest request,
+        int teacherId,
+        CancellationToken cancellationToken)
+    {
         var preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
-            "class", null, classroom.Id, request.Mode, "PREDEFINED_MODULE", module.Id,
+            "class", null, classroomId, request.Mode, "PREDEFINED_MODULE", module.Id,
             request.GameType, request.Mode.Replace('_', ' '), null, null, null), cancellationToken);
 
         return await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
-            teacherId, null, classroom.Id, null,
+            teacherId, null, classroomId, null,
             preview with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id },
             module.Subject, null), cancellationToken);
     }
@@ -242,6 +317,111 @@ public class ClassroomModuleManagementService(
         return (rows.Count, rows.Count(ActiveStates.Contains));
     }
 
+    private async Task<ModuleWeaknessContext> GetModuleWeaknessAsync(int classroomId, int moduleId, CancellationToken cancellationToken)
+    {
+        var studentIds = await dbContext.ClassroomStudents.AsNoTracking()
+            .Where(s => s.ClassroomId == classroomId)
+            .Select(s => s.UserId)
+            .ToListAsync(cancellationToken);
+
+        if (studentIds.Count == 0)
+            return new ModuleWeaknessContext(Array.Empty<string>(), null);
+
+        var weakRows = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Include(m => m.VocabularyItem)
+            .Where(m => studentIds.Contains(m.StudentId)
+                        && m.ModuleId == moduleId
+                        && m.MasteryScore < 65)
+            .OrderBy(m => m.MasteryScore)
+            .ThenBy(m => m.VocabularyItem.Word)
+            .Take(12)
+            .ToListAsync(cancellationToken);
+
+        var weakWords = weakRows
+            .Select(m => m.VocabularyItem.Word)
+            .Where(word => !string.IsNullOrWhiteSpace(word))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var weakSkill = weakRows
+            .SelectMany(m => (m.WeaknessTagsJson ?? string.Empty)
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            .GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(group => group.Count())
+            .Select(group => MapWeakSkill(group.Key))
+            .FirstOrDefault(skill => skill is not null);
+
+        return new ModuleWeaknessContext(weakWords, weakSkill);
+    }
+
+    private static ModuleChallengeAiItem ToAiItem(VocabularyItem item) =>
+        new(
+            item.Id,
+            item.Word,
+            item.BmText,
+            item.EnText,
+            item.ZhText,
+            item.SyllablesJson,
+            item.SyllableText,
+            item.ItemType,
+            item.DifficultyLevel,
+            item.MeaningText,
+            item.ExampleSentence);
+
+    private static AdaptiveChallengeItemDto ToAdaptiveItem(VocabularyItem item) =>
+        new(
+            null,
+            item.Id,
+            item.Word,
+            item.NormalizedWord,
+            item.PhoneticHint ?? item.MeaningText,
+            item.MeaningText,
+            item.ExampleSentence,
+            item.SyllablesJson,
+            item.DifficultyLevel,
+            item.BmText,
+            item.ZhText,
+            item.EnText,
+            item.SyllableText,
+            item.ItemType,
+            item.DisplayOrder,
+            null,
+            null,
+            null,
+            null);
+
+    private static IReadOnlyList<VocabularyItem> SelectVocabularyItems(
+        IReadOnlyList<VocabularyItem> vocabulary,
+        IReadOnlyList<string> selectedWords)
+    {
+        var selected = new List<VocabularyItem>();
+        foreach (var word in selectedWords)
+        {
+            var item = vocabulary.FirstOrDefault(v => MatchesVocabularyWord(v, word));
+            if (item is not null && selected.All(existing => existing.Id != item.Id))
+                selected.Add(item);
+        }
+
+        return selected;
+    }
+
+    private static bool MatchesVocabularyWord(VocabularyItem item, string selectedWord)
+        => string.Equals(item.Word, selectedWord, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(item.BmText, selectedWord, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(item.EnText, selectedWord, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(item.ZhText, selectedWord, StringComparison.OrdinalIgnoreCase);
+
+    private static string? MapWeakSkill(string tag)
+    {
+        if (tag.Contains("syllable", StringComparison.OrdinalIgnoreCase))
+            return "SYLLABLE";
+        if (tag.Contains("speak", StringComparison.OrdinalIgnoreCase) || tag.Contains("pronunciation", StringComparison.OrdinalIgnoreCase))
+            return "SPEAKING";
+        if (tag.Contains("spell", StringComparison.OrdinalIgnoreCase))
+            return "SPELLING";
+        return null;
+    }
+
     private static IReadOnlyList<RecommendedActionDto> RecommendedActions() => new[]
     {
         new RecommendedActionDto("IMPROVE_WEAK_WORDS", "Improve Weak Words", "Generate challenges from weak vocabulary."),
@@ -267,4 +447,6 @@ public class ClassroomModuleManagementService(
             lastUpdated,
             challenge.LifecycleState == ChallengeLifecycleState.Draft || !isAssigned);
     }
+
+    private sealed record ModuleWeaknessContext(IReadOnlyList<string> WeakWords, string? WeakSkill);
 }
