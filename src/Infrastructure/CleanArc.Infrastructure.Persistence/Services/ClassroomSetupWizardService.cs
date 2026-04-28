@@ -90,7 +90,6 @@ public class ClassroomSetupWizardService(
         rosterPreview.Add(new StudentCredentialPreview(student.StudentName, loginCode, student.VisualPassword));
       }
 
-      // Link the initial challenge to this classroom (replaces legacy ClassroomQuiz table)
       var trackedChallenge = await dbContext.Challenges.FirstOrDefaultAsync(c => c.Id == challengeId, cancellationToken);
       if (trackedChallenge is not null)
       {

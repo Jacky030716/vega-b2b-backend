@@ -92,8 +92,6 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            //options
-            //.UseSqlServer(configuration.GetConnectionString("SqlServer")); 
             options.UseNpgsql(configuration.GetConnectionString("PostgreSQL"));
         });
 

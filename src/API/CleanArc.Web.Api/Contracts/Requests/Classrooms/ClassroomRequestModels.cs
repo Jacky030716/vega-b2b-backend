@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
+#nullable enable
+
 namespace CleanArc.Web.Api.Contracts.Requests.Classrooms;
 
 public record CreateClassroomRequest(string Name, string Description, string Subject, string? Thumbnail, int? YearLevel);

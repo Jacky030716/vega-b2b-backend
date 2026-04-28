@@ -10,6 +10,8 @@ using Mediator;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
+#nullable enable
+
 namespace CleanArc.Web.Api.Endpoints;
 
 /// <summary>
@@ -155,6 +157,6 @@ public record CreateChallengeRequest(
   string? CreationMode,
   string? SourcePrompt,
   string? SourceDocumentName,
-  /// <summary>Classroom to assign this challenge to. Required for teacher-created classroom challenges.</summary>
+  // Classroom to assign this challenge to. Required for teacher-created classroom challenges.
   int? ClassroomId = null
 );

@@ -10,6 +10,8 @@ using CleanArc.WebFramework.WebExtensions;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
 
+#nullable enable
+
 namespace CleanArc.Web.Api.Endpoints;
 
 public class ClassroomEndpoints : ICarterModule

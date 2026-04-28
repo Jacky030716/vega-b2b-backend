@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
+#nullable enable
+
 namespace CleanArc.Web.Api.Contracts.Requests.Games;
 
 public class GenerateAiChallengeDraftRequest

@@ -30,7 +30,7 @@ public class ClassroomsController : ControllerBase
     }
 
     [HttpGet("dashboard")]
-    public async Task<IActionResult> GetDashboardStats()
+    public IActionResult GetDashboardStats()
     {
         // Returning mocked dashboard stats for now. Should be mapped to actual MediatR queries later.
         return Ok(new
