@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Quiz;
@@ -7,7 +8,7 @@ using Mediator;
 
 namespace CleanArc.Application.Features.Games.Commands;
 
-internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork)
+internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork, IAiAuditService aiAuditService)
     : IRequestHandler<CreateChallengeCommand, OperationResult<CreateChallengeDto>>
 {
   private const string WordBridgeImageRefPrefix = "quizzes/word-bridge/";
@@ -51,8 +52,14 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork)
       MaxStars = 3,
       CreatedById = request.UserId,
       IsAIGenerated = request.IsAIGenerated,
+      AiGenerationStatus = request.IsAIGenerated ? AiGenerationStatuses.AiGenerated : AiGenerationStatuses.None,
+      AiUseCase = request.IsAIGenerated ? AiUseCases.CustomChallengeExtraction : null,
+      AiAuditLogId = request.IsAIGenerated ? request.AiAuditLogId : null,
       ClassroomId = request.ClassroomId
     });
+
+    if (request.IsAIGenerated && request.AiAuditLogId is int auditLogId)
+      await aiAuditService.AttachChallengeAsync(auditLogId, challenge.Id, cancellationToken);
 
     return OperationResult<CreateChallengeDto>.SuccessResult(new CreateChallengeDto(
       challenge.Id,

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CleanArc.Application.Contracts.Adaptive;
+using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Quiz;
 using Microsoft.EntityFrameworkCore;
@@ -44,7 +45,13 @@ public class ChallengeOrchestrator(
             OrderIndex = nextOrderIndex + 1,
             MaxStars = 3,
             CreatedById = request.CreatedByTeacherId,
-            IsAIGenerated = preview.SourceType.Equals("ai_prompt", StringComparison.OrdinalIgnoreCase),
+            IsAIGenerated = request.AiGenerationStatus is AiGenerationStatuses.AiAssisted or AiGenerationStatuses.AiGenerated
+                || preview.SourceType.Equals("ai_prompt", StringComparison.OrdinalIgnoreCase),
+            AiGenerationStatus = request.AiGenerationStatus ?? (preview.SourceType.Equals("ai_prompt", StringComparison.OrdinalIgnoreCase)
+                ? AiGenerationStatuses.AiGenerated
+                : AiGenerationStatuses.None),
+            AiUseCase = request.AiUseCase,
+            AiAuditLogId = request.AiAuditLogId,
             ClassroomId = request.ClassId ?? preview.ClassId,
             StudentId = request.StudentId ?? preview.StudentId,
             ModuleId = preview.ModuleId,

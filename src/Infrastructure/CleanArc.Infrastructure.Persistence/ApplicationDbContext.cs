@@ -1,6 +1,7 @@
 using System.Reflection;
 using CleanArc.Domain.Common;
 using CleanArc.Domain.Entities.Adaptive;
+using CleanArc.Domain.Entities.AI;
 using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Activity;
 using CleanArc.Domain.Entities.Classroom;
@@ -42,6 +43,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<ChallengeProgress> ChallengeProgresses { get; set; }
 
     // Adaptive learning
+    public DbSet<AiAuditLog> AiAuditLogs { get; set; }
     public DbSet<SyllabusModule> SyllabusModules { get; set; }
     public DbSet<VocabularyItem> VocabularyItems { get; set; }
     public DbSet<GameTemplate> GameTemplates { get; set; }

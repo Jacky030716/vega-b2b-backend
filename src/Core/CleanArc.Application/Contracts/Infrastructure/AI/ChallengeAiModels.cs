@@ -20,6 +20,64 @@ public record ChallengeGenerationRequest(
 /// </summary>
 public record ChallengeGenerationResult(string RawResponse);
 
+public static class AiUseCases
+{
+  public const string CustomChallengeExtraction = "CUSTOM_CHALLENGE_EXTRACTION";
+  public const string ModuleChallengePlanning = "MODULE_CHALLENGE_PLANNING";
+  public const string SpellCatcherConfig = "SPELL_CATCHER_CONFIG";
+  public const string SyllableSushiConfig = "SYLLABLE_SUSHI_CONFIG";
+  public const string VoiceBridgeConfig = "VOICE_BRIDGE_CONFIG";
+  public const string AdminAuditor = "ADMIN_AUDITOR";
+  public const string StickerGeneration = "STICKER_GENERATION";
+}
+
+public static class AiGenerationStatuses
+{
+  public const string None = "NONE";
+  public const string AiAssisted = "AI_ASSISTED";
+  public const string AiGenerated = "AI_GENERATED";
+  public const string FailedFallback = "FAILED_FALLBACK";
+}
+
+public static class AiValidationStatuses
+{
+  public const string Pending = "PENDING";
+  public const string Valid = "VALID";
+  public const string Invalid = "INVALID";
+  public const string Failed = "FAILED";
+}
+
+public record AiPromptDefinition(
+  string UseCase,
+  string Version,
+  string Description,
+  string SystemInstruction,
+  string OutputSchemaName);
+
+public interface IAiPromptRegistry
+{
+  AiPromptDefinition Get(string useCase, string? variant = null);
+}
+
+public record AiAuditStartRequest(
+  string UseCase,
+  string Provider,
+  string? ModelName,
+  string PromptVersion,
+  string InputPayloadJson,
+  int? RelatedUserId = null,
+  int? RelatedClassroomId = null,
+  int? RelatedModuleId = null,
+  int? RelatedChallengeId = null);
+
+public interface IAiAuditService
+{
+  Task<int> StartAsync(AiAuditStartRequest request, CancellationToken cancellationToken);
+  Task CompleteAsync(int auditLogId, string rawOutputJson, string parsedOutputJson, string validationStatus, IReadOnlyList<string> validationErrors, CancellationToken cancellationToken);
+  Task FailAsync(int auditLogId, string? rawOutputJson, IReadOnlyList<string> validationErrors, CancellationToken cancellationToken);
+  Task AttachChallengeAsync(int auditLogId, int challengeId, CancellationToken cancellationToken);
+}
+
 /// <summary>
 /// Provides challenge draft inference against the configured cloud/local generation backend.
 /// </summary>
@@ -39,14 +97,17 @@ public interface IAiGenerationService
 public record CustomVocabularyGenerationRequest(
   string GameKey,
   string Prompt,
-  string AugmentedContext);
+  string AugmentedContext,
+  int? RelatedUserId = null,
+  int? RelatedClassroomId = null);
 
 public record CustomVocabularyGenerationResult(
   string Title,
   string Description,
   string DraftSchema,
   string DraftPayload,
-  string PlayableContentData);
+  string PlayableContentData,
+  int? AiAuditLogId = null);
 
 public record ModuleChallengeAiItem(
   int VocabularyItemId,
@@ -70,14 +131,17 @@ public record ModuleChallengePlanRequest(
   string Mode,
   IReadOnlyList<ModuleChallengeAiItem> Items,
   IReadOnlyList<string> WeakWords,
-  string? WeakSkill);
+  string? WeakSkill,
+  int? RelatedUserId = null,
+  int? RelatedClassroomId = null);
 
 public record ModuleChallengePlanResult(
   IReadOnlyList<string> SelectedWords,
   string RecommendedGameType,
   int DifficultyLevel,
   string Reason,
-  string FocusType);
+  string FocusType,
+  int? AiAuditLogId = null);
 
 public record GameConfigGenerationRequest(
   int ModuleId,

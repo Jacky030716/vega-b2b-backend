@@ -23,6 +23,9 @@ public class ChallengeConfiguration : IEntityTypeConfiguration<Challenge>
     builder.Property(c => c.SourceType).HasColumnName("source_type").HasMaxLength(50);
     builder.Property(c => c.Subject).HasColumnName("subject").HasMaxLength(100);
     builder.Property(c => c.CustomModuleId).HasColumnName("custom_module_id");
+    builder.Property(c => c.AiGenerationStatus).HasColumnName("ai_generation_status").HasMaxLength(40).HasDefaultValue("NONE");
+    builder.Property(c => c.AiUseCase).HasColumnName("ai_use_case").HasMaxLength(80);
+    builder.Property(c => c.AiAuditLogId).HasColumnName("ai_audit_log_id");
     builder.Property(c => c.ConfigJson).HasColumnName("config_json").HasColumnType("jsonb").HasDefaultValue("{}");
     builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(40).HasDefaultValue("assigned");
     builder.Property(c => c.AssignedAt).HasColumnName("assigned_at");
@@ -67,7 +70,14 @@ public class ChallengeConfiguration : IEntityTypeConfiguration<Challenge>
         .OnDelete(DeleteBehavior.SetNull)
         .IsRequired(false);
 
+    builder.HasOne(c => c.AiAuditLog)
+        .WithMany()
+        .HasForeignKey(c => c.AiAuditLogId)
+        .OnDelete(DeleteBehavior.SetNull)
+        .IsRequired(false);
+
     builder.HasIndex(c => new { c.ClassroomId, c.ModuleId });
     builder.HasIndex(c => new { c.CustomModuleId, c.LifecycleState });
+    builder.HasIndex(c => c.AiAuditLogId);
   }
 }

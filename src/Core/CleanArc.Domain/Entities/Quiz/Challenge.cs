@@ -1,4 +1,5 @@
 using CleanArc.Domain.Common;
+using CleanArc.Domain.Entities.AI;
 using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.User;
@@ -31,6 +32,10 @@ public class Challenge : BaseEntity<int>
     public User.User? CreatedBy { get; set; }
 
     public bool IsAIGenerated { get; set; } = false;
+    public string AiGenerationStatus { get; set; } = "NONE";
+    public string? AiUseCase { get; set; }
+    public int? AiAuditLogId { get; set; }
+    public AiAuditLog? AiAuditLog { get; set; }
 
     // Nullable adaptive-layer metadata. Existing challenges keep these null.
     public int? StudentId { get; set; }

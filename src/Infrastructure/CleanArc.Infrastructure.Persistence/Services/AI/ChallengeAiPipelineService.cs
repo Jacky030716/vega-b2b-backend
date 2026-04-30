@@ -5,7 +5,9 @@ using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Models.Common;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Settings;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 #nullable enable
 
@@ -13,6 +15,9 @@ namespace CleanArc.Infrastructure.Persistence.Services.AI;
 
 public sealed class ChallengeAiPipelineService(
   IAiGenerationService aiGenerationService,
+  IAiPromptRegistry promptRegistry,
+  IAiAuditService aiAuditService,
+  IOptions<GoogleAiOptions> googleAiOptions,
   ILogger<ChallengeAiPipelineService> logger) : IChallengeAiPipelineService
 {
   private static readonly JsonSerializerOptions JsonOptions = new()
@@ -30,23 +35,58 @@ public sealed class ChallengeAiPipelineService(
     CustomVocabularyGenerationRequest request,
     CancellationToken cancellationToken)
   {
-    var systemPrompt = BuildCustomExtractionSystemPrompt(request.GameKey);
+    var prompt = promptRegistry.Get(AiUseCases.CustomChallengeExtraction, request.GameKey);
+    var systemPrompt = prompt.SystemInstruction;
     var userPrompt = BuildCustomExtractionUserPrompt(request.GameKey, request.Prompt, request.AugmentedContext);
+    var auditLogId = await StartAuditAsync(
+      AiUseCases.CustomChallengeExtraction,
+      prompt,
+      new
+      {
+        request.GameKey,
+        request.Prompt,
+        request.AugmentedContext
+      },
+      request.RelatedUserId,
+      request.RelatedClassroomId,
+      null,
+      cancellationToken);
 
-    var generation = await GenerateJsonAsync("custom_content_extraction", systemPrompt, userPrompt, 0.2d, cancellationToken);
+    var generation = await GenerateJsonAsync(AiUseCases.CustomChallengeExtraction, systemPrompt, userPrompt, 0.2d, cancellationToken);
     if (!generation.IsSuccess)
+    {
+      await aiAuditService.FailAsync(auditLogId, null, new[] { generation.ErrorMessage ?? "AI generation failed." }, cancellationToken);
       return OperationResult<CustomVocabularyGenerationResult>.FailureResult(generation.ErrorMessage ?? "AI generation failed.");
+    }
 
     var sanitized = SanitizeJson(generation.Result.RawResponse);
-    logger.LogInformation("AI output for {UseCase}: {Output}", "custom_content_extraction", sanitized);
+    logger.LogInformation("AI output for {UseCase}: {Output}", AiUseCases.CustomChallengeExtraction, sanitized);
 
     var draft = ValidateAndMapCustomDraft(request.GameKey, request.Prompt, sanitized);
-    LogValidation("custom_content_extraction", draft.IsSuccess, draft.ErrorMessage);
+    LogValidation(AiUseCases.CustomChallengeExtraction, draft.IsSuccess, draft.ErrorMessage);
 
     if (!draft.IsSuccess)
+    {
+      await aiAuditService.CompleteAsync(
+        auditLogId,
+        sanitized,
+        "{}",
+        AiValidationStatuses.Invalid,
+        new[] { draft.ErrorMessage ?? "AI returned an invalid draft structure." },
+        cancellationToken);
       return OperationResult<CustomVocabularyGenerationResult>.FailureResult(draft.ErrorMessage ?? "AI returned an invalid draft structure.");
+    }
 
-    return OperationResult<CustomVocabularyGenerationResult>.SuccessResult(draft.Result);
+    var result = draft.Result with { AiAuditLogId = auditLogId };
+    await aiAuditService.CompleteAsync(
+      auditLogId,
+      sanitized,
+      JsonSerializer.Serialize(result, JsonOptions),
+      AiValidationStatuses.Valid,
+      Array.Empty<string>(),
+      cancellationToken);
+
+    return OperationResult<CustomVocabularyGenerationResult>.SuccessResult(result);
   }
 
   public async Task<OperationResult<ModuleChallengePlanResult>> GenerateModuleChallengePlanAsync(
@@ -56,19 +96,57 @@ public sealed class ChallengeAiPipelineService(
     if (request.Items.Count == 0)
       return OperationResult<ModuleChallengePlanResult>.FailureResult("Module has no vocabulary items.");
 
-    var systemPrompt = BuildModulePlanSystemPrompt();
+    var prompt = promptRegistry.Get(AiUseCases.ModuleChallengePlanning);
+    var systemPrompt = prompt.SystemInstruction;
     var userPrompt = BuildModulePlanUserPrompt(request);
-    var generation = await GenerateJsonAsync("module_challenge_plan", systemPrompt, userPrompt, 0.15d, cancellationToken);
+    var auditLogId = await StartAuditAsync(
+      AiUseCases.ModuleChallengePlanning,
+      prompt,
+      request,
+      request.RelatedUserId,
+      request.RelatedClassroomId,
+      request.ModuleId,
+      cancellationToken);
+
+    var generation = await GenerateJsonAsync(AiUseCases.ModuleChallengePlanning, systemPrompt, userPrompt, 0.15d, cancellationToken);
     if (!generation.IsSuccess)
-      return OperationResult<ModuleChallengePlanResult>.FailureResult(generation.ErrorMessage ?? "AI module planning failed.");
+    {
+      await aiAuditService.FailAsync(auditLogId, null, new[] { generation.ErrorMessage ?? "AI module planning failed." }, cancellationToken);
+      return OperationResult<ModuleChallengePlanResult>.FailureResult(
+        generation.ErrorMessage ?? "AI module planning failed.",
+        EmptyModulePlanResult(auditLogId));
+    }
 
     var sanitized = SanitizeJson(generation.Result.RawResponse);
-    logger.LogInformation("AI output for {UseCase}: {Output}", "module_challenge_plan", sanitized);
+    logger.LogInformation("AI output for {UseCase}: {Output}", AiUseCases.ModuleChallengePlanning, sanitized);
 
     var validation = ValidateModulePlan(sanitized, request);
-    LogValidation("module_challenge_plan", validation.IsSuccess, validation.ErrorMessage);
+    LogValidation(AiUseCases.ModuleChallengePlanning, validation.IsSuccess, validation.ErrorMessage);
 
-    return validation;
+    if (!validation.IsSuccess)
+    {
+      await aiAuditService.CompleteAsync(
+        auditLogId,
+        sanitized,
+        "{}",
+        AiValidationStatuses.Invalid,
+        new[] { validation.ErrorMessage ?? "AI module plan is invalid." },
+        cancellationToken);
+      return OperationResult<ModuleChallengePlanResult>.FailureResult(
+        validation.ErrorMessage ?? "AI module plan is invalid.",
+        EmptyModulePlanResult(auditLogId));
+    }
+
+    var result = validation.Result with { AiAuditLogId = auditLogId };
+    await aiAuditService.CompleteAsync(
+      auditLogId,
+      sanitized,
+      JsonSerializer.Serialize(result, JsonOptions),
+      AiValidationStatuses.Valid,
+      Array.Empty<string>(),
+      cancellationToken);
+
+    return OperationResult<ModuleChallengePlanResult>.SuccessResult(result);
   }
 
   public async Task<OperationResult<GeneratedAdaptiveChallengePreviewDto>> GenerateGameConfigAsync(
@@ -82,31 +160,66 @@ public sealed class ChallengeAiPipelineService(
     if (!IsAdaptiveGameType(gameType))
       return OperationResult<GeneratedAdaptiveChallengePreviewDto>.FailureResult("Invalid adaptive game type.");
 
-    var systemPrompt = BuildGameConfigSystemPrompt(gameType);
-    var userPrompt = BuildGameConfigUserPrompt(request with { GameType = gameType });
-    var generation = await GenerateJsonAsync("game_config_generation", systemPrompt, userPrompt, 0.1d, cancellationToken);
-    if (!generation.IsSuccess)
-      return OperationResult<GeneratedAdaptiveChallengePreviewDto>.FailureResult(generation.ErrorMessage ?? "AI game config generation failed.");
-
-    var sanitized = SanitizeJson(generation.Result.RawResponse);
-    logger.LogInformation("AI output for {UseCase}: {Output}", "game_config_generation", sanitized);
-
-    var validation = ValidateGameConfigEnvelope(sanitized, gameType);
-    LogValidation("game_config_generation", validation.IsSuccess, validation.ErrorMessage);
-    if (!validation.IsSuccess)
-      return OperationResult<GeneratedAdaptiveChallengePreviewDto>.FailureResult(validation.ErrorMessage ?? "AI game config is invalid.");
+    var useCase = ToGameConfigUseCase(gameType);
+    var prompt = promptRegistry.Get(useCase);
+    var auditLogId = await StartAuditAsync(
+      useCase,
+      prompt,
+      request with { GameType = gameType },
+      null,
+      request.ClassroomId,
+      request.ModuleId,
+      cancellationToken,
+      provider: "RULE_BASED",
+      modelName: null);
 
     try
     {
       var preview = BuildAdaptivePreview(request with { GameType = gameType });
+      await aiAuditService.CompleteAsync(
+        auditLogId,
+        JsonSerializer.Serialize(new { gameType, config = "rule_based" }, JsonOptions),
+        JsonSerializer.Serialize(new { gameType, config = "rule_based" }, JsonOptions),
+        AiValidationStatuses.Valid,
+        Array.Empty<string>(),
+        cancellationToken);
       return OperationResult<GeneratedAdaptiveChallengePreviewDto>.SuccessResult(preview);
     }
     catch (Exception ex)
     {
       logger.LogWarning(ex, "Validated AI config could not be mapped to adaptive preview for {GameType}.", gameType);
+      await aiAuditService.FailAsync(auditLogId, null, new[] { ex.Message }, cancellationToken);
       return OperationResult<GeneratedAdaptiveChallengePreviewDto>.FailureResult(ex.Message);
     }
   }
+
+  private async Task<int> StartAuditAsync(
+    string useCase,
+    AiPromptDefinition prompt,
+    object inputPayload,
+    int? relatedUserId,
+    int? relatedClassroomId,
+    int? relatedModuleId,
+    CancellationToken cancellationToken,
+    string provider = "GEMINI",
+    string? modelName = null)
+  {
+    var model = modelName ?? googleAiOptions.Value.ModelId;
+    return await aiAuditService.StartAsync(
+      new AiAuditStartRequest(
+        useCase,
+        provider,
+        model,
+        prompt.Version,
+        JsonSerializer.Serialize(inputPayload, JsonOptions),
+        relatedUserId,
+        relatedClassroomId,
+        relatedModuleId),
+      cancellationToken);
+  }
+
+  private static ModuleChallengePlanResult EmptyModulePlanResult(int auditLogId)
+    => new(Array.Empty<string>(), string.Empty, 1, string.Empty, string.Empty, auditLogId);
 
   private async Task<OperationResult<ChallengeGenerationResult>> GenerateJsonAsync(
     string useCase,
@@ -160,6 +273,12 @@ public sealed class ChallengeAiPipelineService(
     if (difficulty is < 1 or > 3)
       return OperationResult<ModuleChallengePlanResult>.FailureResult("AI returned an invalid difficulty level.");
 
+    if (string.IsNullOrWhiteSpace(response.Reason))
+      return OperationResult<ModuleChallengePlanResult>.FailureResult("AI module plan is missing reason.");
+
+    if (string.IsNullOrWhiteSpace(response.FocusType))
+      return OperationResult<ModuleChallengePlanResult>.FailureResult("AI module plan is missing focusType.");
+
     var moduleWords = request.Items
       .SelectMany(item => new[] { item.Word, item.BmText, item.EnText, item.ZhText })
       .Where(value => !string.IsNullOrWhiteSpace(value))
@@ -187,35 +306,10 @@ public sealed class ChallengeAiPipelineService(
     }
 
     var focusType = NormalizeFocusType(response.FocusType, request.Mode);
-    var reason = string.IsNullOrWhiteSpace(response.Reason)
-      ? "Generated from module vocabulary."
-      : response.Reason.Trim();
+    var reason = response.Reason.Trim();
 
     return OperationResult<ModuleChallengePlanResult>.SuccessResult(
       new ModuleChallengePlanResult(selectedWords, gameType, difficulty, reason, focusType));
-  }
-
-  private static OperationResult<bool> ValidateGameConfigEnvelope(string rawJson, string expectedGameType)
-  {
-    try
-    {
-      using var doc = JsonDocument.Parse(rawJson);
-      var root = doc.RootElement;
-      if (!root.TryGetProperty("gameType", out var gameTypeElement) || gameTypeElement.ValueKind != JsonValueKind.String)
-        return OperationResult<bool>.FailureResult("AI game config is missing gameType.");
-
-      if (!string.Equals(NormalizeGameType(gameTypeElement.GetString()), expectedGameType, StringComparison.OrdinalIgnoreCase))
-        return OperationResult<bool>.FailureResult("AI game config returned the wrong game type.");
-
-      if (!root.TryGetProperty("config", out var configElement) || configElement.ValueKind != JsonValueKind.Object)
-        return OperationResult<bool>.FailureResult("AI game config is missing config object.");
-
-      return OperationResult<bool>.SuccessResult(true);
-    }
-    catch
-    {
-      return OperationResult<bool>.FailureResult("AI returned malformed game config JSON.");
-    }
   }
 
   private static GeneratedAdaptiveChallengePreviewDto BuildAdaptivePreview(GameConfigGenerationRequest request)
@@ -321,7 +415,7 @@ public sealed class ChallengeAiPipelineService(
         objective = request.Mode,
         sourceType = request.SourceType,
         learningFocus = request.Mode.Replace('_', ' '),
-        aiPipeline = "gemini"
+        configPipeline = "rule_based"
       }, ChallengeGenerator.JsonOptions),
       items,
       primarySyllableSushiSpec,
@@ -536,66 +630,6 @@ public sealed class ChallengeAiPipelineService(
       new CustomVocabularyGenerationResult(title, description, "word_builder", draftPayload, playableContentData));
   }
 
-  private static string BuildCustomExtractionSystemPrompt(string gameKey)
-    => gameKey switch
-    {
-      "magic_backpack" => """
-SYSTEM: You are a structural data converter for custom challenge content.
-OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
-
-SCHEMA:
-{
-  "title": "string",
-  "description": "string",
-  "content": {
-    "items": ["string", "string", "string"],
-    "theme": "string",
-    "sequenceLength": 3
-  }
-}
-
-RULES:
-1. Use only the provided context and teacher request.
-2. "items" must have at least 3 values.
-""",
-      "word_pair" => """
-SYSTEM: You are a structural vocabulary converter for custom challenge content.
-OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
-
-SCHEMA:
-{
-  "title": "string",
-  "description": "string",
-  "content": {
-    "pairs": [{ "key": "string", "value": "string" }],
-    "isBilingual": true
-  }
-}
-
-RULES:
-1. Use only the provided context and teacher request.
-2. "pairs" must have at least 3 values.
-""",
-      _ => """
-SYSTEM: You are a structural vocabulary converter for custom challenge content.
-OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
-
-SCHEMA:
-{
-  "title": "string",
-  "description": "string",
-  "content": {
-    "words": ["string", "string", "string"],
-    "hints": ["string", "string", "string"]
-  }
-}
-
-RULES:
-1. Use only the provided context and teacher request.
-2. "words" must have at least 3 values.
-"""
-    };
-
   private static string BuildCustomExtractionUserPrompt(string gameKey, string prompt, string context)
   {
     var readableGameName = gameKey switch
@@ -616,27 +650,6 @@ RULES:
     sb.AppendLine("[/REQUEST]");
     return sb.ToString();
   }
-
-  private static string BuildModulePlanSystemPrompt() => """
-SYSTEM: You are a module challenge planner. You do not create vocabulary.
-OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
-
-SCHEMA:
-{
-  "selectedWords": ["string"],
-  "recommendedGameType": "SPELL_CATCHER",
-  "difficultyLevel": 1,
-  "reason": "string",
-  "focusType": "WEAKNESS"
-}
-
-RULES:
-1. selectedWords must come exactly from the provided module item words.
-2. recommendedGameType must be SPELL_CATCHER, SYLLABLE_SUSHI, or VOICE_BRIDGE.
-3. difficultyLevel must be 1, 2, or 3.
-4. If weakWords are provided, include weak words first.
-5. Do not invent, translate, or normalize new words.
-""";
 
   private static string BuildModulePlanUserPrompt(ModuleChallengePlanRequest request)
     => JsonSerializer.Serialize(new
@@ -665,44 +678,6 @@ RULES:
         item.DifficultyLevel,
         item.MeaningText,
         item.ExampleSentence
-      })
-    }, JsonOptions);
-
-  private static string BuildGameConfigSystemPrompt(string gameType) => $$"""
-SYSTEM: You generate validated game config envelopes for adaptive vocabulary games.
-OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
-
-SCHEMA:
-{
-  "gameType": "{{gameType}}",
-  "config": { }
-}
-
-RULES:
-1. gameType must be exactly {{gameType}}.
-2. Use only the provided words.
-3. Return a config object suitable for the game type.
-4. Do not add new vocabulary words.
-""";
-
-  private static string BuildGameConfigUserPrompt(GameConfigGenerationRequest request)
-    => JsonSerializer.Serialize(new
-    {
-      request.GameType,
-      request.DifficultyLevel,
-      language = "ms",
-      words = request.Words.Select(word => new
-      {
-        word.VocabularyItemId,
-        word.Word,
-        word.BmText,
-        word.EnText,
-        word.ZhText,
-        word.SyllablesJson,
-        word.SyllableText,
-        word.MeaningText,
-        word.ExampleSentence,
-        word.DifficultyLevel
       })
     }, JsonOptions);
 
@@ -745,6 +720,15 @@ RULES:
 
   private static bool IsAdaptiveGameType(string gameType)
     => gameType is "SPELL_CATCHER" or "SYLLABLE_SUSHI" or "VOICE_BRIDGE";
+
+  private static string ToGameConfigUseCase(string gameType)
+    => gameType switch
+    {
+      "SPELL_CATCHER" => AiUseCases.SpellCatcherConfig,
+      "SYLLABLE_SUSHI" => AiUseCases.SyllableSushiConfig,
+      "VOICE_BRIDGE" => AiUseCases.VoiceBridgeConfig,
+      _ => $"{gameType}_CONFIG"
+    };
 
   private static string NormalizeGameType(string? gameType)
   {

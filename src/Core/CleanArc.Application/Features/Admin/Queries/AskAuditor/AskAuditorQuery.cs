@@ -7,6 +7,7 @@ public class AskAuditorQuery : IRequest<OperationResult<AskAuditorResult>>
 {
     public int InstitutionId { get; set; }
     public string Question { get; set; }
+    public int? UserId { get; set; }
 }
 
 public class AskAuditorResult

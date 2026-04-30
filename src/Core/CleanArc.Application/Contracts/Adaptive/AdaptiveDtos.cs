@@ -234,7 +234,10 @@ public record AssignAdaptiveChallengeRequest(
     DateTime? DueAt,
     GeneratedAdaptiveChallengePreviewDto Preview,
     string? Subject = null,
-    int? CustomModuleId = null);
+    int? CustomModuleId = null,
+    string? AiGenerationStatus = null,
+    string? AiUseCase = null,
+    int? AiAuditLogId = null);
 
 public record AssignedAdaptiveChallengeDto(
     int ChallengeId,

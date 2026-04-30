@@ -55,7 +55,7 @@ internal sealed class GenerateAiChallengeDraftCommandHandler(
       return OperationResult<GenerateAiChallengeDraftDto>.FailureResult(retrieval.ErrorMessage ?? "RAG retrieval failed.");
 
     var draftResult = await challengeAiPipelineService.GenerateStructuredVocabularyFromInputAsync(
-      new CustomVocabularyGenerationRequest(request.GameKey, prompt, retrieval.Result.AugmentedContext),
+      new CustomVocabularyGenerationRequest(request.GameKey, prompt, retrieval.Result.AugmentedContext, request.UserId, request.ClassroomId),
       cancellationToken);
 
     if (!draftResult.IsSuccess)
@@ -68,6 +68,7 @@ internal sealed class GenerateAiChallengeDraftCommandHandler(
       draft.DraftSchema,
       draft.DraftPayload,
       draft.PlayableContentData,
+      draft.AiAuditLogId,
       sourceDocumentName,
       retrieval.Result.RetrievedChunks
         .Select(chunk => new RagChunkDto(chunk.SourceLabel, chunk.Content, Math.Round(chunk.Similarity, 4)))

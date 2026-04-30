@@ -33,5 +33,7 @@ public record CreateChallengeCommand(
     string? SourcePrompt,
     string? SourceDocumentName,
     /// <summary>When set, the challenge belongs to this classroom (teacher-created).</summary>
-    int? ClassroomId = null
+    int? ClassroomId = null,
+    /// <summary>AI audit row from the draft generation step, when the challenge came from an AI draft.</summary>
+    int? AiAuditLogId = null
 ) : IRequest<OperationResult<CreateChallengeDto>>;

@@ -303,6 +303,111 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.ToTable("ActivityLogs");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.AI.AiAuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_time");
+
+                    b.Property<string>("InputPayloadJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("input_payload_json");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("ModelName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("model_name");
+
+                    b.Property<string>("ParsedOutputJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("parsed_output_json");
+
+                    b.Property<string>("PromptVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("prompt_version");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("RawOutputJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_output_json");
+
+                    b.Property<int?>("RelatedChallengeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("related_challenge_id");
+
+                    b.Property<int?>("RelatedClassroomId")
+                        .HasColumnType("integer")
+                        .HasColumnName("related_classroom_id");
+
+                    b.Property<int?>("RelatedModuleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("related_module_id");
+
+                    b.Property<int?>("RelatedUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("related_user_id");
+
+                    b.Property<string>("UseCase")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("use_case");
+
+                    b.Property<string>("ValidationErrorsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("validation_errors_json");
+
+                    b.Property<string>("ValidationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("PENDING")
+                        .HasColumnName("validation_status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RelatedChallengeId");
+
+                    b.HasIndex("RelatedClassroomId");
+
+                    b.HasIndex("RelatedModuleId");
+
+                    b.HasIndex("RelatedUserId");
+
+                    b.HasIndex("UseCase", "CreatedAt");
+
+                    b.ToTable("ai_audit_logs", (string)null);
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.ChallengeItem", b =>
                 {
                     b.Property<int>("Id")
@@ -1442,6 +1547,23 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AiAuditLogId")
+                        .HasColumnType("integer")
+                        .HasColumnName("ai_audit_log_id");
+
+                    b.Property<string>("AiGenerationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("NONE")
+                        .HasColumnName("ai_generation_status");
+
+                    b.Property<string>("AiUseCase")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("ai_use_case");
+
                     b.Property<DateTime?>("AssignedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("assigned_at");
@@ -1523,6 +1645,8 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AiAuditLogId");
 
                     b.HasIndex("ClassroomId");
 
@@ -2538,6 +2662,16 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CleanArc.Domain.Entities.AI.AiAuditLog", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.Quiz.Challenge", "RelatedChallenge")
+                        .WithMany()
+                        .HasForeignKey("RelatedChallengeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("RelatedChallenge");
+                });
+
             modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.ChallengeItem", b =>
                 {
                     b.HasOne("CleanArc.Domain.Entities.Quiz.Challenge", "Challenge")
@@ -2781,6 +2915,11 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Quiz.Challenge", b =>
                 {
+                    b.HasOne("CleanArc.Domain.Entities.AI.AiAuditLog", "AiAuditLog")
+                        .WithMany()
+                        .HasForeignKey("AiAuditLogId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("CleanArc.Domain.Entities.Classroom.Classroom", "Classroom")
                         .WithMany("Challenges")
                         .HasForeignKey("ClassroomId")
@@ -2810,6 +2949,8 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AiAuditLog");
 
                     b.Navigation("Classroom");
 

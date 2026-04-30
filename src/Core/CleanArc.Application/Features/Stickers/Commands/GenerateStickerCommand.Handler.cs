@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Contracts.Infrastructure.Stickers;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
@@ -12,15 +13,21 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
   private readonly IUnitOfWork _unitOfWork;
   private readonly IStickerImageGenerationService _imageGenerationService;
   private readonly IStickerImageStorageService _imageStorageService;
+  private readonly IAiAuditService _aiAuditService;
+  private readonly IAiPromptRegistry _promptRegistry;
 
   public GenerateStickerCommandHandler(
     IUnitOfWork unitOfWork,
     IStickerImageGenerationService imageGenerationService,
-    IStickerImageStorageService imageStorageService)
+    IStickerImageStorageService imageStorageService,
+    IAiAuditService aiAuditService,
+    IAiPromptRegistry promptRegistry)
   {
     _unitOfWork = unitOfWork;
     _imageGenerationService = imageGenerationService;
     _imageStorageService = imageStorageService;
+    _aiAuditService = aiAuditService;
+    _promptRegistry = promptRegistry;
   }
 
   public async ValueTask<OperationResult<GeneratedStickerDto>> Handle(GenerateStickerCommand request, CancellationToken cancellationToken)
@@ -43,12 +50,35 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
       }
     }
 
+    var prompt = _promptRegistry.Get(AiUseCases.StickerGeneration);
+    var auditLogId = await _aiAuditService.StartAsync(
+      new AiAuditStartRequest(
+        AiUseCases.StickerGeneration,
+        "HUGGING_FACE",
+        null,
+        prompt.Version,
+        JsonSerializer.Serialize(new
+        {
+          request.Subject,
+          request.Style,
+          request.Mood
+        }),
+        request.UserId),
+      cancellationToken);
+
     var generation = await _imageGenerationService.GenerateAsync(
       new StickerGenerationRequest(request.Subject, request.Style, request.Mood),
       cancellationToken);
 
     if (!generation.IsSuccess)
+    {
+      await _aiAuditService.FailAsync(
+        auditLogId,
+        null,
+        new[] { generation.ErrorMessage ?? "Sticker generation failed." },
+        cancellationToken);
       return OperationResult<GeneratedStickerDto>.FailureResult(generation.ErrorMessage ?? "Sticker generation failed.");
+    }
 
     var upload = await _imageStorageService.UploadPngAsync(
       generation.Result.ImageBytes,
@@ -56,7 +86,18 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
       cancellationToken);
 
     if (!upload.IsSuccess)
+    {
+      await _aiAuditService.FailAsync(
+        auditLogId,
+        JsonSerializer.Serialize(new
+        {
+          generation.Result.ModelName,
+          imageBytes = generation.Result.ImageBytes.Length
+        }),
+        new[] { upload.ErrorMessage ?? "Sticker upload failed." },
+        cancellationToken);
       return OperationResult<GeneratedStickerDto>.FailureResult(upload.ErrorMessage ?? "Sticker upload failed.");
+    }
 
     await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
     try
@@ -87,6 +128,23 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
       await _unitOfWork.CommitAsync();
       await transaction.CommitAsync(cancellationToken);
 
+      await _aiAuditService.CompleteAsync(
+        auditLogId,
+        JsonSerializer.Serialize(new
+        {
+          generation.Result.ModelName,
+          imageBytes = generation.Result.ImageBytes.Length
+        }),
+        JsonSerializer.Serialize(new
+        {
+          sticker.Id,
+          sticker.ImageUrl,
+          generation.Result.ModelName
+        }),
+        AiValidationStatuses.Valid,
+        Array.Empty<string>(),
+        cancellationToken);
+
       return OperationResult<GeneratedStickerDto>.SuccessResult(new GeneratedStickerDto(
         sticker.Id,
         sticker.ImageUrl,
@@ -97,6 +155,7 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
     catch (Exception ex)
     {
       await transaction.RollbackAsync(cancellationToken);
+      await _aiAuditService.FailAsync(auditLogId, null, new[] { ex.Message }, cancellationToken);
       return OperationResult<GeneratedStickerDto>.FailureResult($"Sticker generation failed: {ex.Message}");
     }
   }

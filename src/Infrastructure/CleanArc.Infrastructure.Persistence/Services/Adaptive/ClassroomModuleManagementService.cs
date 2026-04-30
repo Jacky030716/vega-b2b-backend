@@ -14,6 +14,7 @@ public class ClassroomModuleManagementService(
     ApplicationDbContext dbContext,
     IChallengeOrchestrator challengeOrchestrator,
     IChallengeAiPipelineService challengeAiPipelineService,
+    IAiAuditService aiAuditService,
     ILogger<ClassroomModuleManagementService> logger) : IClassroomModuleManagementService
 {
     private static readonly HashSet<ChallengeLifecycleState> ActiveStates = new()
@@ -149,7 +150,9 @@ public class ClassroomModuleManagementService(
                 request.Mode,
                 vocabulary.Select(ToAiItem).ToList(),
                 weakness.WeakWords,
-                weakness.WeakSkill),
+                weakness.WeakSkill,
+                teacherId,
+                classroom.Id),
             cancellationToken);
 
         if (aiPlan.IsSuccess)
@@ -170,10 +173,19 @@ public class ClassroomModuleManagementService(
 
             if (config.IsSuccess)
             {
-                return await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
+                var assigned = await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
                     teacherId, null, classroom.Id, null,
                     config.Result with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id },
-                    module.Subject, null), cancellationToken);
+                    module.Subject,
+                    null,
+                    AiGenerationStatuses.AiAssisted,
+                    AiUseCases.ModuleChallengePlanning,
+                    aiPlan.Result.AiAuditLogId), cancellationToken);
+
+                if (aiPlan.Result.AiAuditLogId is int auditLogId)
+                    await aiAuditService.AttachChallengeAsync(auditLogId, assigned.ChallengeId, cancellationToken);
+
+                return assigned;
             }
 
             logger.LogWarning(
@@ -189,7 +201,13 @@ public class ClassroomModuleManagementService(
                 aiPlan.ErrorMessage);
         }
 
-        return await GenerateRuleBasedModuleChallengeAsync(module, classroom.Id, request, teacherId, cancellationToken);
+        return await GenerateRuleBasedModuleChallengeAsync(
+            module,
+            classroom.Id,
+            request,
+            teacherId,
+            aiPlan.Result?.AiAuditLogId,
+            cancellationToken);
     }
 
     private async Task<AssignedAdaptiveChallengeDto> GenerateRuleBasedModuleChallengeAsync(
@@ -197,16 +215,26 @@ public class ClassroomModuleManagementService(
         int classroomId,
         GenerateModuleChallengeRequest request,
         int teacherId,
+        int? failedAiAuditLogId,
         CancellationToken cancellationToken)
     {
         var preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
             "class", null, classroomId, request.Mode, "PREDEFINED_MODULE", module.Id,
             request.GameType, request.Mode.Replace('_', ' '), null, null, null), cancellationToken);
 
-        return await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
+        var assigned = await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
             teacherId, null, classroomId, null,
             preview with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id },
-            module.Subject, null), cancellationToken);
+            module.Subject,
+            null,
+            failedAiAuditLogId.HasValue ? AiGenerationStatuses.FailedFallback : AiGenerationStatuses.None,
+            failedAiAuditLogId.HasValue ? AiUseCases.ModuleChallengePlanning : null,
+            failedAiAuditLogId), cancellationToken);
+
+        if (failedAiAuditLogId is int auditLogId)
+            await aiAuditService.AttachChallengeAsync(auditLogId, assigned.ChallengeId, cancellationToken);
+
+        return assigned;
     }
 
     public async Task<IReadOnlyList<ModuleChallengeDto>> GetCustomModuleChallengesAsync(int customModuleId, int teacherId, CancellationToken cancellationToken)

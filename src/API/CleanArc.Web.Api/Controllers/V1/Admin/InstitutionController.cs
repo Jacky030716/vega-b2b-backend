@@ -4,6 +4,7 @@ using CleanArc.Application.Features.Admin.Commands.BulkCreateUsers;
 using CleanArc.Application.Features.Admin.Queries.AskAuditor;
 using CleanArc.Application.Features.Admin.Queries.GetInstitutionUsers;
 using CleanArc.Application.Features.Admin.Queries.GetInstitutionStats;
+using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.BaseController;
 using CleanArc.WebFramework.WebExtensions;
 using Mediator;
@@ -74,6 +75,8 @@ public class InstitutionController(
     public async Task<IActionResult> AskAuditor([FromBody] AskAuditorQuery query)
     {
         if (query.InstitutionId == 0) query.InstitutionId = 1;
+        if (int.TryParse(User.Identity!.GetUserId(), out var userId))
+            query.UserId = userId;
 
         var result = await sender.Send(query);
         return base.OperationResult(result);

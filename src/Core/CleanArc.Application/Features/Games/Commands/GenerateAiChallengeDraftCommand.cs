@@ -13,6 +13,7 @@ public record GenerateAiChallengeDraftDto(
   string DraftSchema,
   string DraftPayload,
   string PlayableContentData,
+  int? AiAuditLogId,
   string? SourceDocumentName,
   IReadOnlyList<RagChunkDto> RetrievedChunks);
 
