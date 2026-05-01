@@ -18,11 +18,36 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         int classroomId,
         int studentId,
         CancellationToken cancellationToken)
+        => await GetClassroomModulesInternalAsync(classroomId, studentId, null, cancellationToken);
+
+    public async Task<IReadOnlyList<StudentModuleTrackDto>> GetClassroomModulesAsync(
+        int classroomId,
+        int studentId,
+        string subject,
+        CancellationToken cancellationToken)
+        => await GetClassroomModulesInternalAsync(classroomId, studentId, subject, cancellationToken);
+
+    private async Task<IReadOnlyList<StudentModuleTrackDto>> GetClassroomModulesInternalAsync(
+        int classroomId,
+        int studentId,
+        string? subject,
+        CancellationToken cancellationToken)
     {
         var classroom = await GetStudentClassroomAsync(classroomId, studentId, cancellationToken);
+        await EnsureClassroomModuleLinksAsync(classroom, cancellationToken);
 
-        var modules = await dbContext.SyllabusModules.AsNoTracking()
-            .Where(module => module.IsActive && module.YearLevel == classroom.YearLevel)
+        var moduleQuery = dbContext.ClassroomModules.AsNoTracking()
+            .Include(link => link.Module)
+            .Where(link => link.ClassroomId == classroomId && link.Module.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(subject))
+        {
+            var normalizedSubject = subject.Trim();
+            moduleQuery = moduleQuery.Where(link => link.Module.Subject == normalizedSubject);
+        }
+
+        var modules = await moduleQuery
+            .Select(link => link.Module)
             .OrderBy(module => module.Subject)
             .ThenBy(module => module.UnitNumber ?? int.MaxValue)
             .ThenBy(module => module.Title)
@@ -78,19 +103,47 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<string>> GetClassroomSubjectsAsync(
+        int classroomId,
+        int studentId,
+        CancellationToken cancellationToken)
+    {
+        var classroom = await GetStudentClassroomAsync(classroomId, studentId, cancellationToken);
+        await EnsureClassroomModuleLinksAsync(classroom, cancellationToken);
+        var subjects = await dbContext.ClassroomModules.AsNoTracking()
+            .Include(link => link.Module)
+            .Where(link => link.ClassroomId == classroomId && link.Module.IsActive)
+            .Select(link => link.Module.Subject)
+            .Distinct()
+            .OrderBy(subject => subject)
+            .ToListAsync(cancellationToken);
+
+        if (subjects.Count > 0)
+        {
+            return subjects;
+        }
+
+        return string.IsNullOrWhiteSpace(classroom.Subject)
+            ? Array.Empty<string>()
+            : new[] { classroom.Subject.Trim() };
+    }
+
     public async Task<StudentModuleProgressionDto> GetModuleProgressionAsync(
         int moduleId,
         int classroomId,
         int studentId,
         CancellationToken cancellationToken)
     {
-        var classroom = await GetStudentClassroomAsync(classroomId, studentId, cancellationToken);
         var module = await dbContext.SyllabusModules.AsNoTracking()
             .FirstOrDefaultAsync(item => item.Id == moduleId && item.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Module not found");
 
-        if (module.YearLevel != classroom.YearLevel)
-            throw new InvalidOperationException("Module year level does not match classroom year level");
+        var classroom = await GetStudentClassroomAsync(classroomId, studentId, cancellationToken);
+        await EnsureClassroomModuleLinksAsync(classroom, cancellationToken);
+        var isAttached = await dbContext.ClassroomModules.AsNoTracking()
+            .AnyAsync(link => link.ClassroomId == classroomId && link.ModuleId == moduleId, cancellationToken);
+        if (!isAttached)
+            throw new InvalidOperationException("Module is not attached to this classroom");
 
         var challenges = await dbContext.Challenges.AsNoTracking()
             .Include(challenge => challenge.Game)
@@ -161,7 +214,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         CancellationToken cancellationToken)
     {
         var classroom = await dbContext.Classrooms.AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == classroomId && item.IsActive, cancellationToken)
+            .FirstOrDefaultAsync(item => item.Id == classroomId && item.IsActive && !item.IsDeleted, cancellationToken)
             ?? throw new InvalidOperationException("Classroom not found");
 
         var isMember = await dbContext.ClassroomStudents.AsNoTracking()
@@ -170,6 +223,82 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             throw new UnauthorizedAccessException("You do not belong to this classroom");
 
         return classroom;
+    }
+
+    private async Task EnsureClassroomModuleLinksAsync(
+        Domain.Entities.Classroom.Classroom classroom,
+        CancellationToken cancellationToken)
+    {
+        var subjects = await dbContext.ClassroomSubjects.AsNoTracking()
+            .Where(subject => subject.ClassroomId == classroom.Id)
+            .Select(subject => subject.Subject)
+            .ToListAsync(cancellationToken);
+
+        if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
+        {
+            subjects.Add(classroom.Subject.Trim());
+        }
+
+        subjects = subjects
+            .Where(subject => !string.IsNullOrWhiteSpace(subject))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (subjects.Count == 0)
+        {
+            return;
+        }
+
+        var existingSubjectRows = await dbContext.ClassroomSubjects.AsNoTracking()
+            .Where(subject => subject.ClassroomId == classroom.Id)
+            .Select(subject => subject.Subject)
+            .ToListAsync(cancellationToken);
+        var existingSubjects = existingSubjectRows.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var subject in subjects.Where(subject => !existingSubjects.Contains(subject)))
+        {
+            dbContext.ClassroomSubjects.Add(new Domain.Entities.Classroom.ClassroomSubject
+            {
+                ClassroomId = classroom.Id,
+                Subject = subject
+            });
+        }
+
+        var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
+            .Where(module => module.IsActive
+                             && module.YearLevel == classroom.YearLevel
+                             && subjects.Contains(module.Subject))
+            .Select(module => module.Id)
+            .ToListAsync(cancellationToken);
+
+        var existingModuleIds = await dbContext.ClassroomModules.AsNoTracking()
+            .Where(link => link.ClassroomId == classroom.Id && matchingModuleIds.Contains(link.ModuleId))
+            .Select(link => link.ModuleId)
+            .ToListAsync(cancellationToken);
+        var existingModules = existingModuleIds.ToHashSet();
+
+        foreach (var moduleId in matchingModuleIds.Where(moduleId => !existingModules.Contains(moduleId)))
+        {
+            dbContext.ClassroomModules.Add(new Domain.Entities.Classroom.ClassroomModule
+            {
+                ClassroomId = classroom.Id,
+                ModuleId = moduleId
+            });
+        }
+
+        var hasCustomModule = await dbContext.CustomModules.AsNoTracking()
+            .AnyAsync(module => module.ClassroomId == classroom.Id, cancellationToken);
+        if (!hasCustomModule)
+        {
+            dbContext.CustomModules.Add(new Domain.Entities.Classroom.CustomModule
+            {
+                ClassroomId = classroom.Id,
+                Name = "Custom Module",
+                YearLevel = classroom.YearLevel,
+                CreatedByTeacherId = classroom.TeacherId
+            });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static IReadOnlyList<StudentProgressionNodeDto> ToProgressionNodes(IReadOnlyList<Challenge> challenges)

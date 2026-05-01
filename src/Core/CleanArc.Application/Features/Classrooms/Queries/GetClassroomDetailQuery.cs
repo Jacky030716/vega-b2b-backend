@@ -16,5 +16,6 @@ public record ClassroomDetailDto(
     int TeacherId,
     string TeacherName,
     int StudentCount,
-    int ChallengeCount
+    int ChallengeCount,
+    IReadOnlyList<string> Subjects
 );

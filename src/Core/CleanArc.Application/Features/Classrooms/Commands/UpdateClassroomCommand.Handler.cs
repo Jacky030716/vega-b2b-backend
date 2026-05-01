@@ -23,11 +23,14 @@ internal class UpdateClassroomCommandHandler(IUnitOfWork unitOfWork)
     if (name.Length > 200)
       return OperationResult<UpdatedClassroomDto>.FailureResult("Classroom name must be 200 characters or fewer");
 
-    var subject = request.Subject?.Trim() ?? string.Empty;
-    if (string.IsNullOrWhiteSpace(subject))
-      return OperationResult<UpdatedClassroomDto>.FailureResult("Subject is required");
+    var subjects = NormalizeSubjects(request.Subjects);
+    if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(request.Subject))
+      subjects.Add(request.Subject.Trim());
 
-    if (subject.Length > 100)
+    if (subjects.Count == 0)
+      return OperationResult<UpdatedClassroomDto>.FailureResult("At least one subject is required");
+
+    if (subjects.Any(subject => subject.Length > 100))
       return OperationResult<UpdatedClassroomDto>.FailureResult("Subject must be 100 characters or fewer");
 
     var requestedYearLevel = request.YearLevel ?? classroom.YearLevel;
@@ -42,11 +45,12 @@ internal class UpdateClassroomCommandHandler(IUnitOfWork unitOfWork)
     }
 
     classroom.Name = name;
-    classroom.Subject = subject;
+    classroom.Subject = subjects[0];
     classroom.Description = request.Description?.Trim() ?? string.Empty;
     classroom.YearLevel = requestedYearLevel;
 
     await unitOfWork.ClassroomRepository.UpdateClassroomAsync(classroom);
+    await unitOfWork.ClassroomRepository.ReplaceClassroomSubjectsAndModulesAsync(classroom.Id, subjects, classroom.TeacherId);
 
     return OperationResult<UpdatedClassroomDto>.SuccessResult(new UpdatedClassroomDto(
         classroom.Id,
@@ -54,6 +58,16 @@ internal class UpdateClassroomCommandHandler(IUnitOfWork unitOfWork)
         classroom.Subject,
         classroom.YearLevel,
         classroom.Description,
-        classroom.ModifiedDate ?? DateTime.UtcNow));
+        classroom.ModifiedDate ?? DateTime.UtcNow,
+        subjects));
+  }
+
+  private static List<string> NormalizeSubjects(IEnumerable<string>? subjects)
+  {
+    return (subjects ?? Array.Empty<string>())
+        .Where(subject => !string.IsNullOrWhiteSpace(subject))
+        .Select(subject => subject.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
   }
 }

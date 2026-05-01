@@ -1,4 +1,5 @@
 using CleanArc.Domain.Common;
+using CleanArc.Domain.Entities.Classroom;
 
 namespace CleanArc.Domain.Entities.Adaptive;
 
@@ -19,4 +20,5 @@ public class SyllabusModule : BaseEntity<int>
     public bool IsActive { get; set; } = true;
 
     public ICollection<VocabularyItem> VocabularyItems { get; set; } = new List<VocabularyItem>();
+    public ICollection<ClassroomModule> ClassroomModules { get; set; } = new List<ClassroomModule>();
 }

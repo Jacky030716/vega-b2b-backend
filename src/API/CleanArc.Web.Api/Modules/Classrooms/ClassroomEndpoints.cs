@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Carter;
 using CleanArc.Application.Contracts.Adaptive;
+using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Features.Classrooms.Commands;
 using CleanArc.Application.Features.Classrooms.Queries;
 using CleanArc.Application.Features.Games.Queries;
@@ -52,6 +53,51 @@ public class ClassroomEndpoints : ICarterModule
       }
     }), _version, "GetStudentClassroomModules", _tag).RequireAuthorization();
 
+    app.MapEndpoint(builder => builder.MapGet("/api/v{version:apiVersion}/student/classrooms/{classroomId:int}/subjects", async (
+        int classroomId,
+        ClaimsPrincipal user,
+        IStudentModuleProgressionService service,
+        CancellationToken cancellationToken) =>
+    {
+      try
+      {
+        var studentId = int.Parse(user.Identity.GetUserId());
+        var result = await service.GetClassroomSubjectsAsync(classroomId, studentId, cancellationToken);
+        return Results.Ok(result);
+      }
+      catch (UnauthorizedAccessException ex)
+      {
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+      }
+      catch (InvalidOperationException ex)
+      {
+        return Results.NotFound(new { message = ex.Message });
+      }
+    }), _version, "GetStudentClassroomSubjects", _tag).RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapGet("/api/v{version:apiVersion}/student/classrooms/{classroomId:int}/subjects/{subject}/modules", async (
+        int classroomId,
+        string subject,
+        ClaimsPrincipal user,
+        IStudentModuleProgressionService service,
+        CancellationToken cancellationToken) =>
+    {
+      try
+      {
+        var studentId = int.Parse(user.Identity.GetUserId());
+        var result = await service.GetClassroomModulesAsync(classroomId, studentId, subject, cancellationToken);
+        return Results.Ok(result);
+      }
+      catch (UnauthorizedAccessException ex)
+      {
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+      }
+      catch (InvalidOperationException ex)
+      {
+        return Results.NotFound(new { message = ex.Message });
+      }
+    }), _version, "GetStudentSubjectModules", _tag).RequireAuthorization();
+
     app.MapEndpoint(builder => builder.MapGet("/api/v{version:apiVersion}/student/modules/{moduleId:int}/progression", async (
         int moduleId,
         [FromQuery] int classroomId,
@@ -74,6 +120,29 @@ public class ClassroomEndpoints : ICarterModule
         return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
       }
     }), _version, "GetStudentModuleProgression", _tag).RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapGet("/api/v{version:apiVersion}/student/modules/{moduleId:int}/adventure-map", async (
+        int moduleId,
+        [FromQuery] int classroomId,
+        ClaimsPrincipal user,
+        IStudentModuleProgressionService service,
+        CancellationToken cancellationToken) =>
+    {
+      try
+      {
+        var studentId = int.Parse(user.Identity.GetUserId());
+        var result = await service.GetModuleProgressionAsync(moduleId, classroomId, studentId, cancellationToken);
+        return Results.Ok(result);
+      }
+      catch (UnauthorizedAccessException ex)
+      {
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+      }
+      catch (InvalidOperationException ex)
+      {
+        return Results.NotFound(new { message = ex.Message });
+      }
+    }), _version, "GetStudentModuleAdventureMap", _tag).RequireAuthorization();
 
     app.MapEndpoint(builder => builder.MapGet("/api/v{version:apiVersion}/student/custom-challenges", async (
         [FromQuery] int classroomId,
@@ -98,10 +167,11 @@ public class ClassroomEndpoints : ICarterModule
     }), _version, "GetStudentCustomChallenges", _tag).RequireAuthorization();
 
     // Get teacher classrooms
-    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}teacher", async ([FromQuery] bool includeDeleted, ClaimsPrincipal user, ISender sender) =>
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}teacher", async ([FromQuery] bool? includeDeleted, ClaimsPrincipal user, ISender sender) =>
     {
       var userId = int.Parse(user.Identity.GetUserId());
-      if (includeDeleted && !user.IsInRole("admin"))
+      var shouldIncludeDeleted = includeDeleted == true;
+      if (shouldIncludeDeleted && !user.IsInRole("admin"))
       {
         return Results.Json(new Dictionary<string, List<string>>
         {
@@ -109,7 +179,7 @@ public class ClassroomEndpoints : ICarterModule
         }, statusCode: StatusCodes.Status403Forbidden);
       }
 
-      var result = await sender.Send(new GetTeacherClassroomsQuery(userId, includeDeleted && user.IsInRole("admin")));
+      var result = await sender.Send(new GetTeacherClassroomsQuery(userId, shouldIncludeDeleted && user.IsInRole("admin")));
       return result.ToEndpointResult();
     }), _version, "GetTeacherClassrooms", _tag).RequireAuthorization();
 
@@ -142,6 +212,52 @@ public class ClassroomEndpoints : ICarterModule
         return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
       }
     }), _version, "GetClassroomModuleOverview", _tag)
+    .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId:int}}/modules", async (
+        int classroomId,
+        ClaimsPrincipal user,
+        IClassroomModuleManagementService service,
+        CancellationToken cancellationToken) =>
+    {
+      try
+      {
+        var teacherId = int.Parse(user.Identity.GetUserId());
+        var result = await service.GetClassroomModulesAsync(classroomId, teacherId, cancellationToken);
+        return Results.Ok(result);
+      }
+      catch (UnauthorizedAccessException ex)
+      {
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+      }
+      catch (InvalidOperationException ex)
+      {
+        return Results.NotFound(new { message = ex.Message });
+      }
+    }), _version, "GetClassroomModules", _tag)
+    .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId:int}}/custom-module", async (
+        int classroomId,
+        ClaimsPrincipal user,
+        IClassroomModuleManagementService service,
+        CancellationToken cancellationToken) =>
+    {
+      try
+      {
+        var teacherId = int.Parse(user.Identity.GetUserId());
+        var result = await service.GetCustomModuleAsync(classroomId, teacherId, cancellationToken);
+        return Results.Ok(result);
+      }
+      catch (UnauthorizedAccessException ex)
+      {
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+      }
+      catch (InvalidOperationException ex)
+      {
+        return Results.NotFound(new { message = ex.Message });
+      }
+    }), _version, "GetClassroomCustomModule", _tag)
     .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
     // Get classroom members (crew)
@@ -222,9 +338,43 @@ public class ClassroomEndpoints : ICarterModule
     app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}", async ([FromBody] CreateClassroomRequest request, ClaimsPrincipal user, ISender sender) =>
     {
       var userId = int.Parse(user.Identity.GetUserId());
-      var result = await sender.Send(new CreateClassroomCommand(userId, request.Name, request.Description, request.Subject, request.Thumbnail, request.YearLevel ?? 1));
+      var result = await sender.Send(new CreateClassroomCommand(userId, request.Name, request.Description, request.Subject, request.Subjects, request.Thumbnail, request.YearLevel ?? 1));
       return result.ToEndpointResult();
     }), _version, "CreateClassroom", _tag).RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}{{classroomId:int}}/provision-modules", async (
+        int classroomId,
+        ClaimsPrincipal user,
+        IUnitOfWork unitOfWork) =>
+    {
+      try
+      {
+        var userId = int.Parse(user.Identity.GetUserId());
+        var classroom = await unitOfWork.ClassroomRepository.GetClassroomByIdAsync(classroomId, includeDeleted: false);
+        if (classroom is null)
+        {
+          return Results.NotFound(new { message = "Classroom not found" });
+        }
+
+        if (classroom.TeacherId != userId && !user.IsInRole("admin"))
+        {
+          return Results.Json(new { message = "You do not manage this classroom" }, statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        var subjects = await unitOfWork.ClassroomRepository.GetClassroomSubjectsAsync(classroomId);
+        await unitOfWork.ClassroomRepository.ProvisionClassroomModulesAsync(classroomId, subjects, classroom.TeacherId);
+        return Results.Ok(new { success = true, message = "Classroom modules provisioned successfully." });
+      }
+      catch (UnauthorizedAccessException ex)
+      {
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+      }
+      catch (InvalidOperationException ex)
+      {
+        return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
+      }
+    }), _version, "ProvisionClassroomModules", _tag)
+    .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
     app.MapEndpoint(builder => builder.MapPatch($"{_routePrefix}{{classroomId:int}}", async (
         int classroomId,
@@ -239,6 +389,7 @@ public class ClassroomEndpoints : ICarterModule
           user.IsInRole("admin"),
           request.Name,
           request.Subject,
+          request.Subjects,
           request.YearLevel,
           request.Description));
       return result.ToEndpointResult();

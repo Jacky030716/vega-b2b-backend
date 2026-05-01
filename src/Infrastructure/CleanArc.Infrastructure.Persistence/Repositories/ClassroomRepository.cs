@@ -15,6 +15,8 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     return await DbContext.ClassroomStudents.AsNoTracking()
         .Where(cs => cs.UserId == userId && cs.Classroom.IsActive && !cs.Classroom.IsDeleted)
         .Include(cs => cs.Classroom)
+            .ThenInclude(c => c.Subjects)
+        .Include(cs => cs.Classroom)
             .ThenInclude(c => c.Teacher)
         .Select(cs => cs.Classroom)
         .ToListAsync();
@@ -24,6 +26,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   {
     var query = TableNoTracking
         .Include(c => c.Teacher)
+        .Include(c => c.Subjects)
         .Where(c => c.TeacherId == teacherId);
 
     if (!includeDeleted)
@@ -45,6 +48,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
 
     return await query
       .Include(c => c.Teacher)
+      .Include(c => c.Subjects)
       .FirstOrDefaultAsync(c => c.Id == classroomId);
   }
 
@@ -68,6 +72,194 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   {
     DbContext.Classrooms.Update(classroom);
     await DbContext.SaveChangesAsync();
+  }
+
+  public async Task ProvisionClassroomModulesAsync(int classroomId, IEnumerable<string> subjects, int teacherId)
+  {
+    var classroom = await DbContext.Classrooms
+        .Include(c => c.Subjects)
+        .FirstOrDefaultAsync(c => c.Id == classroomId && c.IsActive && !c.IsDeleted)
+        ?? throw new InvalidOperationException("Classroom not found");
+
+    if (classroom.TeacherId != teacherId)
+    {
+      throw new UnauthorizedAccessException("You do not manage this classroom");
+    }
+
+    var normalizedSubjects = NormalizeSubjects(subjects);
+    if (normalizedSubjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
+    {
+      normalizedSubjects.Add(classroom.Subject.Trim());
+    }
+
+    if (normalizedSubjects.Count == 0)
+    {
+      return;
+    }
+
+    classroom.Subject = normalizedSubjects[0];
+
+    var existingSubjects = classroom.Subjects
+        .Select(s => s.Subject)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    foreach (var subject in normalizedSubjects)
+    {
+      if (existingSubjects.Add(subject))
+      {
+        DbContext.ClassroomSubjects.Add(new ClassroomSubject
+        {
+          ClassroomId = classroom.Id,
+          Subject = subject
+        });
+      }
+    }
+
+    var matchingModuleIds = await DbContext.SyllabusModules.AsNoTracking()
+        .Where(m => m.IsActive
+                    && m.YearLevel == classroom.YearLevel
+                    && normalizedSubjects.Contains(m.Subject))
+        .Select(m => m.Id)
+        .ToListAsync();
+
+    if (matchingModuleIds.Count > 0)
+    {
+      var existingModuleIds = await DbContext.ClassroomModules.AsNoTracking()
+          .Where(m => m.ClassroomId == classroom.Id && matchingModuleIds.Contains(m.ModuleId))
+          .Select(m => m.ModuleId)
+          .ToListAsync();
+
+      var existingSet = existingModuleIds.ToHashSet();
+      foreach (var moduleId in matchingModuleIds.Where(id => !existingSet.Contains(id)))
+      {
+        DbContext.ClassroomModules.Add(new ClassroomModule
+        {
+          ClassroomId = classroom.Id,
+          ModuleId = moduleId
+        });
+      }
+    }
+
+    var hasCustomModule = await DbContext.CustomModules.AsNoTracking()
+        .AnyAsync(m => m.ClassroomId == classroom.Id);
+    if (!hasCustomModule)
+    {
+      DbContext.CustomModules.Add(new CustomModule
+      {
+        ClassroomId = classroom.Id,
+        Name = "Custom Module",
+        YearLevel = classroom.YearLevel,
+        CreatedByTeacherId = teacherId
+      });
+    }
+
+    await DbContext.SaveChangesAsync();
+  }
+
+  public async Task<IReadOnlyList<string>> GetClassroomSubjectsAsync(int classroomId)
+  {
+    var subjects = await DbContext.ClassroomSubjects.AsNoTracking()
+        .Where(s => s.ClassroomId == classroomId)
+        .OrderBy(s => s.Subject)
+        .Select(s => s.Subject)
+        .ToListAsync();
+
+    if (subjects.Count > 0)
+    {
+      return subjects;
+    }
+
+    var legacySubject = await DbContext.Classrooms.AsNoTracking()
+        .Where(c => c.Id == classroomId && c.IsActive && !c.IsDeleted)
+        .Select(c => c.Subject)
+        .FirstOrDefaultAsync();
+
+    return string.IsNullOrWhiteSpace(legacySubject)
+        ? Array.Empty<string>()
+        : new[] { legacySubject.Trim() };
+  }
+
+  public async Task ReplaceClassroomSubjectsAndModulesAsync(int classroomId, IEnumerable<string> subjects, int teacherId)
+  {
+    var classroom = await DbContext.Classrooms
+        .Include(c => c.Subjects)
+        .FirstOrDefaultAsync(c => c.Id == classroomId && c.IsActive && !c.IsDeleted)
+        ?? throw new InvalidOperationException("Classroom not found");
+
+    if (classroom.TeacherId != teacherId)
+    {
+      throw new UnauthorizedAccessException("You do not manage this classroom");
+    }
+
+    var normalizedSubjects = NormalizeSubjects(subjects);
+    if (normalizedSubjects.Count == 0)
+    {
+      throw new InvalidOperationException("At least one subject is required");
+    }
+
+    classroom.Subject = normalizedSubjects[0];
+
+    var subjectSet = normalizedSubjects.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var subjectsToRemove = classroom.Subjects
+        .Where(subject => !subjectSet.Contains(subject.Subject))
+        .ToList();
+    DbContext.ClassroomSubjects.RemoveRange(subjectsToRemove);
+
+    var existingSubjects = classroom.Subjects
+        .Where(subject => !subjectsToRemove.Contains(subject))
+        .Select(subject => subject.Subject)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    foreach (var subject in normalizedSubjects.Where(subject => !existingSubjects.Contains(subject)))
+    {
+      DbContext.ClassroomSubjects.Add(new ClassroomSubject
+      {
+        ClassroomId = classroom.Id,
+        Subject = subject
+      });
+    }
+
+    var desiredModuleIds = await DbContext.SyllabusModules.AsNoTracking()
+        .Where(module => module.IsActive
+                         && module.YearLevel == classroom.YearLevel
+                         && normalizedSubjects.Contains(module.Subject))
+        .Select(module => module.Id)
+        .ToListAsync();
+    var desiredSet = desiredModuleIds.ToHashSet();
+
+    var existingLinks = await DbContext.ClassroomModules
+        .Where(link => link.ClassroomId == classroom.Id)
+        .ToListAsync();
+    DbContext.ClassroomModules.RemoveRange(existingLinks.Where(link => !desiredSet.Contains(link.ModuleId)));
+
+    var existingModuleIds = existingLinks.Select(link => link.ModuleId).ToHashSet();
+    foreach (var moduleId in desiredModuleIds.Where(moduleId => !existingModuleIds.Contains(moduleId)))
+    {
+      DbContext.ClassroomModules.Add(new ClassroomModule
+      {
+        ClassroomId = classroom.Id,
+        ModuleId = moduleId
+      });
+    }
+
+    var hasCustomModule = await DbContext.CustomModules.AsNoTracking()
+        .AnyAsync(module => module.ClassroomId == classroom.Id);
+    if (!hasCustomModule)
+    {
+      DbContext.CustomModules.Add(new CustomModule
+      {
+        ClassroomId = classroom.Id,
+        Name = "Custom Module",
+        YearLevel = classroom.YearLevel,
+        CreatedByTeacherId = teacherId
+      });
+    }
+
+    await DbContext.SaveChangesAsync();
+  }
+
+  public async Task<bool> IsModuleAttachedToClassroomAsync(int classroomId, int moduleId)
+  {
+    return await DbContext.ClassroomModules.AsNoTracking()
+        .AnyAsync(m => m.ClassroomId == classroomId && m.ModuleId == moduleId);
   }
 
   public async Task DeleteClassroomAsync(int classroomId)
@@ -286,5 +478,14 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     }
 
     return challengeIds;
+  }
+
+  private static List<string> NormalizeSubjects(IEnumerable<string> subjects)
+  {
+    return subjects
+        .Where(subject => !string.IsNullOrWhiteSpace(subject))
+        .Select(subject => subject.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
   }
 }

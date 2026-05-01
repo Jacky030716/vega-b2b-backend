@@ -79,6 +79,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     // Classroom
     public DbSet<Classroom> Classrooms { get; set; }
     public DbSet<ClassroomStudent> ClassroomStudents { get; set; }
+    public DbSet<ClassroomSubject> ClassroomSubjects { get; set; }
+    public DbSet<ClassroomModule> ClassroomModules { get; set; }
     public DbSet<CustomModule> CustomModules { get; set; }
     public DbSet<StudentCredential> StudentCredentials { get; set; }
 

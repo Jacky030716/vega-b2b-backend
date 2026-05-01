@@ -12,6 +12,10 @@ public interface IClassroomRepository
   Task<Classroom> GetClassroomByJoinCodeAsync(string joinCode);
   Task<Classroom> CreateClassroomAsync(Classroom classroom);
   Task UpdateClassroomAsync(Classroom classroom);
+  Task ProvisionClassroomModulesAsync(int classroomId, IEnumerable<string> subjects, int teacherId);
+  Task ReplaceClassroomSubjectsAndModulesAsync(int classroomId, IEnumerable<string> subjects, int teacherId);
+  Task<IReadOnlyList<string>> GetClassroomSubjectsAsync(int classroomId);
+  Task<bool> IsModuleAttachedToClassroomAsync(int classroomId, int moduleId);
   Task ArchiveClassroomAsync(Classroom classroom, int deletedBy);
   Task DeleteClassroomAsync(int classroomId);
   Task<bool> HasModulesOrChallengesAsync(int classroomId);

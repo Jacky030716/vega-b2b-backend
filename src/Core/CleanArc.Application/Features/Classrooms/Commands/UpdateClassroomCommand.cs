@@ -9,6 +9,7 @@ public record UpdateClassroomCommand(
     bool IsAdmin,
     string Name,
     string Subject,
+    IReadOnlyCollection<string>? Subjects,
     int? YearLevel,
     string? Description) : IRequest<OperationResult<UpdatedClassroomDto>>;
 
@@ -18,4 +19,5 @@ public record UpdatedClassroomDto(
     string Subject,
     int YearLevel,
     string Description,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    IReadOnlyList<string> Subjects);

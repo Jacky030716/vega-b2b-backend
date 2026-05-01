@@ -26,11 +26,14 @@ public class ClassroomModuleManagementService(
     public async Task<ClassroomModuleOverviewDto> GetModuleOverviewAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
     {
         var classroom = await GetTeacherClassroomAsync(classroomId, teacherId, cancellationToken);
+        await EnsureClassroomModuleLinksAsync(classroom, teacherId, cancellationToken);
         var customModule = await EnsureCustomModuleAsync(classroom, teacherId, cancellationToken);
         var studentCount = await dbContext.ClassroomStudents.CountAsync(s => s.ClassroomId == classroomId, cancellationToken);
 
-        var modules = await dbContext.SyllabusModules.AsNoTracking()
-            .Where(m => m.IsActive && m.YearLevel == classroom.YearLevel)
+        var modules = await dbContext.ClassroomModules.AsNoTracking()
+            .Include(link => link.Module)
+            .Where(link => link.ClassroomId == classroomId && link.Module.IsActive)
+            .Select(link => link.Module)
             .OrderBy(m => m.Subject)
             .ThenBy(m => m.UnitNumber ?? int.MaxValue)
             .ThenBy(m => m.Title)
@@ -108,9 +111,25 @@ public class ClassroomModuleManagementService(
             new CustomModuleSummaryDto(customModule.Id, customModule.Name, customChallengeCounts.Total, customChallengeCounts.Active));
     }
 
+    public async Task<IReadOnlyList<SubjectModuleGroupDto>> GetClassroomModulesAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
+    {
+        var overview = await GetModuleOverviewAsync(classroomId, teacherId, cancellationToken);
+        return overview.SubjectGroups;
+    }
+
+    public async Task<CustomModuleSummaryDto> GetCustomModuleAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
+    {
+        var classroom = await GetTeacherClassroomAsync(classroomId, teacherId, cancellationToken);
+        var customModule = await EnsureCustomModuleAsync(classroom, teacherId, cancellationToken);
+        var counts = await GetCustomModuleSummaryAsync(customModule.Id, cancellationToken);
+        return new CustomModuleSummaryDto(customModule.Id, customModule.Name, counts.Total, counts.Active);
+    }
+
     public async Task<IReadOnlyList<ModuleChallengeDto>> GetModuleChallengesAsync(int moduleId, int classroomId, int teacherId, CancellationToken cancellationToken)
     {
-        await GetTeacherClassroomAsync(classroomId, teacherId, cancellationToken);
+        var classroom = await GetTeacherClassroomAsync(classroomId, teacherId, cancellationToken);
+        await EnsureClassroomModuleLinksAsync(classroom, teacherId, cancellationToken);
+        await EnsureModuleAttachedAsync(classroomId, moduleId, cancellationToken);
         var challenges = await dbContext.Challenges.AsNoTracking()
             .Include(c => c.Game)
             .Include(c => c.GameTemplate)
@@ -131,6 +150,9 @@ public class ClassroomModuleManagementService(
 
         if (module.YearLevel != classroom.YearLevel)
             throw new InvalidOperationException("Module year level does not match classroom year level");
+
+        await EnsureClassroomModuleLinksAsync(classroom, teacherId, cancellationToken);
+        await EnsureModuleAttachedAsync(classroom.Id, moduleId, cancellationToken);
 
         var vocabulary = await dbContext.VocabularyItems.AsNoTracking()
             .Where(v => v.ModuleId == module.Id && v.IsActive)
@@ -336,6 +358,83 @@ public class ClassroomModuleManagementService(
         dbContext.CustomModules.Add(customModule);
         await dbContext.SaveChangesAsync(cancellationToken);
         return customModule;
+    }
+
+    private async Task EnsureClassroomModuleLinksAsync(Classroom classroom, int teacherId, CancellationToken cancellationToken)
+    {
+        var subjects = await dbContext.ClassroomSubjects.AsNoTracking()
+            .Where(subject => subject.ClassroomId == classroom.Id)
+            .Select(subject => subject.Subject)
+            .ToListAsync(cancellationToken);
+
+        if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
+        {
+            subjects.Add(classroom.Subject.Trim());
+        }
+
+        subjects = subjects
+            .Where(subject => !string.IsNullOrWhiteSpace(subject))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (subjects.Count == 0)
+        {
+            return;
+        }
+
+        var existingSubjectSet = await dbContext.ClassroomSubjects.AsNoTracking()
+            .Where(subject => subject.ClassroomId == classroom.Id)
+            .Select(subject => subject.Subject)
+            .ToListAsync(cancellationToken);
+        var existingSubjects = existingSubjectSet.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var subject in subjects.Where(subject => !existingSubjects.Contains(subject)))
+        {
+            dbContext.ClassroomSubjects.Add(new ClassroomSubject
+            {
+                ClassroomId = classroom.Id,
+                Subject = subject
+            });
+        }
+
+        var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
+            .Where(module => module.IsActive
+                             && module.YearLevel == classroom.YearLevel
+                             && subjects.Contains(module.Subject))
+            .Select(module => module.Id)
+            .ToListAsync(cancellationToken);
+
+        if (matchingModuleIds.Count == 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var existingModuleIds = await dbContext.ClassroomModules.AsNoTracking()
+            .Where(link => link.ClassroomId == classroom.Id && matchingModuleIds.Contains(link.ModuleId))
+            .Select(link => link.ModuleId)
+            .ToListAsync(cancellationToken);
+        var existingModules = existingModuleIds.ToHashSet();
+
+        foreach (var moduleId in matchingModuleIds.Where(moduleId => !existingModules.Contains(moduleId)))
+        {
+            dbContext.ClassroomModules.Add(new ClassroomModule
+            {
+                ClassroomId = classroom.Id,
+                ModuleId = moduleId
+            });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureModuleAttachedAsync(int classroomId, int moduleId, CancellationToken cancellationToken)
+    {
+        var isAttached = await dbContext.ClassroomModules.AsNoTracking()
+            .AnyAsync(link => link.ClassroomId == classroomId && link.ModuleId == moduleId, cancellationToken);
+        if (!isAttached)
+        {
+            throw new InvalidOperationException("Module is not attached to this classroom");
+        }
     }
 
     private async Task<(int Total, int Active)> GetCustomModuleSummaryAsync(int customModuleId, CancellationToken cancellationToken)

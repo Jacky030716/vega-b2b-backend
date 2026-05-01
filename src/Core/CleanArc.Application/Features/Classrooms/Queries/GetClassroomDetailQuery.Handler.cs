@@ -21,6 +21,9 @@ internal class GetClassroomDetailQueryHandler : IRequestHandler<GetClassroomDeta
 
     var studentCount = await _unitOfWork.ClassroomRepository.GetStudentCountAsync(request.ClassroomId);
     var challenges = await _unitOfWork.ClassroomRepository.GetClassroomChallengesAsync(request.ClassroomId);
+    var subjects = classroom.Subjects.Count > 0
+        ? classroom.Subjects.Select(s => s.Subject).ToList()
+        : string.IsNullOrWhiteSpace(classroom.Subject) ? new List<string>() : new List<string> { classroom.Subject };
 
     var result = new ClassroomDetailDto(
         classroom.Id,
@@ -33,7 +36,8 @@ internal class GetClassroomDetailQueryHandler : IRequestHandler<GetClassroomDeta
         classroom.TeacherId,
         classroom.Teacher?.UserName ?? "",
         studentCount,
-        challenges.Count);
+        challenges.Count,
+        subjects);
 
     return OperationResult<ClassroomDetailDto>.SuccessResult(result);
   }

@@ -16,14 +16,35 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
 
   public async ValueTask<OperationResult<int>> Handle(CreateClassroomCommand request, CancellationToken cancellationToken)
   {
+    if (string.IsNullOrWhiteSpace(request.Name))
+    {
+      return OperationResult<int>.FailureResult("Classroom name is required");
+    }
+
+    if (request.YearLevel is < 1 or > 6)
+    {
+      return OperationResult<int>.FailureResult("Year level must be between 1 and 6");
+    }
+
+    var subjects = NormalizeSubjects(request.Subjects);
+    if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(request.Subject))
+    {
+      subjects.Add(request.Subject.Trim());
+    }
+
+    if (subjects.Count == 0)
+    {
+      return OperationResult<int>.FailureResult("At least one subject is required");
+    }
+
     var joinCode = GenerateJoinCode();
 
     var classroom = new Classroom
     {
-      Name = request.Name,
+      Name = request.Name.Trim(),
       Description = request.Description,
-      Subject = request.Subject,
-      YearLevel = Math.Clamp(request.YearLevel, 1, 6),
+      Subject = subjects[0],
+      YearLevel = request.YearLevel,
       Thumbnail = request.Thumbnail,
       JoinCode = joinCode,
       TeacherId = request.TeacherId,
@@ -31,6 +52,7 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
     };
 
     var created = await _unitOfWork.ClassroomRepository.CreateClassroomAsync(classroom);
+    await _unitOfWork.ClassroomRepository.ProvisionClassroomModulesAsync(created.Id, subjects, request.TeacherId);
     return OperationResult<int>.SuccessResult(created.Id);
   }
 
@@ -39,5 +61,14 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
     const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     var random = new Random();
     return new string(Enumerable.Range(0, 4).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+  }
+
+  private static List<string> NormalizeSubjects(IEnumerable<string>? subjects)
+  {
+    return (subjects ?? Array.Empty<string>())
+        .Where(subject => !string.IsNullOrWhiteSpace(subject))
+        .Select(subject => subject.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
   }
 }
