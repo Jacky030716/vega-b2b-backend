@@ -9,6 +9,7 @@ public class OperationResult<TResult>
     public bool IsException { get; set; }
     public bool IsNotFound { get; private set; }
     public bool IsUnauthorized { get; private set; }
+    public bool IsForbidden { get; private set; }
     public static OperationResult<TResult> SuccessResult(TResult result)
     {
         return new OperationResult<TResult> { Result = result, IsSuccess = true };
@@ -27,5 +28,10 @@ public class OperationResult<TResult>
     public static OperationResult<TResult> UnauthorizedResult(string message)
     {
         return new OperationResult<TResult> { ErrorMessage = message, IsSuccess = false, IsUnauthorized = true };
+    }
+
+    public static OperationResult<TResult> ForbiddenResult(string message)
+    {
+        return new OperationResult<TResult> { ErrorMessage = message, IsSuccess = false, IsForbidden = true };
     }
 }

@@ -13,6 +13,9 @@ public class Classroom : BaseEntity<int>
   public string JoinCode { get; set; }
   public int TeacherId { get; set; }
   public bool IsActive { get; set; } = true;
+  public bool IsDeleted { get; set; } = false;
+  public DateTime? DeletedAt { get; set; }
+  public int? DeletedBy { get; set; }
 
   #region Navigation Properties
 

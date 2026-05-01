@@ -13,26 +13,39 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   public async Task<List<Classroom>> GetStudentClassroomsAsync(int userId)
   {
     return await DbContext.ClassroomStudents.AsNoTracking()
-        .Where(cs => cs.UserId == userId)
+        .Where(cs => cs.UserId == userId && cs.Classroom.IsActive && !cs.Classroom.IsDeleted)
         .Include(cs => cs.Classroom)
             .ThenInclude(c => c.Teacher)
         .Select(cs => cs.Classroom)
         .ToListAsync();
   }
 
-  public async Task<List<Classroom>> GetTeacherClassroomsAsync(int teacherId)
+  public async Task<List<Classroom>> GetTeacherClassroomsAsync(int teacherId, bool includeDeleted = false)
   {
-    return await TableNoTracking
+    var query = TableNoTracking
         .Include(c => c.Teacher)
-        .Where(c => c.TeacherId == teacherId && c.IsActive)
+        .Where(c => c.TeacherId == teacherId);
+
+    if (!includeDeleted)
+    {
+      query = query.Where(c => c.IsActive && !c.IsDeleted);
+    }
+
+    return await query
         .ToListAsync();
   }
 
-  public async Task<Classroom> GetClassroomByIdAsync(int classroomId)
+  public async Task<Classroom> GetClassroomByIdAsync(int classroomId, bool includeDeleted = false, bool tracking = false)
   {
-    return await TableNoTracking
-        .Include(c => c.Teacher)
-        .FirstOrDefaultAsync(c => c.Id == classroomId);
+    var query = tracking ? DbContext.Classrooms.AsQueryable() : TableNoTracking;
+    if (!includeDeleted)
+    {
+      query = query.Where(c => c.IsActive && !c.IsDeleted);
+    }
+
+    return await query
+      .Include(c => c.Teacher)
+      .FirstOrDefaultAsync(c => c.Id == classroomId);
   }
 
   public async Task<Classroom> GetClassroomByJoinCodeAsync(string joinCode)
@@ -41,7 +54,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
 
     return await TableNoTracking
         .Include(c => c.Teacher)
-      .FirstOrDefaultAsync(c => c.JoinCode == normalizedJoinCode && c.IsActive);
+      .FirstOrDefaultAsync(c => c.JoinCode == normalizedJoinCode && c.IsActive && !c.IsDeleted);
   }
 
   public async Task<Classroom> CreateClassroomAsync(Classroom classroom)
@@ -63,8 +76,32 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     if (classroom != null)
     {
       classroom.IsActive = false;
+      classroom.IsDeleted = true;
+      classroom.DeletedAt = DateTime.UtcNow;
       await DbContext.SaveChangesAsync();
     }
+  }
+
+  public async Task ArchiveClassroomAsync(Classroom classroom, int deletedBy)
+  {
+    classroom.IsActive = false;
+    classroom.IsDeleted = true;
+    classroom.DeletedAt = DateTime.UtcNow;
+    classroom.DeletedBy = deletedBy;
+    await DbContext.SaveChangesAsync();
+  }
+
+  public async Task<bool> HasModulesOrChallengesAsync(int classroomId)
+  {
+    var hasChallenges = await DbContext.Challenges.AsNoTracking()
+        .AnyAsync(c => c.ClassroomId == classroomId);
+    if (hasChallenges)
+    {
+      return true;
+    }
+
+    return await DbContext.CustomModules.AsNoTracking()
+        .AnyAsync(c => c.ClassroomId == classroomId);
   }
 
   // Students
@@ -101,7 +138,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     try
     {
       var classroom = await DbContext.Classrooms.AsNoTracking()
-          .Where(c => c.Id == classroomId)
+          .Where(c => c.Id == classroomId && c.IsActive && !c.IsDeleted)
           .Select(c => new { c.Id, c.TeacherId })
           .FirstOrDefaultAsync();
 
@@ -144,7 +181,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   private async Task<List<Challenge>> GetClassroomChallengesLegacySafeAsync(int classroomId)
   {
     var classroom = await DbContext.Classrooms.AsNoTracking()
-        .Where(c => c.Id == classroomId)
+        .Where(c => c.Id == classroomId && c.IsActive && !c.IsDeleted)
         .Select(c => new { c.Id, c.TeacherId })
         .FirstOrDefaultAsync();
 

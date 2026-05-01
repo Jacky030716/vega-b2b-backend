@@ -301,7 +301,7 @@ public class ClassroomModuleManagementService(
 
     private async Task<Classroom> GetTeacherClassroomAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
     {
-        var classroom = await dbContext.Classrooms.FirstOrDefaultAsync(c => c.Id == classroomId && c.IsActive, cancellationToken)
+        var classroom = await dbContext.Classrooms.FirstOrDefaultAsync(c => c.Id == classroomId && c.IsActive && !c.IsDeleted, cancellationToken)
             ?? throw new InvalidOperationException("Classroom not found");
         if (classroom.TeacherId != teacherId)
             throw new UnauthorizedAccessException("You do not manage this classroom");
@@ -314,6 +314,8 @@ public class ClassroomModuleManagementService(
         var customModule = await query.Include(c => c.Classroom)
             .FirstOrDefaultAsync(c => c.Id == customModuleId, cancellationToken)
             ?? throw new InvalidOperationException("Custom module not found");
+        if (!customModule.Classroom.IsActive || customModule.Classroom.IsDeleted)
+            throw new InvalidOperationException("Classroom not found");
         if (customModule.Classroom.TeacherId != teacherId)
             throw new UnauthorizedAccessException("You do not manage this custom module");
         return customModule;

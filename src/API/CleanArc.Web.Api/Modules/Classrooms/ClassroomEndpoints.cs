@@ -98,10 +98,18 @@ public class ClassroomEndpoints : ICarterModule
     }), _version, "GetStudentCustomChallenges", _tag).RequireAuthorization();
 
     // Get teacher classrooms
-    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}teacher", async (ClaimsPrincipal user, ISender sender) =>
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}teacher", async ([FromQuery] bool includeDeleted, ClaimsPrincipal user, ISender sender) =>
     {
       var userId = int.Parse(user.Identity.GetUserId());
-      var result = await sender.Send(new GetTeacherClassroomsQuery(userId));
+      if (includeDeleted && !user.IsInRole("admin"))
+      {
+        return Results.Json(new Dictionary<string, List<string>>
+        {
+          { "GeneralError", new() { "Only admins can include archived classrooms." } }
+        }, statusCode: StatusCodes.Status403Forbidden);
+      }
+
+      var result = await sender.Send(new GetTeacherClassroomsQuery(userId, includeDeleted && user.IsInRole("admin")));
       return result.ToEndpointResult();
     }), _version, "GetTeacherClassrooms", _tag).RequireAuthorization();
 
@@ -217,6 +225,36 @@ public class ClassroomEndpoints : ICarterModule
       var result = await sender.Send(new CreateClassroomCommand(userId, request.Name, request.Description, request.Subject, request.Thumbnail, request.YearLevel ?? 1));
       return result.ToEndpointResult();
     }), _version, "CreateClassroom", _tag).RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapPatch($"{_routePrefix}{{classroomId:int}}", async (
+        int classroomId,
+        [FromBody] UpdateClassroomRequest request,
+        ClaimsPrincipal user,
+        ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var result = await sender.Send(new UpdateClassroomCommand(
+          classroomId,
+          userId,
+          user.IsInRole("admin"),
+          request.Name,
+          request.Subject,
+          request.YearLevel,
+          request.Description));
+      return result.ToEndpointResult();
+    }), _version, "UpdateClassroom", _tag)
+    .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapDelete($"{_routePrefix}{{classroomId:int}}", async (
+        int classroomId,
+        ClaimsPrincipal user,
+        ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var result = await sender.Send(new ArchiveClassroomCommand(classroomId, userId, user.IsInRole("admin")));
+      return result.ToEndpointResult();
+    }), _version, "ArchiveClassroom", _tag)
+    .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
     // Join classroom
     app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}join", async ([FromBody] JoinClassroomRequest request, ClaimsPrincipal user, ISender sender) =>

@@ -14,6 +14,9 @@ public class ClassroomConfiguration : IEntityTypeConfiguration<Classroom>
     builder.Property(c => c.JoinCode).IsRequired().HasMaxLength(4);
     builder.HasIndex(c => c.JoinCode).IsUnique();
     builder.Property(c => c.IsActive).HasDefaultValue(true);
+    builder.Property(c => c.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
+    builder.Property(c => c.DeletedAt).HasColumnName("deleted_at");
+    builder.Property(c => c.DeletedBy).HasColumnName("deleted_by");
     builder.HasOne(c => c.Teacher).WithMany().HasForeignKey(c => c.TeacherId);
     builder.HasMany(c => c.Students).WithOne(s => s.Classroom).HasForeignKey(s => s.ClassroomId).OnDelete(DeleteBehavior.Cascade);
   }

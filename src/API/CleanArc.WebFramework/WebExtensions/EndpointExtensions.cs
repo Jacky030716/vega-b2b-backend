@@ -30,6 +30,13 @@ public static class EndpointExtensions
                 { "GeneralError", new() { result.ErrorMessage } }
             }, statusCode: 401);
 
+        if (result.IsForbidden) return string.IsNullOrEmpty(result.ErrorMessage)
+            ? Results.Forbid()
+            : Results.Json(new Dictionary<string, List<string>>
+            {
+                { "GeneralError", new() { result.ErrorMessage } }
+            }, statusCode: 403);
+
         return string.IsNullOrEmpty(result.ErrorMessage)
             ? Results.BadRequest()
             : Results.BadRequest(new Dictionary<string, List<string>>

@@ -3,4 +3,4 @@ using Mediator;
 
 namespace CleanArc.Application.Features.Classrooms.Queries;
 
-public record GetTeacherClassroomsQuery(int TeacherId) : IRequest<OperationResult<List<ClassroomDto>>>;
+public record GetTeacherClassroomsQuery(int TeacherId, bool IncludeDeleted = false) : IRequest<OperationResult<List<ClassroomDto>>>;

@@ -15,14 +15,14 @@ internal class GetTeacherClassroomsQueryHandler : IRequestHandler<GetTeacherClas
 
   public async ValueTask<OperationResult<List<ClassroomDto>>> Handle(GetTeacherClassroomsQuery request, CancellationToken cancellationToken)
   {
-    var classrooms = await _unitOfWork.ClassroomRepository.GetTeacherClassroomsAsync(request.TeacherId);
+    var classrooms = await _unitOfWork.ClassroomRepository.GetTeacherClassroomsAsync(request.TeacherId, request.IncludeDeleted);
 
     var result = new List<ClassroomDto>();
     foreach (var c in classrooms)
     {
       var studentCount = await _unitOfWork.ClassroomRepository.GetStudentCountAsync(c.Id);
       var challenges = await _unitOfWork.ClassroomRepository.GetClassroomChallengesAsync(c.Id);
-      result.Add(new ClassroomDto(c.Id, c.Name, c.Description, c.Subject, c.Thumbnail,
+      result.Add(new ClassroomDto(c.Id, c.Name, c.Description, c.Subject, c.YearLevel, c.Thumbnail,
           c.JoinCode, c.TeacherId, c.Teacher?.Name ?? c.Teacher?.UserName ?? "Teacher", studentCount, challenges.Count));
     }
 
