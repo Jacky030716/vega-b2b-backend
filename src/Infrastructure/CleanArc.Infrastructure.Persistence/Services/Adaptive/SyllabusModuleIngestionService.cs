@@ -21,12 +21,59 @@ public class SyllabusModuleIngestionService(
         var sourceType = string.IsNullOrWhiteSpace(document.SourceType)
             ? "PREDEFINED_OFFICIAL_SEED"
             : document.SourceType.Trim();
-        var rawSubject = string.IsNullOrWhiteSpace(document.Subject)
-            ? "Bahasa Melayu"
-            : document.Subject.Trim();
-        var subject = SyllabusSubjectMapper.NormalizeSubject(rawSubject) ?? rawSubject;
+        
+        var rootYearLevel = document.YearLevel ?? 1;
 
-        foreach (var seedModule in document.Modules ?? Array.Empty<SyllabusSeedModule>())
+        if (document.Subjects != null && document.Subjects.Any())
+        {
+            foreach (var seedSubject in document.Subjects)
+            {
+                var subjectName = seedSubject.Subject ?? document.Subject ?? "Bahasa Melayu";
+                var subject = SyllabusSubjectMapper.NormalizeSubject(subjectName) ?? subjectName;
+                var language = seedSubject.Language ?? "ms";
+
+                await ProcessModulesInternalAsync(seedSubject.Modules, subject, language, rootYearLevel, sourceType, counters, logs, errors, cancellationToken);
+            }
+        }
+        else
+        {
+            var rawSubject = string.IsNullOrWhiteSpace(document.Subject)
+                ? "Bahasa Melayu"
+                : document.Subject.Trim();
+            var subject = SyllabusSubjectMapper.NormalizeSubject(rawSubject) ?? rawSubject;
+            
+            await ProcessModulesInternalAsync(document.Modules, subject, "ms", rootYearLevel, sourceType, counters, logs, errors, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        foreach (var line in logs)
+            logger.LogInformation("Syllabus ingestion: {Message}", line);
+        foreach (var error in errors)
+            logger.LogWarning("Syllabus ingestion skipped row: {Message}", error);
+
+        return new SyllabusIngestionResult(
+            counters.ModulesCreated,
+            counters.ModulesUpdated,
+            counters.ItemsCreated,
+            counters.ItemsUpdated,
+            counters.ItemsRejected,
+            logs,
+            errors);
+    }
+
+    private async Task ProcessModulesInternalAsync(
+        IEnumerable<SyllabusSeedModule>? seedModules,
+        string subject,
+        string defaultLanguage,
+        int yearLevel,
+        string sourceType,
+        IngestionCounters counters,
+        List<string> logs,
+        List<string> errors,
+        CancellationToken cancellationToken)
+    {
+        foreach (var seedModule in seedModules ?? Array.Empty<SyllabusSeedModule>())
         {
             var moduleCode = NormalizeCode(seedModule.ModuleCode);
             if (string.IsNullOrWhiteSpace(moduleCode))
@@ -47,9 +94,10 @@ public class SyllabusModuleIngestionService(
 
             module.Subject = subject;
             module.Language = string.IsNullOrWhiteSpace(seedModule.Language?.Primary)
-                ? "ms"
+                ? defaultLanguage
                 : seedModule.Language.Primary.Trim();
-            module.YearLevel = module.YearLevel <= 0 ? 1 : module.YearLevel;
+            
+            module.YearLevel = yearLevel;
             module.UnitNumber = seedModule.UnitNumber;
             module.UnitTitle = seedModule.UnitTitle?.Trim() ?? string.Empty;
             module.Title = string.IsNullOrWhiteSpace(seedModule.UnitTitle)
@@ -74,22 +122,6 @@ public class SyllabusModuleIngestionService(
             await dbContext.SaveChangesAsync(cancellationToken);
             await UpsertItemsAsync(seedModule, module, counters, logs, errors, cancellationToken);
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        foreach (var line in logs)
-            logger.LogInformation("Syllabus ingestion: {Message}", line);
-        foreach (var error in errors)
-            logger.LogWarning("Syllabus ingestion skipped row: {Message}", error);
-
-        return new SyllabusIngestionResult(
-            counters.ModulesCreated,
-            counters.ModulesUpdated,
-            counters.ItemsCreated,
-            counters.ItemsUpdated,
-            counters.ItemsRejected,
-            logs,
-            errors);
     }
 
     private async Task UpsertItemsAsync(
@@ -146,8 +178,19 @@ public class SyllabusModuleIngestionService(
             item.DisplayOrder = seedItem.DisplayOrder.Value;
             item.DifficultyLevel = Math.Clamp(item.DifficultyLevel <= 0 ? 1 : item.DifficultyLevel, 1, 5);
             item.MeaningText = item.EnText;
-            item.PhoneticHint = item.SyllableText;
-            item.PronunciationText = bmText;
+            
+            // Map Pinyin to PhoneticHint for Mandarin/Mixed content
+            if (!string.IsNullOrWhiteSpace(seedItem.Pinyin))
+            {
+                item.PhoneticHint = seedItem.Pinyin.Trim();
+                item.PronunciationText = seedItem.Pinyin.Trim();
+            }
+            else
+            {
+                item.PhoneticHint = item.SyllableText;
+                item.PronunciationText = bmText;
+            }
+
             item.IsActive = true;
 
             if (isNewItem)

@@ -705,36 +705,33 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             .ToList();
     }
 
-    internal static string NormalizeTemplateCode(string? preferred, string? objective, string? focus)
-    {
-        var candidate = preferred?.Trim().ToUpperInvariant();
-        if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI")
-            return candidate;
+  internal static string NormalizeTemplateCode(string? preferred, string? objective, string? focus)
+  {
+    var candidate = preferred?.Trim().ToUpperInvariant();
+    if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI")
+      return candidate;
 
         var signal = $"{objective} {focus}".ToLowerInvariant();
-        if (signal.Contains("syllable")) return "SYLLABLE_SUSHI";
-        if (signal.Contains("voice") || signal.Contains("pronunciation") || signal.Contains("oral")) return "VOICE_BRIDGE";
-        return "SPELL_CATCHER";
-    }
+    if (signal.Contains("syllable")) return "SYLLABLE_SUSHI";
+    if (signal.Contains("voice") || signal.Contains("pronunciation") || signal.Contains("oral")) return "VOICE_BRIDGE";
+    return "SPELL_CATCHER";
+  }
 
-    internal static string ToGameKey(string templateCode) => templateCode switch
-    {
-        "SPELL_CATCHER" => "spell_catcher",
-        "VOICE_BRIDGE" => "voice_bridge",
-        "SYLLABLE_SUSHI" => "syllable_sushi",
-        "word_bridge" => "word_bridge",
-        "word_pair" => "word_pair",
-        "magic_backpack" => "magic_backpack",
-        _ => templateCode.ToLowerInvariant()
-    };
+  internal static string ToGameKey(string templateCode) => templateCode switch
+  {
+      "SPELL_CATCHER" => "spell_catcher",
+      "VOICE_BRIDGE" => "voice_bridge",
+      "SYLLABLE_SUSHI" => "syllable_sushi",
+      _ => templateCode.ToLowerInvariant()
+  };
 
-    internal static string ToCategory(string templateCode) => templateCode switch
-    {
-        "VOICE_BRIDGE" => "SPEAKING",
-        "SYLLABLE_SUSHI" => "STRUCTURE",
-        "word_pair" => "RECOGNITION",
-        _ => "RECALL"
-    };
+  internal static string ToCategory(string templateCode) => templateCode switch
+  {
+      "VOICE_BRIDGE" => "SPEAKING",
+      "SYLLABLE_SUSHI" => "STRUCTURE",
+      "SPELL_CATCHER" => "RECALL",
+      _ => "RECALL"
+  };
 
     internal static JsonNode? TryParseJson(string? raw)
     {

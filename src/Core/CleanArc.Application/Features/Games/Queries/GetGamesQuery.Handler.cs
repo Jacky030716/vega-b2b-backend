@@ -12,6 +12,7 @@ internal class GetGamesQueryHandler(IUnitOfWork unitOfWork)
   {
     var games = await unitOfWork.ChallengeRepository.GetAllGamesAsync();
     var dtos = games
+        .Where(g => g.Key is "spell_catcher" or "syllable_sushi" or "voice_bridge")
         .Select(g => new GameDto(g.Id, g.Key, g.Name, g.Description, g.ImageUrl, g.Category, g.SkillsTaught))
         .ToList();
 

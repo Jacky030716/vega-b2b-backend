@@ -15,7 +15,7 @@ public enum AchievementEventType
   QuizCompleted = 100,
   QuizPerfectScore = 101,
   QuizStreakReached = 102,
-  QuizGamePlayed = 103, // specific game type like magic_backpack, word_bridge, etc.
+  QuizGamePlayed = 103, // specific game type such as the adaptive classroom games
 
   // Mission-related events
   MissionCompleted = 110,

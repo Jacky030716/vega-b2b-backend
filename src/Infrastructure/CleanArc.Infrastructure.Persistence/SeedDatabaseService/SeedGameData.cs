@@ -1,9 +1,7 @@
-using System.Text.Json;
 using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
-using CleanArc.Domain.Entities.Quiz.Content;
 using CleanArc.Domain.Entities.User;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,13 +11,6 @@ public class SeedGameData : ISeedGameData
 {
     private readonly ApplicationDbContext _dbContext;
 
-    // Serialize contentData as camelCase so it matches the frontend TypeScript types.
-    // e.g. WordBridgeContent.Words → {"words":[...]} not {"Words":[...]}
-    private static readonly JsonSerializerOptions _camelCase = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     public SeedGameData(ApplicationDbContext dbContext)
     {
         _dbContext = dbContext;
@@ -27,235 +18,6 @@ public class SeedGameData : ISeedGameData
 
     public async Task Seed()
     {
-        if (!await _dbContext.Games.AnyAsync())
-        {
-            var magicBackpackGame = new Game
-            {
-                Key = "magic_backpack",
-                Name = "Magic Backpack: Pack & Remember",
-                Description = "Watch as items drop into the backpack, then select the items in the same order.",
-                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fbackpack.png?alt=media",
-                Category = "School",
-                SkillsTaught = "memory"
-            };
-
-            var wordBridgeGame = new Game
-            {
-                Key = "word_bridge",
-                Name = "Word Builder Bridge: Spell & Learn",
-                Description = "Drag letters to build words! Practice spelling while crossing the bridge.",
-                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fbuilder.png?alt=media",
-                Category = "Spelling & Vocabulary",
-                SkillsTaught = "spelling"
-            };
-
-            var wordPairGame = new Game
-            {
-                Key = "word_pair",
-                Name = "Word Twins",
-                Description = "Flip the cards and match the word with the image!",
-                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fwordpair.png?alt=media",
-                Category = "Story Comprehension Training",
-                SkillsTaught = "memory"
-            };
-
-            await _dbContext.Games.AddRangeAsync(magicBackpackGame, wordBridgeGame, wordPairGame);
-            await _dbContext.SaveChangesAsync();
-
-            // ── Magic Backpack: 3 adventure map nodes ──────────────────────────
-            await _dbContext.Challenges.AddRangeAsync(
-                new Challenge
-                {
-                    GameId = magicBackpackGame.Id,
-                    Title = "Remember 3 Items",
-                    Description = "Watch 3 school items drop in, then recall them in order!",
-                    DifficultyLevel = 1,
-                    OrderIndex = 1,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new
-                    {
-                        theme = "school",
-                        sequenceLength = 3,
-                        items = new[] { "Pencil", "Eraser", "Notebook" }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                },
-                new Challenge
-                {
-                    GameId = magicBackpackGame.Id,
-                    Title = "Remember 4 Items",
-                    Description = "Step it up — 4 items in the backpack. Can you pack them all?",
-                    DifficultyLevel = 2,
-                    OrderIndex = 2,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new
-                    {
-                        theme = "camping",
-                        sequenceLength = 4,
-                        items = new[] { "Tent", "Flashlight", "Sleeping Bag", "Water Bottle" }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                },
-                new Challenge
-                {
-                    GameId = magicBackpackGame.Id,
-                    Title = "Speed Round",
-                    Description = "5 items, shorter display time. Stay sharp!",
-                    DifficultyLevel = 3,
-                    OrderIndex = 3,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new
-                    {
-                        theme = "school",
-                        sequenceLength = 5,
-                        ghostMode = true,
-                        items = new[] { "Ruler", "Scissors", "Glue", "Pencil Case", "Highlighter" }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                }
-            );
-
-            // ── Word Bridge: 3 adventure map nodes ────────────────────────────
-            // Uses strongly-typed WordBridgeContent so schema is enforced in C#.
-            // ImageRef stores a Firebase Storage relative path, e.g. "quizzes/word-bridge/cat.jpg".
-            // Leave ImageRef null until you upload images to Firebase Storage.
-            await _dbContext.Challenges.AddRangeAsync(
-                new Challenge
-                {
-                    GameId = wordBridgeGame.Id,
-                    Title = "Short Words",
-                    Description = "Build simple 3-letter words by dragging the right letters.",
-                    DifficultyLevel = 1,
-                    OrderIndex = 1,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new WordBridgeContent
-                    {
-                        Words = new List<WordBridgeWord>
-                        {
-                            new() { Target = "CAT", Translation = "A small furry animal",      Difficulty = "easy", ImageRef = "quizzes/word-bridge/cat.jpg" },
-                            new() { Target = "DOG", Translation = "Man's best friend",         Difficulty = "easy", ImageRef = "quizzes/word-bridge/dog.jpg" },
-                            new() { Target = "SUN", Translation = "The star at the center",    Difficulty = "easy", ImageRef = "quizzes/word-bridge/sun.jpg" }
-                        }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                },
-                new Challenge
-                {
-                    GameId = wordBridgeGame.Id,
-                    Title = "Medium Words",
-                    Description = "4-5 letter words. Watch out for the vowels!",
-                    DifficultyLevel = 2,
-                    OrderIndex = 2,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new WordBridgeContent
-                    {
-                        Words = new List<WordBridgeWord>
-                        {
-                            new() { Target = "RAIN",  Translation = "Water falling from clouds", Difficulty = "easy", ImageRef = null },
-                            new() { Target = "CLOUD", Translation = "White puffs in the sky",    Difficulty = "hard", ImageRef = null },
-                            new() { Target = "STORM", Translation = "Strong wind and rain",       Difficulty = "hard", ImageRef = null }
-                        }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                },
-                new Challenge
-                {
-                    GameId = wordBridgeGame.Id,
-                    Title = "Tricky Spelling",
-                    Description = "Longer words with tricky letter patterns. Think before you drag!",
-                    DifficultyLevel = 3,
-                    OrderIndex = 3,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new WordBridgeContent
-                    {
-                        Words = new List<WordBridgeWord>
-                        {
-                            new() { Target = "BRIDGE", Translation = "Structure crossing water", Difficulty = "hard", ImageRef = null },
-                            new() { Target = "SCHOOL", Translation = "Where you learn",           Difficulty = "hard", ImageRef = null },
-                            new() { Target = "FRIEND", Translation = "Someone you like",          Difficulty = "hard", ImageRef = null }
-                        }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                }
-            );
-
-            // ── Story Recall (Word Twins): 3 adventure map nodes ──────────────
-            // Uses strongly-typed WordTwinsContent.
-            // ImageRef = Firebase Storage path (e.g. "quizzes/word-twins/apple.jpg").
-            // ImageKey = local bundled asset key used as offline fallback.
-            // When ImageRef is set, the frontend calls getDownloadURL(ref(storage, imageRef)).
-            await _dbContext.Challenges.AddRangeAsync(
-                new Challenge
-                {
-                    GameId = wordPairGame.Id,
-                    Title = "4 Pairs",
-                    Description = "Match 4 words with their pictures. Flip and find!",
-                    DifficultyLevel = 1,
-                    OrderIndex = 1,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new WordTwinsContent
-                    {
-                        Pairs = new List<WordTwinsPair>
-                        {
-                            new() { Word = "Apple",  ImageKey = "apple",  ImageRef = null },
-                            new() { Word = "Banana", ImageKey = "banana", ImageRef = null },
-                            new() { Word = "Cat",    ImageKey = "cat",    ImageRef = null },
-                            new() { Word = "Dog",    ImageKey = "dog",    ImageRef = null }
-                        }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                },
-                new Challenge
-                {
-                    GameId = wordPairGame.Id,
-                    Title = "6 Pairs",
-                    Description = "6 pairs now — stay focused and remember where they are!",
-                    DifficultyLevel = 2,
-                    OrderIndex = 2,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new WordTwinsContent
-                    {
-                        Pairs = new List<WordTwinsPair>
-                        {
-                            new() { Word = "Sun",   ImageKey = "sun",   ImageRef = null },
-                            new() { Word = "Moon",  ImageKey = "moon",  ImageRef = null },
-                            new() { Word = "Star",  ImageKey = "star",  ImageRef = null },
-                            new() { Word = "Rain",  ImageKey = "rain",  ImageRef = null },
-                            new() { Word = "Cloud", ImageKey = "cloud", ImageRef = null },
-                            new() { Word = "Snow",  ImageKey = "snow",  ImageRef = null }
-                        }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                },
-                new Challenge
-                {
-                    GameId = wordPairGame.Id,
-                    Title = "8 Pairs — Speed Match",
-                    Description = "8 pairs with a time limit. Match as fast as you can!",
-                    DifficultyLevel = 3,
-                    OrderIndex = 3,
-                    MaxStars = 3,
-                    ContentData = JsonSerializer.Serialize(new WordTwinsContent
-                    {
-                        Pairs = new List<WordTwinsPair>
-                        {
-                            new() { Word = "Book",    ImageKey = "book",    ImageRef = null },
-                            new() { Word = "Pencil",  ImageKey = "pencil",  ImageRef = null },
-                            new() { Word = "School",  ImageKey = "school",  ImageRef = null },
-                            new() { Word = "Tree",    ImageKey = "tree",    ImageRef = null },
-                            new() { Word = "Flower",  ImageKey = "flower",  ImageRef = null },
-                            new() { Word = "House",   ImageKey = "house",   ImageRef = null },
-                            new() { Word = "Car",     ImageKey = "car",     ImageRef = null },
-                            new() { Word = "Bicycle", ImageKey = "bicycle", ImageRef = null }
-                        }
-                    }, _camelCase),
-                    IsAIGenerated = false
-                }
-            );
-
-            await _dbContext.SaveChangesAsync();
-        }
-
         if (!await _dbContext.ShopItems.AnyAsync())
         {
             var shopItems = new List<CleanArc.Domain.Entities.Shop.ShopItem>
@@ -271,100 +33,10 @@ public class SeedGameData : ISeedGameData
             await _dbContext.SaveChangesAsync();
         }
 
-        var wordBridge = await _dbContext.Games.FirstOrDefaultAsync(g => g.Key == "word_bridge");
-        if (wordBridge is null)
-        {
-            wordBridge = new Game
-            {
-                Key = "word_bridge",
-                Name = "Word Builder Bridge: Spell & Learn",
-                Description = "Drag letters to build words! Practice spelling while crossing the bridge.",
-                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fbuilder.png?alt=media",
-                Category = "Spelling & Vocabulary",
-                SkillsTaught = "spelling"
-            };
-
-            await _dbContext.Games.AddAsync(wordBridge);
-            await _dbContext.SaveChangesAsync();
-        }
-
-        var wordPair = await _dbContext.Games.FirstOrDefaultAsync(g => g.Key == "word_pair");
-        if (wordPair is null)
-        {
-            wordPair = new Game
-            {
-                Key = "word_pair",
-                Name = "Word Twins",
-                Description = "Flip the cards and match the word with the image!",
-                ImageUrl = "https://firebasestorage.googleapis.com/v0/b/vega-b7b3c.firebasestorage.app/o/thumbnails%2Fwordpair.png?alt=media",
-                Category = "Story Comprehension Training",
-                SkillsTaught = "memory"
-            };
-
-            await _dbContext.Games.AddAsync(wordPair);
-            await _dbContext.SaveChangesAsync();
-        }
-
-        var hasWordBridgeChallenge = await _dbContext.Challenges.AnyAsync(c => c.GameId == wordBridge.Id);
-        if (!hasWordBridgeChallenge)
-        {
-            await _dbContext.Challenges.AddAsync(new Challenge
-            {
-                GameId = wordBridge.Id,
-                Title = "Classroom Objects (Starter)",
-                Description = "Build beginner classroom words by dragging letters in order.",
-                DifficultyLevel = 1,
-                OrderIndex = 1,
-                MaxStars = 3,
-                ContentData = JsonSerializer.Serialize(new WordBridgeContent
-                {
-                    Words = new List<WordBridgeWord>
-                    {
-                        new() { Target = "PEN",  Translation = "A tool used for writing",    Difficulty = "easy", ImageRef = null },
-                        new() { Target = "BOOK", Translation = "Something we read to learn", Difficulty = "easy", ImageRef = null },
-                        new() { Target = "DESK", Translation = "A table used by students",   Difficulty = "easy", ImageRef = null }
-                    }
-                }, _camelCase),
-                IsAIGenerated = false
-            });
-        }
-
-        var hasWordPairChallenge = await _dbContext.Challenges.AnyAsync(c => c.GameId == wordPair.Id);
-        if (!hasWordPairChallenge)
-        {
-            await _dbContext.Challenges.AddAsync(new Challenge
-            {
-                GameId = wordPair.Id,
-                Title = "School Word Twins (Starter)",
-                Description = "Match each school word with its picture pair.",
-                DifficultyLevel = 1,
-                OrderIndex = 1,
-                MaxStars = 3,
-                ContentData = JsonSerializer.Serialize(new WordTwinsContent
-                {
-                    Pairs = new List<WordTwinsPair>
-                    {
-                        new() { Word = "Book",   ImageKey = "book",   ImageRef = null },
-                        new() { Word = "Pencil", ImageKey = "pencil", ImageRef = null },
-                        new() { Word = "School", ImageKey = "school", ImageRef = null },
-                        new() { Word = "Tree",   ImageKey = "tree",   ImageRef = null }
-                    }
-                }, _camelCase),
-                IsAIGenerated = false
-            });
-        }
-
-        if (!hasWordBridgeChallenge || !hasWordPairChallenge)
-        {
-            await _dbContext.SaveChangesAsync();
-        }
-
-        // ── Badge catalog ─────────────────────────────────────────────────────
         // ImageRef stores a Firebase Storage relative path.
         // The frontend resolves it with resolveStorageRefToUrl(imageRef).
         var badgeSeeds = new List<Badge>
         {
-            // ── Streak ───────────────────────────────────────────────────────
             new()
             {
                 Name = "Week Warrior",
@@ -407,7 +79,6 @@ public class SeedGameData : ISeedGameData
                 RewardDreamTokens = 1,
             },
 
-            // ── Mastery ─────────────────────────────────────────────────────
             new()
             {
                 Name = "Perfect Score",
@@ -462,7 +133,6 @@ public class SeedGameData : ISeedGameData
                 RewardDiamonds = 16,
             },
 
-            // ── Milestones ──────────────────────────────────────────────────
             new()
             {
                 Name = "First Step",
@@ -490,7 +160,6 @@ public class SeedGameData : ISeedGameData
                 RewardDiamonds = 28,
             },
 
-            // ── Discovery ───────────────────────────────────────────────────
             new()
             {
                 Name = "Team Player",
@@ -591,7 +260,6 @@ public class SeedGameData : ISeedGameData
             await _dbContext.SaveChangesAsync();
         }
 
-        // ── Classrooms ──────────────────────────────────────────────────────
         if (!await _dbContext.Classrooms.AnyAsync())
         {
             // Create a test teacher first
@@ -660,7 +328,6 @@ public class SeedGameData : ISeedGameData
 
         await SeedAdaptiveLayerAsync();
 
-        // ── Visual Icons (Picture Passwords) ────────────────────────────────
         if (!await _dbContext.VisualIcons.AnyAsync())
         {
             var icons = new[]
@@ -690,10 +357,7 @@ public class SeedGameData : ISeedGameData
         {
             new GameTemplate { Code = "SPELL_CATCHER", Category = "RECALL", Name = "Spell Catcher", Description = "Catch and order letters to recall full spelling.", SupportsAdaptiveDifficulty = true, IsActive = true },
             new GameTemplate { Code = "VOICE_BRIDGE", Category = "SPEAKING", Name = "Voice Bridge", Description = "Speak target words and receive pronunciation recall feedback.", SupportsAdaptiveDifficulty = true, IsActive = true },
-            new GameTemplate { Code = "SYLLABLE_SUSHI", Category = "STRUCTURE", Name = "Syllable Sushi", Description = "Assemble words from syllable chunks.", SupportsAdaptiveDifficulty = true, IsActive = true },
-            new GameTemplate { Code = "word_bridge", Category = "RECALL", Name = "Word Bridge", Description = "Existing spelling bridge game.", SupportsAdaptiveDifficulty = false, IsActive = true },
-            new GameTemplate { Code = "word_pair", Category = "RECOGNITION", Name = "Word Twins", Description = "Existing recognition and memory matching game.", SupportsAdaptiveDifficulty = false, IsActive = true },
-            new GameTemplate { Code = "magic_backpack", Category = "RECALL", Name = "Magic Backpack", Description = "Existing sequence memory game.", SupportsAdaptiveDifficulty = false, IsActive = true }
+            new GameTemplate { Code = "SYLLABLE_SUSHI", Category = "STRUCTURE", Name = "Syllable Sushi", Description = "Assemble words from syllable chunks.", SupportsAdaptiveDifficulty = true, IsActive = true }
         };
 
         foreach (var template in templates)

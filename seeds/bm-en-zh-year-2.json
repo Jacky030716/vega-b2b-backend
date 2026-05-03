@@ -1,0 +1,419 @@
+{
+  "sourceType": "OFFICIAL_REFERENCE_SEED",
+  "sourceName": "Malaysian Primary Curriculum Reference Seed",
+  "syllabusVersion": "2026",
+  "yearLevel": 2,
+  "language": "mixed",
+  "subjects": [
+    {
+      "subject": "Bahasa Melayu",
+      "language": "ms",
+      "modules": [
+        {
+          "moduleCode": "BM-Y2-U1-SCHOOL-ACTIONS",
+          "unitNumber": 1,
+          "unitTitle": "School Actions",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "baca",
+                "en": "read",
+                "zh": "阅读"
+              },
+              "syllables": [
+                "ba",
+                "ca"
+              ],
+              "syllableText": "ba/ca",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "tulis",
+                "en": "write",
+                "zh": "写"
+              },
+              "syllables": [
+                "tu",
+                "lis"
+              ],
+              "syllableText": "tu/lis",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "kira",
+                "en": "count",
+                "zh": "数"
+              },
+              "syllables": [
+                "ki",
+                "ra"
+              ],
+              "syllableText": "ki/ra",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "lukis",
+                "en": "draw",
+                "zh": "画"
+              },
+              "syllables": [
+                "lu",
+                "kis"
+              ],
+              "syllableText": "lu/kis",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "dengar",
+                "en": "listen",
+                "zh": "听"
+              },
+              "syllables": [
+                "de",
+                "ngar"
+              ],
+              "syllableText": "de/ngar",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "jawab",
+                "en": "answer",
+                "zh": "回答"
+              },
+              "syllables": [
+                "ja",
+                "wab"
+              ],
+              "syllableText": "ja/wab",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "tanya",
+                "en": "ask",
+                "zh": "问"
+              },
+              "syllables": [
+                "ta",
+                "nya"
+              ],
+              "syllableText": "ta/nya",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "belajar",
+                "en": "study",
+                "zh": "学习"
+              },
+              "syllables": [
+                "be",
+                "la",
+                "jar"
+              ],
+              "syllableText": "be/la/jar",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "sebut",
+                "en": "say",
+                "zh": "说"
+              },
+              "syllables": [
+                "se",
+                "but"
+              ],
+              "syllableText": "se/but",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "ingat",
+                "en": "remember",
+                "zh": "记得"
+              },
+              "syllables": [
+                "i",
+                "ngat"
+              ],
+              "syllableText": "i/ngat",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "English",
+      "language": "en",
+      "modules": [
+        {
+          "moduleCode": "EN-Y2-U2-ANIMALS",
+          "unitNumber": 2,
+          "unitTitle": "Animals",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "kucing",
+                "en": "cat",
+                "zh": "猫"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "anjing",
+                "en": "dog",
+                "zh": "狗"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "burung",
+                "en": "bird",
+                "zh": "鸟"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "ikan",
+                "en": "fish",
+                "zh": "鱼"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "arnab",
+                "en": "rabbit",
+                "zh": "兔子"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "kura-kura",
+                "en": "turtle",
+                "zh": "乌龟"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "rama-rama",
+                "en": "butterfly",
+                "zh": "蝴蝶"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "gajah",
+                "en": "elephant",
+                "zh": "大象"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "itik",
+                "en": "duck",
+                "zh": "鸭子"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "monyet",
+                "en": "monkey",
+                "zh": "猴子"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Mandarin / Bahasa Cina",
+      "language": "zh",
+      "modules": [
+        {
+          "moduleCode": "ZH-Y2-U3-NUMBERS-AND-COLOURS",
+          "unitNumber": 3,
+          "unitTitle": "Numbers and Colours",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "satu",
+                "en": "one",
+                "zh": "一"
+              },
+              "pinyin": "yī",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "dua",
+                "en": "two",
+                "zh": "二"
+              },
+              "pinyin": "èr",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "tiga",
+                "en": "three",
+                "zh": "三"
+              },
+              "pinyin": "sān",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "merah",
+                "en": "red",
+                "zh": "红色"
+              },
+              "pinyin": "hóng sè",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "biru",
+                "en": "blue",
+                "zh": "蓝色"
+              },
+              "pinyin": "lán sè",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "kuning",
+                "en": "yellow",
+                "zh": "黄色"
+              },
+              "pinyin": "huáng sè",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "hijau",
+                "en": "green",
+                "zh": "绿色"
+              },
+              "pinyin": "lǜ sè",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "putih",
+                "en": "white",
+                "zh": "白色"
+              },
+              "pinyin": "bái sè",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "ungu",
+                "en": "purple",
+                "zh": "紫色"
+              },
+              "pinyin": "zǐ sè",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "oren",
+                "en": "orange",
+                "zh": "橙色"
+              },
+              "pinyin": "chéng sè",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

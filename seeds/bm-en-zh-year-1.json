@@ -1,0 +1,418 @@
+{
+  "sourceType": "OFFICIAL_REFERENCE_SEED",
+  "sourceName": "Malaysian Primary Curriculum Reference Seed",
+  "syllabusVersion": "2026",
+  "yearLevel": 1,
+  "language": "mixed",
+  "subjects": [
+    {
+      "subject": "Bahasa Melayu",
+      "language": "ms",
+      "modules": [
+        {
+          "moduleCode": "BM-Y1-U1-FAMILY",
+          "unitNumber": 1,
+          "unitTitle": "Family and Home",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "ibu",
+                "en": "mother",
+                "zh": "妈妈"
+              },
+              "syllables": [
+                "i",
+                "bu"
+              ],
+              "syllableText": "i/bu",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "bapa",
+                "en": "father",
+                "zh": "爸爸"
+              },
+              "syllables": [
+                "ba",
+                "pa"
+              ],
+              "syllableText": "ba/pa",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "adik",
+                "en": "younger sibling",
+                "zh": "弟妹"
+              },
+              "syllables": [
+                "a",
+                "dik"
+              ],
+              "syllableText": "a/dik",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "abang",
+                "en": "elder brother",
+                "zh": "哥哥"
+              },
+              "syllables": [
+                "a",
+                "bang"
+              ],
+              "syllableText": "a/bang",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "kakak",
+                "en": "elder sister",
+                "zh": "姐姐"
+              },
+              "syllables": [
+                "ka",
+                "kak"
+              ],
+              "syllableText": "ka/kak",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "rumah",
+                "en": "house",
+                "zh": "家"
+              },
+              "syllables": [
+                "ru",
+                "mah"
+              ],
+              "syllableText": "ru/mah",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "makan",
+                "en": "eat",
+                "zh": "吃"
+              },
+              "syllables": [
+                "ma",
+                "kan"
+              ],
+              "syllableText": "ma/kan",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "minum",
+                "en": "drink",
+                "zh": "喝"
+              },
+              "syllables": [
+                "mi",
+                "num"
+              ],
+              "syllableText": "mi/num",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "nenek",
+                "en": "grandmother",
+                "zh": "奶奶/外婆"
+              },
+              "syllables": [
+                "ne",
+                "nek"
+              ],
+              "syllableText": "ne/nek",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "datuk",
+                "en": "grandfather",
+                "zh": "爷爷/外公"
+              },
+              "syllables": [
+                "da",
+                "tuk"
+              ],
+              "syllableText": "da/tuk",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "English",
+      "language": "en",
+      "modules": [
+        {
+          "moduleCode": "EN-Y1-U2-CLASSROOM",
+          "unitNumber": 2,
+          "unitTitle": "Classroom Words",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "buku",
+                "en": "book",
+                "zh": "书"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "pensel",
+                "en": "pencil",
+                "zh": "铅笔"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "beg",
+                "en": "bag",
+                "zh": "书包"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "meja",
+                "en": "desk",
+                "zh": "书桌"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "kerusi",
+                "en": "chair",
+                "zh": "椅子"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "guru",
+                "en": "teacher",
+                "zh": "老师"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "kawan",
+                "en": "friend",
+                "zh": "朋友"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "baca",
+                "en": "read",
+                "zh": "阅读"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "pemadam",
+                "en": "eraser",
+                "zh": "橡皮"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "pembaris",
+                "en": "ruler",
+                "zh": "尺"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Mandarin / Bahasa Cina",
+      "language": "zh",
+      "modules": [
+        {
+          "moduleCode": "ZH-Y1-U3-BASIC-GREETINGS",
+          "unitNumber": 3,
+          "unitTitle": "Basic Greetings",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "hello",
+                "en": "hello",
+                "zh": "你好"
+              },
+              "pinyin": "nǐ hǎo",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "terima kasih",
+                "en": "thank you",
+                "zh": "谢谢"
+              },
+              "pinyin": "xiè xie",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "selamat tinggal",
+                "en": "goodbye",
+                "zh": "再见"
+              },
+              "pinyin": "zài jiàn",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "selamat pagi",
+                "en": "good morning",
+                "zh": "早安"
+              },
+              "pinyin": "zǎo ān",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "guru",
+                "en": "teacher",
+                "zh": "老师"
+              },
+              "pinyin": "lǎo shī",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "kawan",
+                "en": "friend",
+                "zh": "朋友"
+              },
+              "pinyin": "péng yǒu",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "ibu",
+                "en": "mother",
+                "zh": "妈妈"
+              },
+              "pinyin": "mā ma",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "bapa",
+                "en": "father",
+                "zh": "爸爸"
+              },
+              "pinyin": "bà ba",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "selamat malam",
+                "en": "good night",
+                "zh": "晚安"
+              },
+              "pinyin": "wǎn ān",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "maaf",
+                "en": "sorry",
+                "zh": "对不起"
+              },
+              "pinyin": "duì bù qǐ",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

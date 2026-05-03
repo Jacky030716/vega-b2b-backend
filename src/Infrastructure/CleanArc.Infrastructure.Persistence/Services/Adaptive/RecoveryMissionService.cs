@@ -65,7 +65,7 @@ public class RecoveryMissionService(
                     context.Vocabulary.Select(ToAiItem).ToList(),
                     targetWords,
                     weakSkill,
-                    studentId,
+                    teacherId,
                     request.ClassroomId),
                 cancellationToken);
 

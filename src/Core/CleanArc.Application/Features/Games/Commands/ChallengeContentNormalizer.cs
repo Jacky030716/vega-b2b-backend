@@ -1,13 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using CleanArc.Domain.Entities.Quiz.Content;
 
 namespace CleanArc.Application.Features.Games.Commands;
 
 internal static class ChallengeContentNormalizer
 {
-  private const string WordBridgeImageRefPrefix = "quizzes/word-bridge/";
-
   private static readonly JsonSerializerOptions CamelCase = new()
   {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -22,9 +19,6 @@ internal static class ChallengeContentNormalizer
     {
       return gameKey switch
       {
-        "word_bridge" => NormalizeWordBridgeContent(rawContentData),
-        "magic_backpack" => NormalizeMagicBackpackContent(rawContentData),
-        "word_pair" => NormalizeWordPairContent(rawContentData),
         "spell_catcher" => NormalizeAdaptiveWordItems(rawContentData, "SPELL_CATCHER"),
         "syllable_sushi" => NormalizeAdaptiveWordItems(rawContentData, "SYLLABLE_SUSHI"),
         "voice_bridge" => NormalizeAdaptiveWordItems(rawContentData, "VOICE_BRIDGE"),
@@ -35,84 +29,6 @@ internal static class ChallengeContentNormalizer
     {
       return NormalizationResult.Fail("ContentData is not valid JSON");
     }
-  }
-
-  private static NormalizationResult NormalizeWordBridgeContent(string rawContentData)
-  {
-    var parsed = JsonSerializer.Deserialize<WordBridgeContent>(rawContentData);
-    if (parsed is null || parsed.Words.Count == 0)
-      return NormalizationResult.Fail("word_bridge content must include at least one word");
-
-    foreach (var word in parsed.Words)
-    {
-      if (string.IsNullOrWhiteSpace(word.Target))
-        return NormalizationResult.Fail("word_bridge word.target is required");
-
-      word.Target = word.Target.Trim().ToUpperInvariant();
-      word.Translation = word.Translation?.Trim() ?? string.Empty;
-      word.Difficulty = string.IsNullOrWhiteSpace(word.Difficulty)
-          ? "easy"
-          : word.Difficulty.Trim().ToLowerInvariant();
-
-      if (string.IsNullOrWhiteSpace(word.ImageRef))
-      {
-        word.ImageRef = null;
-        continue;
-      }
-
-      var normalizedImageRef = word.ImageRef.Trim().TrimStart('/');
-      if (!normalizedImageRef.StartsWith(WordBridgeImageRefPrefix, StringComparison.OrdinalIgnoreCase))
-        return NormalizationResult.Fail($"word_bridge word.imageRef must start with '{WordBridgeImageRefPrefix}'");
-
-      word.ImageRef = normalizedImageRef;
-    }
-
-    return NormalizationResult.Ok(JsonSerializer.Serialize(parsed, CamelCase));
-  }
-
-  private static NormalizationResult NormalizeMagicBackpackContent(string rawContentData)
-  {
-    var parsed = JsonSerializer.Deserialize<MagicBackpackContent>(rawContentData);
-    if (parsed is null)
-      return NormalizationResult.Fail("magic_backpack content is required");
-
-    var items = parsed.Items
-      .Where(item => !string.IsNullOrWhiteSpace(item))
-      .Select(item => item.Trim())
-      .ToList();
-
-    if (items.Count == 0)
-      return NormalizationResult.Fail("magic_backpack content must include at least one item");
-
-    var normalized = new MagicBackpackContent
-    {
-      Theme = string.IsNullOrWhiteSpace(parsed.Theme) ? "custom" : parsed.Theme.Trim(),
-      SequenceLength = parsed.SequenceLength is > 0 ? parsed.SequenceLength : items.Count,
-      GhostMode = parsed.GhostMode,
-      Items = items
-    };
-
-    return NormalizationResult.Ok(JsonSerializer.Serialize(normalized, CamelCase));
-  }
-
-  private static NormalizationResult NormalizeWordPairContent(string rawContentData)
-  {
-    var parsed = JsonSerializer.Deserialize<WordTwinsContent>(rawContentData);
-    if (parsed is null || parsed.Pairs.Count == 0)
-      return NormalizationResult.Fail("word_pair content must include at least one pair");
-
-    foreach (var pair in parsed.Pairs)
-    {
-      if (string.IsNullOrWhiteSpace(pair.Word))
-        return NormalizationResult.Fail("word_pair pair.word is required");
-
-      pair.Word = pair.Word.Trim();
-      pair.Translation = pair.Translation?.Trim();
-      pair.ImageKey = pair.ImageKey?.Trim();
-      pair.ImageRef = pair.ImageRef?.Trim();
-    }
-
-    return NormalizationResult.Ok(JsonSerializer.Serialize(parsed, CamelCase));
   }
 
   private static NormalizationResult NormalizeAdaptiveWordItems(string rawContentData, string expectedTemplateCode)
@@ -142,14 +58,6 @@ internal static class ChallengeContentNormalizer
     }
 
     return NormalizationResult.Ok(root.ToJsonString());
-  }
-
-  private sealed class MagicBackpackContent
-  {
-    public string? Theme { get; init; }
-    public int? SequenceLength { get; init; }
-    public bool? GhostMode { get; init; }
-    public List<string> Items { get; init; } = new();
   }
 
   public sealed class NormalizationResult

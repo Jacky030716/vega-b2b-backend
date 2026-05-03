@@ -32,11 +32,11 @@ public class ChallengeAiPipelineServiceTests
         """);
 
         var result = await service.GenerateStructuredVocabularyFromInputAsync(
-            new CustomVocabularyGenerationRequest("word_pair", "animals", "animals context", 7, 9),
+            new CustomVocabularyGenerationRequest("spell_catcher", "animals", "animals context", 7, 9),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess, result.ErrorMessage);
-        Assert.Equal("word_pair", result.Result.DraftSchema);
+        Assert.Equal("spell_catcher", result.Result.DraftSchema);
         Assert.Contains("kucing", result.Result.DraftPayload);
         Assert.Contains("cat", result.Result.PlayableContentData);
         Assert.Equal(42, result.Result.AiAuditLogId);
@@ -59,7 +59,7 @@ public class ChallengeAiPipelineServiceTests
         """, audit);
 
         var result = await service.GenerateStructuredVocabularyFromInputAsync(
-            new CustomVocabularyGenerationRequest("word_pair", "animals", "animals context", 7, 9),
+            new CustomVocabularyGenerationRequest("spell_catcher", "animals", "animals context", 7, 9),
             CancellationToken.None);
 
         Assert.False(result.IsSuccess);

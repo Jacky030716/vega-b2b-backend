@@ -107,10 +107,10 @@ RULES:
     var gameKey = variant?.Trim() ?? string.Empty;
     return gameKey switch
     {
-      "magic_backpack" => new AiPromptDefinition(
+      "spell_catcher" => new AiPromptDefinition(
         AiUseCases.CustomChallengeExtraction,
         Version,
-        "Convert teacher input into Magic Backpack custom challenge content.",
+        "Convert teacher input into Spell Catcher custom challenge content.",
         """
 SYSTEM: You are a structural data converter for custom challenge content.
 OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
@@ -120,21 +120,28 @@ SCHEMA:
   "title": "string",
   "description": "string",
   "content": {
-    "items": ["string", "string", "string"],
-    "theme": "string",
-    "sequenceLength": 3
+    "items": [
+      {
+        "word": "string",
+        "meaningText": "string",
+        "syllablesJson": "[\"sy\",\"lla\",\"bles\"]",
+        "pronunciationText": "string",
+        "difficultyLevel": 1
+      }
+    ]
   }
 }
 
 RULES:
 1. Use only the provided context and teacher request.
 2. "items" must have at least 3 values.
+3. Keep the items child-friendly and classroom-safe.
 """,
-        "magic_backpack_custom_draft"),
-      "word_pair" => new AiPromptDefinition(
+        "spell_catcher_custom_draft"),
+      "syllable_sushi" => new AiPromptDefinition(
         AiUseCases.CustomChallengeExtraction,
         Version,
-        "Convert teacher input into Word Pair custom challenge content.",
+        "Convert teacher input into Syllable Sushi custom challenge content.",
         """
 SYSTEM: You are a structural vocabulary converter for custom challenge content.
 OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
@@ -144,20 +151,27 @@ SCHEMA:
   "title": "string",
   "description": "string",
   "content": {
-    "pairs": [{ "key": "string", "value": "string" }],
-    "isBilingual": true
+    "items": [
+      {
+        "word": "string",
+        "meaningText": "string",
+        "syllablesJson": "[\"sy\", \"lla\", \"bles\"]",
+        "difficultyLevel": 1
+      }
+    ]
   }
 }
 
 RULES:
 1. Use only the provided context and teacher request.
-2. "pairs" must have at least 3 values.
+2. "items" must have at least 3 values.
+3. Output syllable-friendly words that can be split cleanly.
 """,
-        "word_pair_custom_draft"),
-      _ => new AiPromptDefinition(
+        "syllable_sushi_custom_draft"),
+      "voice_bridge" => new AiPromptDefinition(
         AiUseCases.CustomChallengeExtraction,
         Version,
-        "Convert teacher input into Word Builder custom challenge content.",
+        "Convert teacher input into Voice Bridge custom challenge content.",
         """
 SYSTEM: You are a structural vocabulary converter for custom challenge content.
 OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
@@ -167,16 +181,24 @@ SCHEMA:
   "title": "string",
   "description": "string",
   "content": {
-    "words": ["string", "string", "string"],
-    "hints": ["string", "string", "string"]
+    "items": [
+      {
+        "word": "string",
+        "meaningText": "string",
+        "pronunciationText": "string",
+        "difficultyLevel": 1
+      }
+    ]
   }
 }
 
 RULES:
 1. Use only the provided context and teacher request.
-2. "words" must have at least 3 values.
+2. "items" must have at least 3 values.
+3. Keep the words suitable for spoken practice.
 """,
-        "word_builder_custom_draft")
+        "voice_bridge_custom_draft"),
+      _ => throw new InvalidOperationException($"No AI prompt registered for custom extraction variant '{gameKey}'.")
     };
   }
 

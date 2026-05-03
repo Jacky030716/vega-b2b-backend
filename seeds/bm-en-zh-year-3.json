@@ -1,0 +1,425 @@
+{
+  "sourceType": "OFFICIAL_REFERENCE_SEED",
+  "sourceName": "Malaysian Primary Curriculum Reference Seed",
+  "syllabusVersion": "2026",
+  "yearLevel": 3,
+  "language": "mixed",
+  "subjects": [
+    {
+      "subject": "Bahasa Melayu",
+      "language": "ms",
+      "modules": [
+        {
+          "moduleCode": "BM-Y3-U1-DAILY-ROUTINES",
+          "unitNumber": 1,
+          "unitTitle": "Daily Routines",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "bangun",
+                "en": "wake up",
+                "zh": "起床"
+              },
+              "syllables": [
+                "ba",
+                "ngun"
+              ],
+              "syllableText": "ba/ngun",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "mandi",
+                "en": "bathe",
+                "zh": "洗澡"
+              },
+              "syllables": [
+                "man",
+                "di"
+              ],
+              "syllableText": "man/di",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "sarapan",
+                "en": "breakfast",
+                "zh": "早餐"
+              },
+              "syllables": [
+                "sa",
+                "ra",
+                "pan"
+              ],
+              "syllableText": "sa/ra/pan",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "sekolah",
+                "en": "school",
+                "zh": "学校"
+              },
+              "syllables": [
+                "se",
+                "ko",
+                "lah"
+              ],
+              "syllableText": "se/ko/lah",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "bermain",
+                "en": "play",
+                "zh": "玩"
+              },
+              "syllables": [
+                "ber",
+                "ma",
+                "in"
+              ],
+              "syllableText": "ber/ma/in",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "tidur",
+                "en": "sleep",
+                "zh": "睡觉"
+              },
+              "syllables": [
+                "ti",
+                "dur"
+              ],
+              "syllableText": "ti/dur",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "membaca",
+                "en": "reading",
+                "zh": "阅读"
+              },
+              "syllables": [
+                "mem",
+                "ba",
+                "ca"
+              ],
+              "syllableText": "mem/ba/ca",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "menulis",
+                "en": "writing",
+                "zh": "书写"
+              },
+              "syllables": [
+                "me",
+                "nu",
+                "lis"
+              ],
+              "syllableText": "me/nu/lis",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "berjalan",
+                "en": "walk",
+                "zh": "走路"
+              },
+              "syllables": [
+                "ber",
+                "ja",
+                "lan"
+              ],
+              "syllableText": "ber/ja/lan",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "mencuci",
+                "en": "wash",
+                "zh": "清洗"
+              },
+              "syllables": [
+                "men",
+                "cu",
+                "ci"
+              ],
+              "syllableText": "men/cu/ci",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "English",
+      "language": "en",
+      "modules": [
+        {
+          "moduleCode": "EN-Y3-U2-FOOD-AND-DRINKS",
+          "unitNumber": 2,
+          "unitTitle": "Food and Drinks",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "nasi",
+                "en": "rice",
+                "zh": "饭"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "roti",
+                "en": "bread",
+                "zh": "面包"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "air",
+                "en": "water",
+                "zh": "水"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "susu",
+                "en": "milk",
+                "zh": "牛奶"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "telur",
+                "en": "egg",
+                "zh": "鸡蛋"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "buah",
+                "en": "fruit",
+                "zh": "水果"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "sayur",
+                "en": "vegetable",
+                "zh": "蔬菜"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "mi",
+                "en": "noodle",
+                "zh": "面条"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "ayam",
+                "en": "chicken",
+                "zh": "鸡肉"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "ikan",
+                "en": "fish",
+                "zh": "鱼"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Mandarin / Bahasa Cina",
+      "language": "zh",
+      "modules": [
+        {
+          "moduleCode": "ZH-Y3-U3-DAILY-LIFE",
+          "unitNumber": 3,
+          "unitTitle": "Daily Life",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "sekolah",
+                "en": "school",
+                "zh": "学校"
+              },
+              "pinyin": "xué xiào",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "beg sekolah",
+                "en": "school bag",
+                "zh": "书包"
+              },
+              "pinyin": "shū bāo",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "pensel",
+                "en": "pencil",
+                "zh": "铅笔"
+              },
+              "pinyin": "qiān bǐ",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "botol air",
+                "en": "water bottle",
+                "zh": "水壶"
+              },
+              "pinyin": "shuǐ hú",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "sarapan",
+                "en": "breakfast",
+                "zh": "早餐"
+              },
+              "pinyin": "zǎo cān",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "makan tengah hari",
+                "en": "lunch",
+                "zh": "午餐"
+              },
+              "pinyin": "wǔ cān",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "tidur",
+                "en": "sleep",
+                "zh": "睡觉"
+              },
+              "pinyin": "shuì jiào",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "permainan",
+                "en": "game",
+                "zh": "游戏"
+              },
+              "pinyin": "yóu xì",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "membeli",
+                "en": "buy",
+                "zh": "买"
+              },
+              "pinyin": "mǎi",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "menjual",
+                "en": "sell",
+                "zh": "卖"
+              },
+              "pinyin": "mài",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

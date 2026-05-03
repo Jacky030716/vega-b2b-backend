@@ -1,0 +1,426 @@
+{
+  "sourceType": "OFFICIAL_REFERENCE_SEED",
+  "sourceName": "Malaysian Primary Curriculum Reference Seed",
+  "syllabusVersion": "2026",
+  "yearLevel": 5,
+  "language": "mixed",
+  "subjects": [
+    {
+      "subject": "Bahasa Melayu",
+      "language": "ms",
+      "modules": [
+        {
+          "moduleCode": "BM-Y5-U1-COMMUNITY",
+          "unitNumber": 1,
+          "unitTitle": "Community and Places",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "kampung",
+                "en": "village",
+                "zh": "乡村"
+              },
+              "syllables": [
+                "kam",
+                "pung"
+              ],
+              "syllableText": "kam/pung",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "bandar",
+                "en": "town",
+                "zh": "城市"
+              },
+              "syllables": [
+                "ban",
+                "dar"
+              ],
+              "syllableText": "ban/dar",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "pasar",
+                "en": "market",
+                "zh": "市场"
+              },
+              "syllables": [
+                "pa",
+                "sar"
+              ],
+              "syllableText": "pa/sar",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "klinik",
+                "en": "clinic",
+                "zh": "诊所"
+              },
+              "syllables": [
+                "kli",
+                "nik"
+              ],
+              "syllableText": "kli/nik",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "perpustakaan",
+                "en": "library",
+                "zh": "图书馆"
+              },
+              "syllables": [
+                "per",
+                "pus",
+                "ta",
+                "ka",
+                "an"
+              ],
+              "syllableText": "per/pus/ta/ka/an",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "taman",
+                "en": "park",
+                "zh": "公园"
+              },
+              "syllables": [
+                "ta",
+                "man"
+              ],
+              "syllableText": "ta/man",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "jiran",
+                "en": "neighbour",
+                "zh": "邻居"
+              },
+              "syllables": [
+                "ji",
+                "ran"
+              ],
+              "syllableText": "ji/ran",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "keselamatan",
+                "en": "safety",
+                "zh": "安全"
+              },
+              "syllables": [
+                "ke",
+                "se",
+                "la",
+                "mat",
+                "an"
+              ],
+              "syllableText": "ke/se/la/mat/an",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "doktor",
+                "en": "doctor",
+                "zh": "医生"
+              },
+              "syllables": [
+                "dok",
+                "tor"
+              ],
+              "syllableText": "dok/tor",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "jururawat",
+                "en": "nurse",
+                "zh": "护士"
+              },
+              "syllables": [
+                "ju",
+                "ru",
+                "ra",
+                "wat"
+              ],
+              "syllableText": "ju/ru/ra/wat",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "English",
+      "language": "en",
+      "modules": [
+        {
+          "moduleCode": "EN-Y5-U2-PLACES-AND-DIRECTIONS",
+          "unitNumber": 2,
+          "unitTitle": "Places and Directions",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "perpustakaan",
+                "en": "library",
+                "zh": "图书馆"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "klinik",
+                "en": "clinic",
+                "zh": "诊所"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "pasar",
+                "en": "market",
+                "zh": "市场"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "muzium",
+                "en": "museum",
+                "zh": "博物馆"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "lurus",
+                "en": "straight",
+                "zh": "直走"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "kiri",
+                "en": "left",
+                "zh": "左边"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "kanan",
+                "en": "right",
+                "zh": "右边"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "dekat",
+                "en": "near",
+                "zh": "靠近"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "sekolah",
+                "en": "school",
+                "zh": "学校"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "hospital",
+                "en": "hospital",
+                "zh": "医院"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Mandarin / Bahasa Cina",
+      "language": "zh",
+      "modules": [
+        {
+          "moduleCode": "ZH-Y5-U3-COMMUNITY",
+          "unitNumber": 3,
+          "unitTitle": "Community",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "perpustakaan",
+                "en": "library",
+                "zh": "图书馆"
+              },
+              "pinyin": "tú shū guǎn",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "klinik",
+                "en": "clinic",
+                "zh": "诊所"
+              },
+              "pinyin": "zhěn suǒ",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "pasar",
+                "en": "market",
+                "zh": "市场"
+              },
+              "pinyin": "shì chǎng",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "taman",
+                "en": "park",
+                "zh": "公园"
+              },
+              "pinyin": "gōng yuán",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "jiran",
+                "en": "neighbour",
+                "zh": "邻居"
+              },
+              "pinyin": "lín jū",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "keselamatan",
+                "en": "safety",
+                "zh": "安全"
+              },
+              "pinyin": "ān quán",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "bantuan",
+                "en": "help",
+                "zh": "帮助"
+              },
+              "pinyin": "bāng zhù",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "kerjasama",
+                "en": "cooperation",
+                "zh": "合作"
+              },
+              "pinyin": "hé zuò",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "pekerja",
+                "en": "worker",
+                "zh": "工人"
+              },
+              "pinyin": "gōng rén",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "guru",
+                "en": "teacher",
+                "zh": "老师"
+              },
+              "pinyin": "lǎo shī",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

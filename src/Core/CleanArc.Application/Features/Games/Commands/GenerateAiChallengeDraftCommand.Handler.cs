@@ -78,5 +78,5 @@ internal sealed class GenerateAiChallengeDraftCommandHandler(
   }
 
   private static bool IsSupportedGameKey(string gameKey)
-    => gameKey is "magic_backpack" or "word_pair" or "word_bridge";
+    => gameKey is "spell_catcher" or "syllable_sushi" or "voice_bridge";
 }

@@ -69,7 +69,6 @@ public sealed class ChallengeAiPipelineService(
     }
 
     var sanitized = SanitizeJson(generation.Result.RawResponse);
-    logger.LogInformation("AI output for {UseCase}: {Output}", AiUseCases.CustomChallengeExtraction, sanitized);
 
     var draft = ValidateAndMapCustomDraft(request.GameKey, request.Prompt, sanitized);
     LogValidation(AiUseCases.CustomChallengeExtraction, draft.IsSuccess, draft.ErrorMessage);
@@ -95,6 +94,17 @@ public sealed class ChallengeAiPipelineService(
       Array.Empty<string>(),
       cancellationToken);
 
+    if (request.RelatedUserId is int successUserId)
+    {
+      await ConsumeUsageAsync(
+        successUserId,
+        AiFeatureTypes.CustomChallengeGeneration,
+        AiUseCases.CustomChallengeExtraction,
+        request.RelatedClassroomId,
+        null,
+        cancellationToken);
+    }
+
     return OperationResult<CustomVocabularyGenerationResult>.SuccessResult(result);
   }
 
@@ -104,7 +114,7 @@ public sealed class ChallengeAiPipelineService(
   {
     if (request.RelatedUserId is int userId)
     {
-      var access = await EnsureAccessAsync(userId, AiFeatureTypes.PredefinedModuleGeneration, cancellationToken);
+      var access = await EnsureAccessAsync(userId, ResolveModulePlanFeatureType(request), cancellationToken);
       if (!access.IsSuccess)
         return OperationResult<ModuleChallengePlanResult>.FailureResult(access.ErrorMessage ?? "AI request blocked.", EmptyModulePlanResult(0));
     }
@@ -134,7 +144,6 @@ public sealed class ChallengeAiPipelineService(
     }
 
     var sanitized = SanitizeJson(generation.Result.RawResponse);
-    logger.LogInformation("AI output for {UseCase}: {Output}", AiUseCases.ModuleChallengePlanning, sanitized);
 
     var validation = ValidateModulePlan(sanitized, request);
     LogValidation(AiUseCases.ModuleChallengePlanning, validation.IsSuccess, validation.ErrorMessage);
@@ -161,6 +170,17 @@ public sealed class ChallengeAiPipelineService(
       AiValidationStatuses.Valid,
       Array.Empty<string>(),
       cancellationToken);
+
+    if (request.RelatedUserId is int successUserId)
+    {
+      await ConsumeUsageAsync(
+        successUserId,
+        ResolveModulePlanFeatureType(request),
+        AiUseCases.ModuleChallengePlanning,
+        request.RelatedClassroomId,
+        request.ModuleId,
+        cancellationToken);
+    }
 
     return OperationResult<ModuleChallengePlanResult>.SuccessResult(result);
   }
@@ -257,11 +277,6 @@ public sealed class ChallengeAiPipelineService(
     double temperature,
     CancellationToken cancellationToken)
   {
-    logger.LogInformation("AI input for {UseCase}. SystemPromptLength={SystemLength}, UserPromptLength={UserLength}",
-      useCase,
-      systemPrompt.Length,
-      userPrompt.Length);
-
     var result = await aiGenerationService.GenerateJsonAsync(
       new ChallengeGenerationRequest(
         Model: string.Empty,
@@ -506,166 +521,50 @@ public sealed class ChallengeAiPipelineService(
       contentElement = rootElement;
     }
 
-    return gameKey switch
+    var items = new List<JsonElement>();
+    if (contentElement.TryGetProperty("items", out var itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
     {
-      "magic_backpack" => ValidateMagicBackpack(normalizedTitle, normalizedDescription, contentElement),
-      "word_pair" => ValidateWordPair(normalizedTitle, normalizedDescription, contentElement),
-      "word_bridge" => ValidateWordBuilder(normalizedTitle, normalizedDescription, contentElement),
-      _ => OperationResult<CustomVocabularyGenerationResult>.FailureResult("Unsupported game key for draft validation.")
-    };
-  }
-
-  private static OperationResult<CustomVocabularyGenerationResult> ValidateMagicBackpack(
-    string title,
-    string description,
-    JsonElement contentElement)
-  {
-    List<string> items = new();
-    foreach (var fieldName in new[] { "items", "vocabulary", "words", "elements", "sequence" })
-    {
-      if (contentElement.TryGetProperty(fieldName, out var arr) && arr.ValueKind == JsonValueKind.Array)
-      {
-        items = arr.EnumerateArray()
-          .Where(el => el.ValueKind == JsonValueKind.String)
-          .Select(el => el.GetString()?.Trim() ?? string.Empty)
-          .Where(s => s.Length > 0)
-          .Distinct(StringComparer.OrdinalIgnoreCase)
-          .ToList();
-        if (items.Count > 0) break;
-      }
+      items = itemsElement.EnumerateArray()
+        .Where(item => item.ValueKind == JsonValueKind.Object)
+        .ToList();
     }
 
     if (items.Count < 3)
-      return OperationResult<CustomVocabularyGenerationResult>.FailureResult("Magic Backpack requires at least 3 items.");
+      return OperationResult<CustomVocabularyGenerationResult>.FailureResult("AI draft requires at least 3 items.");
 
-    var theme = contentElement.TryGetProperty("theme", out var themeEl) && themeEl.ValueKind == JsonValueKind.String
-      ? themeEl.GetString()?.Trim() ?? "custom"
-      : "custom";
-
-    var sequenceLength = contentElement.TryGetProperty("sequenceLength", out var seqEl) && seqEl.TryGetInt32(out var seqVal) && seqVal > 0
-      ? Math.Min(seqVal, items.Count)
-      : items.Count;
-
-    var draftPayload = JsonSerializer.Serialize(new { items, theme, sequenceLength }, JsonOptions);
-    var playableContentData = JsonSerializer.Serialize(new
+    var gameTemplateCode = gameKey switch
     {
-      Theme = theme,
-      SequenceLength = sequenceLength,
-      GhostMode = false,
-      Items = items
-    });
+      "spell_catcher" => "SPELL_CATCHER",
+      "syllable_sushi" => "SYLLABLE_SUSHI",
+      "voice_bridge" => "VOICE_BRIDGE",
+      _ => gameKey.ToUpperInvariant()
+    };
 
-    return OperationResult<CustomVocabularyGenerationResult>.SuccessResult(
-      new CustomVocabularyGenerationResult(title, description, "magic_backpack", draftPayload, playableContentData));
-  }
-
-  private static OperationResult<CustomVocabularyGenerationResult> ValidateWordPair(
-    string title,
-    string description,
-    JsonElement contentElement)
-  {
-    WordPairDraftContent? content;
-    try
-    {
-      content = JsonSerializer.Deserialize<WordPairDraftContent>(contentElement.GetRawText(), ReadOptions);
-    }
-    catch
-    {
-      return OperationResult<CustomVocabularyGenerationResult>.FailureResult("Word Pair draft schema is invalid.");
-    }
-
-    var pairs = (content?.Pairs ?? new List<WordPairDraftItem>())
-      .Select(pair => new WordPairDraftItem
-      {
-        Key = pair.Key?.Trim() ?? string.Empty,
-        Value = pair.Value?.Trim() ?? string.Empty
-      })
-      .Where(pair => pair.Key.Length > 0 && pair.Value.Length > 0)
-      .DistinctBy(pair => $"{pair.Key}|{pair.Value}")
-      .ToList();
-
-    if (pairs.Count < 3)
-      return OperationResult<CustomVocabularyGenerationResult>.FailureResult("Word Pair requires at least 3 pairs.");
-
+    var normalizedContentJson = contentElement.GetRawText();
     var draftPayload = JsonSerializer.Serialize(new
     {
-      pairs = pairs.Select(pair => new { key = pair.Key, value = pair.Value }).ToList(),
-      isBilingual = content?.IsBilingual ?? true
+      gameTemplateCode,
+      content = JsonNode.Parse(normalizedContentJson),
+      items = items.Select(item => JsonNode.Parse(item.GetRawText()))
     }, JsonOptions);
 
-    var playableContentData = JsonSerializer.Serialize(new
-    {
-      Pairs = pairs.Select(pair => new
-      {
-        Word = pair.Key,
-        Translation = pair.Value,
-        ImageRef = (string?)null,
-        ImageKey = (string?)null
-      }).ToList()
-    });
-
     return OperationResult<CustomVocabularyGenerationResult>.SuccessResult(
-      new CustomVocabularyGenerationResult(title, description, "word_pair", draftPayload, playableContentData));
-  }
-
-  private static OperationResult<CustomVocabularyGenerationResult> ValidateWordBuilder(
-    string title,
-    string description,
-    JsonElement contentElement)
-  {
-    WordBuilderDraftContent? content;
-    try
-    {
-      content = JsonSerializer.Deserialize<WordBuilderDraftContent>(contentElement.GetRawText(), ReadOptions);
-    }
-    catch
-    {
-      return OperationResult<CustomVocabularyGenerationResult>.FailureResult("Word Builder draft schema is invalid.");
-    }
-
-    var words = (content?.Words ?? new List<string>())
-      .Select(word => word.Trim())
-      .Where(word => word.Length > 0)
-      .Distinct(StringComparer.OrdinalIgnoreCase)
-      .ToList();
-
-    if (words.Count < 3)
-      return OperationResult<CustomVocabularyGenerationResult>.FailureResult("Word Builder requires at least 3 words.");
-
-    var hints = (content?.Hints ?? new List<string>())
-      .Select(hint => hint.Trim())
-      .Where(hint => hint.Length > 0)
-      .ToList();
-
-    while (hints.Count < words.Count)
-    {
-      var nextWord = words[hints.Count];
-      hints.Add($"Hint: {nextWord}");
-    }
-
-    var draftPayload = JsonSerializer.Serialize(new { words, hints }, JsonOptions);
-    var playableContentData = JsonSerializer.Serialize(new
-    {
-      Words = words.Select((word, index) => new
-      {
-        Target = word.ToUpperInvariant(),
-        Translation = hints[index],
-        Difficulty = "medium",
-        ImageRef = (string?)null
-      }).ToList()
-    });
-
-    return OperationResult<CustomVocabularyGenerationResult>.SuccessResult(
-      new CustomVocabularyGenerationResult(title, description, "word_builder", draftPayload, playableContentData));
+      new CustomVocabularyGenerationResult(
+        normalizedTitle,
+        normalizedDescription,
+        gameTemplateCode,
+        draftPayload,
+        normalizedContentJson));
   }
 
   private static string BuildCustomExtractionUserPrompt(string gameKey, string prompt, string context)
   {
     var readableGameName = gameKey switch
     {
-      "magic_backpack" => "Magic Backpack",
-      "word_pair" => "Word Pair",
-      _ => "Word Builder"
+      "spell_catcher" => "Spell Catcher",
+      "syllable_sushi" => "Syllable Sushi",
+      "voice_bridge" => "Voice Bridge",
+      _ => "Adaptive Challenge"
     };
 
     var sb = new StringBuilder();
@@ -734,9 +633,10 @@ public sealed class ChallengeAiPipelineService(
   {
     var prefix = gameKey switch
     {
-      "magic_backpack" => "Magic Backpack",
-      "word_pair" => "Word Pair",
-      _ => "Word Builder"
+      "spell_catcher" => "Spell Catcher",
+      "syllable_sushi" => "Syllable Sushi",
+      "voice_bridge" => "Voice Bridge",
+      _ => "Adaptive Challenge"
     };
 
     if (string.IsNullOrWhiteSpace(prompt))
@@ -771,6 +671,35 @@ public sealed class ChallengeAiPipelineService(
     };
   }
 
+  private async Task ConsumeUsageAsync(
+    int userId,
+    string featureType,
+    string endpointKey,
+    int? relatedClassroomId,
+    int? relatedModuleId,
+    CancellationToken cancellationToken)
+  {
+    await aiUsageService.ConsumeUsageAsync(
+      userId,
+      featureType,
+      endpointKey,
+      "GEMINI",
+      googleAiOptions.Value.ModelId,
+      1,
+      true,
+      null,
+      relatedModuleId.HasValue ? "module" : relatedClassroomId.HasValue ? "classroom" : null,
+      relatedModuleId ?? relatedClassroomId,
+      cancellationToken);
+  }
+
+  private static string ResolveModulePlanFeatureType(ModuleChallengePlanRequest request)
+  {
+    return request.Mode.Contains("RECOVERY", StringComparison.OrdinalIgnoreCase)
+      ? AiFeatureTypes.RecoveryMissionPreview
+      : AiFeatureTypes.PredefinedModuleGeneration;
+  }
+
   private static string NormalizeFocusType(string? focusType, string mode)
   {
     var normalized = focusType?.Trim().ToUpperInvariant();
@@ -801,21 +730,4 @@ public sealed class ChallengeAiPipelineService(
     public string? FocusType { get; init; }
   }
 
-  private sealed class WordPairDraftContent
-  {
-    public List<WordPairDraftItem> Pairs { get; init; } = new();
-    public bool? IsBilingual { get; init; }
-  }
-
-  private sealed class WordPairDraftItem
-  {
-    public string Key { get; init; } = string.Empty;
-    public string Value { get; init; } = string.Empty;
-  }
-
-  private sealed class WordBuilderDraftContent
-  {
-    public List<string> Words { get; init; } = new();
-    public List<string> Hints { get; init; } = new();
-  }
 }

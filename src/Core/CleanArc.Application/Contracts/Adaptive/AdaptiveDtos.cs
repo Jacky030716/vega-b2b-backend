@@ -162,6 +162,13 @@ public record SyllableSushiSpecDto(
 public record SyllabusSeedDocument(
     string? SourceType,
     string? Subject,
+    int? YearLevel,
+    IReadOnlyList<SyllabusSeedSubject>? Subjects,
+    IReadOnlyList<SyllabusSeedModule>? Modules);
+
+public record SyllabusSeedSubject(
+    string? Subject,
+    string? Language,
     IReadOnlyList<SyllabusSeedModule>? Modules);
 
 public record SyllabusSeedLanguage(
@@ -185,7 +192,8 @@ public record SyllabusSeedItem(
     SyllabusSeedText? Text,
     IReadOnlyList<string>? Syllables,
     string? SyllableText,
-    string? ItemType);
+    string? ItemType,
+    string? Pinyin);
 
 public record SyllabusIngestionResult(
     int ModulesCreated,

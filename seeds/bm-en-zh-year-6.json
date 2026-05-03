@@ -1,0 +1,426 @@
+{
+  "sourceType": "OFFICIAL_REFERENCE_SEED",
+  "sourceName": "Malaysian Primary Curriculum Reference Seed",
+  "syllabusVersion": "2026",
+  "yearLevel": 6,
+  "language": "mixed",
+  "subjects": [
+    {
+      "subject": "Bahasa Melayu",
+      "language": "ms",
+      "modules": [
+        {
+          "moduleCode": "BM-Y6-U1-VALUES-AND-RESPONSIBILITY",
+          "unitNumber": 1,
+          "unitTitle": "Values and Responsibility",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "hormat",
+                "en": "respect",
+                "zh": "尊重"
+              },
+              "syllables": [
+                "hor",
+                "mat"
+              ],
+              "syllableText": "hor/mat",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "jujur",
+                "en": "honest",
+                "zh": "诚实"
+              },
+              "syllables": [
+                "ju",
+                "jur"
+              ],
+              "syllableText": "ju/jur",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "rajin",
+                "en": "hardworking",
+                "zh": "勤劳"
+              },
+              "syllables": [
+                "ra",
+                "jin"
+              ],
+              "syllableText": "ra/jin",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "amanah",
+                "en": "trustworthy",
+                "zh": "可信赖"
+              },
+              "syllables": [
+                "a",
+                "ma",
+                "nah"
+              ],
+              "syllableText": "a/ma/nah",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "bertanggungjawab",
+                "en": "responsible",
+                "zh": "负责任"
+              },
+              "syllables": [
+                "ber",
+                "tang",
+                "gung",
+                "ja",
+                "wab"
+              ],
+              "syllableText": "ber/tang/gung/ja/wab",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "kerjasama",
+                "en": "cooperation",
+                "zh": "合作"
+              },
+              "syllables": [
+                "ker",
+                "ja",
+                "sa",
+                "ma"
+              ],
+              "syllableText": "ker/ja/sa/ma",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "disiplin",
+                "en": "discipline",
+                "zh": "纪律"
+              },
+              "syllables": [
+                "di",
+                "si",
+                "plin"
+              ],
+              "syllableText": "di/si/plin",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "prihatin",
+                "en": "caring",
+                "zh": "关心"
+              },
+              "syllables": [
+                "pri",
+                "ha",
+                "tin"
+              ],
+              "syllableText": "pri/ha/tin",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "ikhlas",
+                "en": "sincere",
+                "zh": "真诚"
+              },
+              "syllables": [
+                "ikh",
+                "las"
+              ],
+              "syllableText": "ikh/las",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "sabar",
+                "en": "patient",
+                "zh": "耐心"
+              },
+              "syllables": [
+                "sa",
+                "bar"
+              ],
+              "syllableText": "sa/bar",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "English",
+      "language": "en",
+      "modules": [
+        {
+          "moduleCode": "EN-Y6-U2-TECHNOLOGY-AND-STUDY",
+          "unitNumber": 2,
+          "unitTitle": "Technology and Study",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "komputer",
+                "en": "computer",
+                "zh": "电脑"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "internet",
+                "en": "internet",
+                "zh": "互联网"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "papan kekunci",
+                "en": "keyboard",
+                "zh": "键盘"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "skrin",
+                "en": "screen",
+                "zh": "屏幕"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "cari",
+                "en": "search",
+                "zh": "搜索"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "projek",
+                "en": "project",
+                "zh": "项目"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "pembentangan",
+                "en": "presentation",
+                "zh": "演示"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "maklumat",
+                "en": "information",
+                "zh": "资料"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "research",
+                "en": "research",
+                "zh": "研究"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "dictionary",
+                "en": "dictionary",
+                "zh": "字典"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Mandarin / Bahasa Cina",
+      "language": "zh",
+      "modules": [
+        {
+          "moduleCode": "ZH-Y6-U3-VALUES-AND-STUDY",
+          "unitNumber": 3,
+          "unitTitle": "Values and Study",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "hormat",
+                "en": "respect",
+                "zh": "尊重"
+              },
+              "pinyin": "zūn zhòng",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "jujur",
+                "en": "honest",
+                "zh": "诚实"
+              },
+              "pinyin": "chéng shí",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "rajin",
+                "en": "hardworking",
+                "zh": "勤劳"
+              },
+              "pinyin": "qín láo",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "tanggungjawab",
+                "en": "responsibility",
+                "zh": "责任"
+              },
+              "pinyin": "zé rèn",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "kerjasama",
+                "en": "cooperation",
+                "zh": "合作"
+              },
+              "pinyin": "hé zuò",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "disiplin",
+                "en": "discipline",
+                "zh": "纪律"
+              },
+              "pinyin": "jì lǜ",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "maklumat",
+                "en": "information",
+                "zh": "资料"
+              },
+              "pinyin": "zī liào",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "laporan",
+                "en": "report",
+                "zh": "报告"
+              },
+              "pinyin": "bào gào",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "usaha",
+                "en": "effort",
+                "zh": "努力"
+              },
+              "pinyin": "nǔ lì",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "sabar",
+                "en": "patient",
+                "zh": "耐心"
+              },
+              "pinyin": "nài xīn",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -51,7 +51,7 @@ public class AchievementTrigger : BaseEntity<int>
 
   /// <summary>
   /// Optional JSON filters that must match event properties for progress to count.
-  /// E.g., for QuizCompleted: { "minimumScore": 80, "gameType": "word_bridge" }
+  /// E.g., for QuizCompleted: { "minimumScore": 80, "gameType": "spell_catcher" }
   /// None means all events of this type count toward progress.
   /// </summary>
   public string? FilterConditionsJson { get; set; }

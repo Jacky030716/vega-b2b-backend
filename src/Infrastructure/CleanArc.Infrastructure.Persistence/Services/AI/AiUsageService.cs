@@ -1,6 +1,7 @@
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Domain.Entities.AI;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using CleanArc.Infrastructure.Persistence;
 
@@ -8,7 +9,8 @@ namespace CleanArc.Infrastructure.Persistence.Services.AI;
 
 public sealed class AiUsageService(
   ApplicationDbContext dbContext,
-  IOptions<AiUsageLimitOptions> options) : IAiUsageService
+  IOptions<AiUsageLimitOptions> options,
+  ILogger<AiUsageService> logger) : IAiUsageService
 {
   private readonly AiUsageLimitOptions _options = options.Value;
 

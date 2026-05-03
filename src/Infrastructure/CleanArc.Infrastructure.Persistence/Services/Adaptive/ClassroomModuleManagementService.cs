@@ -58,16 +58,39 @@ public class ClassroomModuleManagementService(
             })
             .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
 
-        var progress = await dbContext.StudentWordMasteries.AsNoTracking()
+        var progress = await dbContext.Challenges.AsNoTracking()
+            .Where(c =>
+                c.ClassroomId == classroomId &&
+                c.ModuleId != null &&
+                moduleIds.Contains(c.ModuleId.Value) &&
+                c.SourceType != RecoverySourceType)
+            .Select(c => new
+            {
+                ModuleId = c.ModuleId!.Value,
+                IsCompleted =
+                    c.LifecycleState == ChallengeLifecycleState.Completed ||
+                    dbContext.ChallengeProgresses.AsNoTracking().Any(progress =>
+                        progress.ClassroomId == classroomId &&
+                        progress.ChallengeId == c.Id &&
+                        progress.HasCompleted)
+            })
+            .GroupBy(x => x.ModuleId)
+            .Select(g => new
+            {
+                ModuleId = g.Key,
+                Progress = g.Any() ? (int)Math.Round((double)g.Count(x => x.IsCompleted) / g.Count() * 100) : 0
+            })
+            .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
+
+        var weakCounts = await dbContext.StudentWordMasteries.AsNoTracking()
             .Where(m => m.ModuleId != null && moduleIds.Contains(m.ModuleId.Value))
             .GroupBy(m => m.ModuleId!.Value)
             .Select(g => new
             {
                 ModuleId = g.Key,
-                Progress = (int)Math.Round(g.Average(x => x.MasteryScore)),
                 Weak = g.Count(x => x.MasteryScore < 65)
             })
-            .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
+            .ToDictionaryAsync(x => x.ModuleId, x => x.Weak, cancellationToken);
 
         var moduleDtos = modules.Select(module =>
         {
@@ -83,7 +106,7 @@ public class ClassroomModuleManagementService(
                 challengeCount?.Generated ?? 0,
                 challengeCount?.Active ?? 0,
                 moduleProgress?.Progress ?? 0,
-                moduleProgress?.Weak ?? 0);
+                weakCounts.GetValueOrDefault(module.Id));
         }).ToList();
 
         var subjectGroups = moduleDtos

@@ -1,0 +1,418 @@
+{
+  "sourceType": "OFFICIAL_REFERENCE_SEED",
+  "sourceName": "Malaysian Primary Curriculum Reference Seed",
+  "syllabusVersion": "2026",
+  "yearLevel": 4,
+  "language": "mixed",
+  "subjects": [
+    {
+      "subject": "Bahasa Melayu",
+      "language": "ms",
+      "modules": [
+        {
+          "moduleCode": "BM-Y4-U1-NATURE",
+          "unitNumber": 1,
+          "unitTitle": "Nature and Environment",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "pokok",
+                "en": "tree",
+                "zh": "树"
+              },
+              "syllables": [
+                "po",
+                "kok"
+              ],
+              "syllableText": "po/kok",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "bunga",
+                "en": "flower",
+                "zh": "花"
+              },
+              "syllables": [
+                "bu",
+                "nga"
+              ],
+              "syllableText": "bu/nga",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "daun",
+                "en": "leaf",
+                "zh": "叶子"
+              },
+              "syllables": [
+                "da",
+                "un"
+              ],
+              "syllableText": "da/un",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "sungai",
+                "en": "river",
+                "zh": "河流"
+              },
+              "syllables": [
+                "su",
+                "ngai"
+              ],
+              "syllableText": "su/ngai",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "laut",
+                "en": "sea",
+                "zh": "海"
+              },
+              "syllables": [
+                "la",
+                "ut"
+              ],
+              "syllableText": "la/ut",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "awan",
+                "en": "cloud",
+                "zh": "云"
+              },
+              "syllables": [
+                "a",
+                "wan"
+              ],
+              "syllableText": "a/wan",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "hujan",
+                "en": "rain",
+                "zh": "雨"
+              },
+              "syllables": [
+                "hu",
+                "jan"
+              ],
+              "syllableText": "hu/jan",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "angin",
+                "en": "wind",
+                "zh": "风"
+              },
+              "syllables": [
+                "a",
+                "ngin"
+              ],
+              "syllableText": "a/ngin",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "hutan",
+                "en": "forest",
+                "zh": "森林"
+              },
+              "syllables": [
+                "hu",
+                "tan"
+              ],
+              "syllableText": "hu/tan",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "gunung",
+                "en": "mountain",
+                "zh": "山"
+              },
+              "syllables": [
+                "gu",
+                "nung"
+              ],
+              "syllableText": "gu/nung",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "English",
+      "language": "en",
+      "modules": [
+        {
+          "moduleCode": "EN-Y4-U2-HEALTHY-HABITS",
+          "unitNumber": 2,
+          "unitTitle": "Healthy Habits",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "bersenam",
+                "en": "exercise",
+                "zh": "运动"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "sihat",
+                "en": "healthy",
+                "zh": "健康"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "berus",
+                "en": "brush",
+                "zh": "刷"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "basuh",
+                "en": "wash",
+                "zh": "洗"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "rehat",
+                "en": "rest",
+                "zh": "休息"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "bersih",
+                "en": "clean",
+                "zh": "干净"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "sarapan",
+                "en": "breakfast",
+                "zh": "早餐"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "sayur",
+                "en": "vegetable",
+                "zh": "蔬菜"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "tidur",
+                "en": "sleep",
+                "zh": "睡觉"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "water",
+                "en": "water",
+                "zh": "水"
+              },
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Mandarin / Bahasa Cina",
+      "language": "zh",
+      "modules": [
+        {
+          "moduleCode": "ZH-Y4-U3-NATURE",
+          "unitNumber": 3,
+          "unitTitle": "Nature",
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": {
+                "ms": "langit",
+                "en": "sky",
+                "zh": "天空"
+              },
+              "pinyin": "tiān kōng",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": {
+                "ms": "matahari",
+                "en": "sun",
+                "zh": "太阳"
+              },
+              "pinyin": "tài yáng",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": {
+                "ms": "bulan",
+                "en": "moon",
+                "zh": "月亮"
+              },
+              "pinyin": "yuè liang",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": {
+                "ms": "bintang",
+                "en": "star",
+                "zh": "星星"
+              },
+              "pinyin": "xīng xing",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": {
+                "ms": "bunga",
+                "en": "flower",
+                "zh": "花"
+              },
+              "pinyin": "huā",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": {
+                "ms": "pokok",
+                "en": "tree",
+                "zh": "树"
+              },
+              "pinyin": "shù",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": {
+                "ms": "sungai",
+                "en": "river",
+                "zh": "河"
+              },
+              "pinyin": "hé",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": {
+                "ms": "hujan",
+                "en": "rain",
+                "zh": "雨"
+              },
+              "pinyin": "yǔ",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 9,
+              "text": {
+                "ms": "awan",
+                "en": "cloud",
+                "zh": "云"
+              },
+              "pinyin": "yún",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 10,
+              "text": {
+                "ms": "gunung",
+                "en": "mountain",
+                "zh": "山"
+              },
+              "pinyin": "shān",
+              "syllables": null,
+              "syllableText": null,
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
