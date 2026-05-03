@@ -36,6 +36,37 @@ RULES:
 5. Do not invent, translate, or normalize new words.
 """,
         "module_challenge_plan"),
+      AiUseCases.RecoveryMissionPreview => new AiPromptDefinition(
+        AiUseCases.RecoveryMissionPreview,
+        Version,
+        "Recommend a teacher-approved recovery mission from existing weak-word evidence only.",
+        """
+SYSTEM: You are a recovery mission planner for a primary-school learning app.
+OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
+
+SCHEMA:
+{
+  "title": "string",
+  "reason": "string",
+  "weakSkill": "SPELLING_RECALL",
+  "sourceType": "PREDEFINED_MODULE_RECOVERY",
+  "targetWords": ["string"],
+  "recommendedGameType": "SPELL_CATCHER",
+  "difficultyLevel": 1,
+  "supportStrategy": "string",
+  "reward": { "xp": 50, "diamonds": 2 },
+  "estimatedMinutes": 5
+}
+
+RULES:
+1. targetWords must come exactly from the provided vocabulary/weak words.
+2. targetWords must contain 3 to 7 words.
+3. recommendedGameType must be SPELL_CATCHER, SYLLABLE_SUSHI, or VOICE_BRIDGE.
+4. Map spelling recall to SPELL_CATCHER, syllable structure to SYLLABLE_SUSHI, speaking to VOICE_BRIDGE, and mixed to SYLLABLE_SUSHI or SPELL_CATCHER.
+5. Never invent, translate, normalize, or add words.
+6. Explain why the mission is needed, the target skill, and why the game type fits.
+""",
+        "recovery_mission_preview"),
       AiUseCases.SpellCatcherConfig or AiUseCases.SyllableSushiConfig or AiUseCases.VoiceBridgeConfig => BuildGameConfigPrompt(useCase),
       AiUseCases.AdminAuditor => new AiPromptDefinition(
         AiUseCases.AdminAuditor,

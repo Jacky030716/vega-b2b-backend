@@ -7,6 +7,7 @@ namespace CleanArc.Infrastructure.Persistence.Services.Adaptive;
 
 public class StudentModuleProgressionService(ApplicationDbContext dbContext) : IStudentModuleProgressionService
 {
+    private const string RecoverySourceType = "RECOVERY_MISSION";
     private static readonly HashSet<ChallengeLifecycleState> StudentVisibleStates = new()
     {
         ChallengeLifecycleState.Active,
@@ -68,6 +69,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 challenge.ModuleId != null &&
                 moduleIds.Contains(challenge.ModuleId.Value) &&
                 challenge.CustomModuleId == null &&
+                challenge.SourceType != RecoverySourceType &&
                 StudentVisibleStates.Contains(challenge.LifecycleState))
             .ToListAsync(cancellationToken);
 
@@ -154,6 +156,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 challenge.ClassroomId == classroomId &&
                 challenge.ModuleId == moduleId &&
                 challenge.CustomModuleId == null &&
+                challenge.SourceType != RecoverySourceType &&
                 StudentVisibleStates.Contains(challenge.LifecycleState))
             .OrderBy(challenge => challenge.OrderIndex)
             .ThenBy(challenge => challenge.DifficultyLevel)
@@ -184,6 +187,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 challenge.ClassroomId == classroomId &&
                 challenge.CustomModuleId != null &&
                 challenge.ModuleId == null &&
+                challenge.SourceType != RecoverySourceType &&
                 StudentVisibleStates.Contains(challenge.LifecycleState))
             .OrderByDescending(challenge => challenge.LastActivityAt ?? challenge.ModifiedDate ?? challenge.CreatedTime)
             .ThenBy(challenge => challenge.Id)

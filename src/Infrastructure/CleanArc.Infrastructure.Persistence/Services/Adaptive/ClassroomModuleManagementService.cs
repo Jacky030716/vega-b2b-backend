@@ -22,6 +22,7 @@ public class ClassroomModuleManagementService(
         ChallengeLifecycleState.Active,
         ChallengeLifecycleState.Scheduled
     };
+    private const string RecoverySourceType = "RECOVERY_MISSION";
 
     public async Task<ClassroomModuleOverviewDto> GetModuleOverviewAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
     {
@@ -47,7 +48,7 @@ public class ClassroomModuleManagementService(
             .ToDictionaryAsync(x => x.ModuleId, x => x.Count, cancellationToken);
 
         var challengeCounts = await dbContext.Challenges.AsNoTracking()
-            .Where(c => c.ClassroomId == classroomId && c.ModuleId != null && moduleIds.Contains(c.ModuleId.Value))
+            .Where(c => c.ClassroomId == classroomId && c.ModuleId != null && moduleIds.Contains(c.ModuleId.Value) && c.SourceType != RecoverySourceType)
             .GroupBy(c => c.ModuleId!.Value)
             .Select(g => new
             {
@@ -97,7 +98,7 @@ public class ClassroomModuleManagementService(
 
         var customChallengeCounts = await GetCustomModuleSummaryAsync(customModule.Id, cancellationToken);
         var activeChallengeCount = await dbContext.Challenges.AsNoTracking()
-            .CountAsync(c => c.ClassroomId == classroomId && ActiveStates.Contains(c.LifecycleState), cancellationToken);
+            .CountAsync(c => c.ClassroomId == classroomId && c.SourceType != RecoverySourceType && ActiveStates.Contains(c.LifecycleState), cancellationToken);
 
         return new ClassroomModuleOverviewDto(
             classroom.Id,
@@ -135,6 +136,7 @@ public class ClassroomModuleManagementService(
             .Include(c => c.GameTemplate)
             .Include(c => c.Progresses)
             .Where(c => c.ClassroomId == classroomId && c.ModuleId == moduleId && c.CustomModuleId == null)
+            .Where(c => c.SourceType != RecoverySourceType)
             .OrderByDescending(c => c.ModifiedDate ?? c.CreatedTime)
             .ToListAsync(cancellationToken);
 
@@ -267,6 +269,7 @@ public class ClassroomModuleManagementService(
             .Include(c => c.GameTemplate)
             .Include(c => c.Progresses)
             .Where(c => c.CustomModuleId == customModule.Id && c.ModuleId == null)
+            .Where(c => c.SourceType != RecoverySourceType)
             .OrderByDescending(c => c.ModifiedDate ?? c.CreatedTime)
             .ToListAsync(cancellationToken);
 
@@ -440,7 +443,7 @@ public class ClassroomModuleManagementService(
     private async Task<(int Total, int Active)> GetCustomModuleSummaryAsync(int customModuleId, CancellationToken cancellationToken)
     {
         var rows = await dbContext.Challenges.AsNoTracking()
-            .Where(c => c.CustomModuleId == customModuleId)
+            .Where(c => c.CustomModuleId == customModuleId && c.SourceType != RecoverySourceType)
             .Select(c => c.LifecycleState)
             .ToListAsync(cancellationToken);
         return (rows.Count, rows.Count(ActiveStates.Contains));

@@ -342,7 +342,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
       var directClassroomChallenges = await DbContext.Challenges.AsNoTracking()
           .Include(c => c.Game)
           .Include(c => c.GameTemplate)
-          .Where(c => c.ClassroomId == classroomId && c.CreatedById == classroom.TeacherId)
+          .Where(c => c.ClassroomId == classroomId && c.CreatedById == classroom.TeacherId && c.SourceType != "RECOVERY_MISSION")
           .ToListAsync();
 
       var legacyChallengeIds = await GetLegacyClassroomChallengeIdsAsync(classroomId);
@@ -351,7 +351,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
         var legacyChallenges = await DbContext.Challenges.AsNoTracking()
             .Include(c => c.Game)
             .Include(c => c.GameTemplate)
-            .Where(c => legacyChallengeIds.Contains(c.Id) && c.CreatedById == classroom.TeacherId)
+            .Where(c => legacyChallengeIds.Contains(c.Id) && c.CreatedById == classroom.TeacherId && c.SourceType != "RECOVERY_MISSION")
             .ToListAsync();
 
         directClassroomChallenges.AddRange(legacyChallenges);

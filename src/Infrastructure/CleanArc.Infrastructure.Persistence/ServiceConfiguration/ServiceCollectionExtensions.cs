@@ -12,6 +12,7 @@ using CleanArc.Infrastructure.Persistence.SeedDatabaseService;
 using CleanArc.Infrastructure.Persistence.Services.AI;
 using CleanArc.Infrastructure.Persistence.Services;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Services.Classrooms;
 using CleanArc.Infrastructure.Persistence.Services.RAG;
 using CleanArc.Infrastructure.Persistence.Services.Stickers;
 using CleanArc.Infrastructure.Persistence.Settings;
@@ -51,8 +52,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IChallengeOrchestrator, ChallengeOrchestrator>();
         services.AddScoped<IClassroomModuleManagementService, ClassroomModuleManagementService>();
         services.AddScoped<IStudentModuleProgressionService, StudentModuleProgressionService>();
+        services.AddScoped<IRecoveryMissionService, RecoveryMissionService>();
         services.AddScoped<IAdaptiveAttemptService, AdaptiveAttemptService>();
         services.AddScoped<IAdaptiveAnalyticsService, AdaptiveAnalyticsService>();
+        services.AddScoped<IAiUsageService, AiUsageService>();
+        services.AddSingleton<IAiRateLimitService, AiRateLimitService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomGeneratorService, ClassroomGeneratorService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IStudentImportService, StudentImportService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IRosterPdfGenerator, RosterPdfGenerator>();
@@ -91,7 +95,18 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds > 0 ? options.RequestTimeoutSeconds : 60);
         });
 
+        services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageGenerationService, HuggingFaceClassroomThumbnailImageGenerationService>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<HuggingFaceStickerOptions>>().Value;
+            client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds > 0 ? options.RequestTimeoutSeconds : 60);
+        });
+
         services.AddHttpClient<IStickerImageStorageService, CloudinaryStickerImageStorageService>();
+        services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageStorageService, CloudinaryClassroomThumbnailStorageService>();
+
+        services.Configure<AiUsageLimitOptions>(configuration.GetSection("AiUsageLimits"));
+        services.Configure<AiRateLimitOptions>(configuration.GetSection("AiRateLimits"));
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {

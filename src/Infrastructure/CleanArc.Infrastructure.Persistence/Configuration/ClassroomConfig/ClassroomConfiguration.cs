@@ -11,6 +11,12 @@ public class ClassroomConfiguration : IEntityTypeConfiguration<Classroom>
     builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
     builder.Property(c => c.Subject).IsRequired().HasMaxLength(100);
     builder.Property(c => c.YearLevel).HasColumnName("year_level").HasDefaultValue(1);
+    builder.Property(c => c.Thumbnail).HasColumnName("thumbnail").HasDefaultValue(string.Empty);
+    builder.Property(c => c.ThumbnailType).HasColumnName("thumbnail_type").HasMaxLength(24).HasDefaultValue("DEFAULT");
+    builder.Property(c => c.ThumbnailUrl).HasColumnName("thumbnail_url");
+    builder.Property(c => c.ThumbnailAssetId).HasColumnName("thumbnail_asset_id");
+    builder.Property(c => c.ThumbnailPrompt).HasColumnName("thumbnail_prompt").HasMaxLength(600);
+    builder.Property(c => c.ThumbnailGeneratedAt).HasColumnName("thumbnail_generated_at");
     builder.Property(c => c.JoinCode).IsRequired().HasMaxLength(4);
     builder.HasIndex(c => c.JoinCode).IsUnique();
     builder.Property(c => c.IsActive).HasDefaultValue(true);

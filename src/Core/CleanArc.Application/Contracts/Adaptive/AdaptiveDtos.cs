@@ -432,3 +432,80 @@ public record StudentCustomChallengeDto(
     int BestStars,
     string ContentData,
     DateTime LastUpdated);
+
+public record RecoveryMissionRewardDto(int Xp, int Diamonds);
+
+public record RecoveryMissionPreviewRequest(
+    int ClassroomId,
+    int? ModuleId,
+    string? Mode);
+
+public record RecoveryMissionPreviewDto(
+    string Title,
+    string Reason,
+    string WeakSkill,
+    string SourceType,
+    IReadOnlyList<string> TargetWords,
+    string RecommendedGameType,
+    int DifficultyLevel,
+    string SupportStrategy,
+    RecoveryMissionRewardDto Reward,
+    int EstimatedMinutes,
+    string GeneratedBy,
+    int? AiAuditLogId,
+    string TriggerSnapshotJson);
+
+public record CreateRecoveryMissionRequest(
+    int ClassroomId,
+    int? ModuleId,
+    string? Mode,
+    RecoveryMissionPreviewDto? Preview);
+
+public record RecoveryMissionDto(
+    int Id,
+    int StudentId,
+    int ClassroomId,
+    int? ModuleId,
+    string Title,
+    string Reason,
+    string WeakSkill,
+    string SourceType,
+    IReadOnlyList<string> TargetWords,
+    string RecommendedGameType,
+    int DifficultyLevel,
+    string Status,
+    RecoveryMissionRewardDto Reward,
+    DateTime? AvailableUntil,
+    DateTime? CompletedAt,
+    DateTime? ArchiveAt,
+    int? LinkedChallengeId,
+    string? GameKey,
+    string? ContentData,
+    int EstimatedMinutes);
+
+public record RecoveryMissionStartDto(
+    RecoveryMissionDto Mission,
+    int MissionId,
+    int ChallengeId,
+    string GameKey,
+    string Title,
+    string Description,
+    int DifficultyLevel,
+    string ContentData);
+
+public record RecoveryMissionCompleteDto(
+    bool Success,
+    int XpAwarded,
+    int DiamondsAwarded,
+    DateTime ArchiveAt,
+    RecoveryMissionDto Mission);
+
+public interface IRecoveryMissionService
+{
+    Task<RecoveryMissionPreviewDto> PreviewAsync(int studentId, RecoveryMissionPreviewRequest request, int teacherId, CancellationToken cancellationToken);
+    Task<RecoveryMissionDto> CreateAsync(int studentId, CreateRecoveryMissionRequest request, int teacherId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<RecoveryMissionDto>> GetForTeacherAsync(int studentId, int teacherId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<RecoveryMissionDto>> GetActiveForStudentAsync(int studentId, CancellationToken cancellationToken);
+    Task<RecoveryMissionStartDto> StartAsync(int missionId, int studentId, CancellationToken cancellationToken);
+    Task<RecoveryMissionCompleteDto> CompleteAsync(int missionId, int studentId, CancellationToken cancellationToken);
+}

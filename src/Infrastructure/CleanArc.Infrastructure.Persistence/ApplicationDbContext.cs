@@ -44,6 +44,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
 
     // Adaptive learning
     public DbSet<AiAuditLog> AiAuditLogs { get; set; }
+    public DbSet<AiUsageLog> AiUsageLogs { get; set; }
     public DbSet<SyllabusModule> SyllabusModules { get; set; }
     public DbSet<VocabularyItem> VocabularyItems { get; set; }
     public DbSet<GameTemplate> GameTemplates { get; set; }
@@ -53,6 +54,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<StudentWordMastery> StudentWordMasteries { get; set; }
     public DbSet<StudentSkillProfile> StudentSkillProfiles { get; set; }
     public DbSet<ErrorPatternLog> ErrorPatternLogs { get; set; }
+    public DbSet<RecoveryMission> RecoveryMissions { get; set; }
 
     // Streak
     public DbSet<DailyCheckIn> DailyCheckIns { get; set; }

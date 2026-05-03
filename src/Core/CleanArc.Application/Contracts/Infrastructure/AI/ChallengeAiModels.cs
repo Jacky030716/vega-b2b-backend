@@ -27,8 +27,10 @@ public static class AiUseCases
   public const string SpellCatcherConfig = "SPELL_CATCHER_CONFIG";
   public const string SyllableSushiConfig = "SYLLABLE_SUSHI_CONFIG";
   public const string VoiceBridgeConfig = "VOICE_BRIDGE_CONFIG";
+  public const string RecoveryMissionPreview = "RECOVERY_MISSION_PREVIEW";
   public const string AdminAuditor = "ADMIN_AUDITOR";
   public const string StickerGeneration = "STICKER_GENERATION";
+  public const string ClassroomThumbnailGeneration = "CLASSROOM_THUMBNAIL_GENERATION";
 }
 
 public static class AiGenerationStatuses

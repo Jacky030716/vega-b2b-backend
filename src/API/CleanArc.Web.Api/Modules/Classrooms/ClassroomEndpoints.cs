@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Carter;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Persistence;
@@ -338,7 +339,16 @@ public class ClassroomEndpoints : ICarterModule
     app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}", async ([FromBody] CreateClassroomRequest request, ClaimsPrincipal user, ISender sender) =>
     {
       var userId = int.Parse(user.Identity.GetUserId());
-      var result = await sender.Send(new CreateClassroomCommand(userId, request.Name, request.Description, request.Subject, request.Subjects, request.Thumbnail, request.YearLevel ?? 1));
+      var thumbnailInfo = ParseThumbnail(request.Thumbnail);
+      var result = await sender.Send(new CreateClassroomCommand(
+        userId,
+        request.Name,
+        request.Description,
+        request.Subject,
+        request.Subjects,
+        thumbnailInfo?.Url,
+        request.YearLevel ?? 1,
+        thumbnailInfo));
       return result.ToEndpointResult();
     }), _version, "CreateClassroom", _tag).RequireAuthorization();
 
@@ -383,6 +393,7 @@ public class ClassroomEndpoints : ICarterModule
         ISender sender) =>
     {
       var userId = int.Parse(user.Identity.GetUserId());
+      var thumbnailInfo = ParseThumbnail(request.Thumbnail);
       var result = await sender.Send(new UpdateClassroomCommand(
           classroomId,
           userId,
@@ -391,7 +402,8 @@ public class ClassroomEndpoints : ICarterModule
           request.Subject,
           request.Subjects,
           request.YearLevel,
-          request.Description));
+          request.Description,
+          thumbnailInfo));
       return result.ToEndpointResult();
     }), _version, "UpdateClassroom", _tag)
     .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
@@ -415,5 +427,35 @@ public class ClassroomEndpoints : ICarterModule
       return result.ToEndpointResult();
     }), _version, "JoinClassroom", _tag).RequireAuthorization();
 
+  }
+
+  private static ClassroomThumbnailRequest? ParseThumbnail(JsonElement? thumbnail)
+  {
+    if (thumbnail is null || thumbnail.Value.ValueKind == JsonValueKind.Null || thumbnail.Value.ValueKind == JsonValueKind.Undefined)
+      return null;
+
+    if (thumbnail.Value.ValueKind == JsonValueKind.String)
+    {
+      var url = thumbnail.Value.GetString();
+      return string.IsNullOrWhiteSpace(url) ? null : new ClassroomThumbnailRequest("UPLOADED", Url: url);
+    }
+
+    if (thumbnail.Value.ValueKind != JsonValueKind.Object)
+      return null;
+
+    var type = ReadString(thumbnail.Value, "type") ?? "DEFAULT";
+    var assetId = ReadString(thumbnail.Value, "assetId");
+    var urlValue = ReadString(thumbnail.Value, "url");
+    var prompt = ReadString(thumbnail.Value, "prompt");
+
+    return new ClassroomThumbnailRequest(type, assetId, urlValue, prompt);
+  }
+
+  private static string? ReadString(JsonElement element, string propertyName)
+  {
+    if (!element.TryGetProperty(propertyName, out var value))
+      return null;
+
+    return value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
   }
 }

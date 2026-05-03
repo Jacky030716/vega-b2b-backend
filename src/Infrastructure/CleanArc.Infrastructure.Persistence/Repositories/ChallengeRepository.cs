@@ -9,6 +9,7 @@ namespace CleanArc.Infrastructure.Persistence.Repositories;
 internal class ChallengeRepository(ApplicationDbContext dbContext)
     : BaseAsyncRepository<Challenge>(dbContext), IChallengeRepository
 {
+    private const string RecoverySourceType = "RECOVERY_MISSION";
     // ── Games ────────────────────────────────────────────────────────────────
 
     public async Task<List<Game>> GetAllGamesAsync()
@@ -24,7 +25,7 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
 
     public async Task<List<Challenge>> GetChallengesForGameAsync(int gameId)
         => await DbContext.Challenges.AsNoTracking()
-            .Where(c => c.GameId == gameId)
+            .Where(c => c.GameId == gameId && c.SourceType != RecoverySourceType)
             .OrderBy(c => c.OrderIndex)
             .ThenBy(c => c.DifficultyLevel)
             .ToListAsync();

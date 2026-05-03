@@ -9,7 +9,12 @@ public class Classroom : BaseEntity<int>
   public string Description { get; set; }
   public string Subject { get; set; }
   public int YearLevel { get; set; } = 1;
-  public string Thumbnail { get; set; }
+  public string Thumbnail { get; set; } = string.Empty;
+  public string ThumbnailType { get; set; } = "DEFAULT";
+  public string? ThumbnailUrl { get; set; }
+  public string? ThumbnailAssetId { get; set; }
+  public string? ThumbnailPrompt { get; set; }
+  public DateTime? ThumbnailGeneratedAt { get; set; }
   public string JoinCode { get; set; }
   public int TeacherId { get; set; }
   public bool IsActive { get; set; } = true;

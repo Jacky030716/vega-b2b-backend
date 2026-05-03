@@ -11,7 +11,8 @@ public record UpdateClassroomCommand(
     string Subject,
     IReadOnlyCollection<string>? Subjects,
     int? YearLevel,
-    string? Description) : IRequest<OperationResult<UpdatedClassroomDto>>;
+    string? Description,
+    ClassroomThumbnailRequest? ThumbnailInfo = null) : IRequest<OperationResult<UpdatedClassroomDto>>;
 
 public record UpdatedClassroomDto(
     int Id,

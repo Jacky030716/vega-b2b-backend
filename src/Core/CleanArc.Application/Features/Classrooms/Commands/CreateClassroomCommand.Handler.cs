@@ -45,7 +45,14 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
       Description = request.Description,
       Subject = subjects[0],
       YearLevel = request.YearLevel,
-      Thumbnail = request.Thumbnail,
+      Thumbnail = ResolveThumbnailUrl(request.ThumbnailInfo, request.Thumbnail),
+      ThumbnailType = ResolveThumbnailType(request.ThumbnailInfo, request.Thumbnail),
+      ThumbnailUrl = ResolveThumbnailUrl(request.ThumbnailInfo, request.Thumbnail),
+      ThumbnailAssetId = request.ThumbnailInfo?.AssetId,
+      ThumbnailPrompt = request.ThumbnailInfo?.Prompt,
+      ThumbnailGeneratedAt = string.Equals(request.ThumbnailInfo?.Type, "AI_GENERATED", StringComparison.OrdinalIgnoreCase)
+        ? DateTime.UtcNow
+        : null,
       JoinCode = joinCode,
       TeacherId = request.TeacherId,
       IsActive = true
@@ -70,5 +77,28 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
         .Select(subject => subject.Trim())
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
+  }
+
+  private static string ResolveThumbnailType(ClassroomThumbnailRequest? thumbnailInfo, string? thumbnail)
+  {
+    if (thumbnailInfo is not null)
+    {
+      return thumbnailInfo.Type?.Trim().ToUpperInvariant() switch
+      {
+        "UPLOADED" => "UPLOADED",
+        "AI_GENERATED" => "AI_GENERATED",
+        _ => "DEFAULT"
+      };
+    }
+
+    return string.IsNullOrWhiteSpace(thumbnail) ? "DEFAULT" : "UPLOADED";
+  }
+
+  private static string ResolveThumbnailUrl(ClassroomThumbnailRequest? thumbnailInfo, string? thumbnail)
+  {
+    if (thumbnailInfo?.Url is { Length: > 0 } url)
+      return url;
+
+    return thumbnail ?? string.Empty;
   }
 }

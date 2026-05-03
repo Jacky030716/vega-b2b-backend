@@ -12,12 +12,21 @@ namespace CleanArc.Application.Features.Games.Commands;
 internal class CreateAttemptCommandHandler(IUnitOfWork unitOfWork)
     : IRequestHandler<CreateAttemptCommand, OperationResult<CreateAttemptDto>>
 {
+  private const string RecoverySourceType = "RECOVERY_MISSION";
+
   public async ValueTask<OperationResult<CreateAttemptDto>> Handle(
       CreateAttemptCommand request, CancellationToken cancellationToken)
   {
     var challenge = await unitOfWork.ChallengeRepository.GetChallengeByIdAsync(request.ChallengeId);
     if (challenge is null)
       return OperationResult<CreateAttemptDto>.NotFoundResult($"Challenge {request.ChallengeId} not found");
+
+    if (string.Equals(challenge.SourceType, RecoverySourceType, StringComparison.OrdinalIgnoreCase)
+        && challenge.StudentId != request.UserId)
+      return OperationResult<CreateAttemptDto>.FailureResult("Forbidden");
+
+    if (challenge.StudentId is int assignedStudentId && assignedStudentId != request.UserId)
+      return OperationResult<CreateAttemptDto>.FailureResult("Forbidden");
 
     var attempt = await unitOfWork.ChallengeRepository.CreateAttemptAsync(new Attempt
     {
@@ -42,6 +51,8 @@ internal class CompleteAttemptCommandHandler(
   IAchievementTrackingService achievementTrackingService)
     : IRequestHandler<CompleteAttemptCommand, OperationResult<CompleteAttemptDto>>
 {
+  private const string RecoverySourceType = "RECOVERY_MISSION";
+
   // XP formula: 50 per star, minimum 10 for completing (even 0 stars)
   private static int CalcXP(int stars) => 10 + stars * 50;
   // Coins formula: 20 per star
@@ -67,8 +78,9 @@ internal class CompleteAttemptCommandHandler(
     bool isFirstCompletion = priorAttempt is null;
 
     // Only award XP and diamonds on first completion to avoid farming
-    int xp = isFirstCompletion ? CalcXP(clampedStars) : 0;
-    int coins = isFirstCompletion ? CalcCoins(clampedStars) : 0;
+    var isRecoveryChallenge = string.Equals(challenge?.SourceType, RecoverySourceType, StringComparison.OrdinalIgnoreCase);
+    int xp = isFirstCompletion && !isRecoveryChallenge ? CalcXP(clampedStars) : 0;
+    int coins = isFirstCompletion && !isRecoveryChallenge ? CalcCoins(clampedStars) : 0;
 
     attempt.Score = request.Score;
     attempt.StarsEarned = clampedStars;
@@ -81,7 +93,7 @@ internal class CompleteAttemptCommandHandler(
     await unitOfWork.ChallengeRepository.UpdateAttemptAsync(attempt);
 
     // Award XP and diamonds (best-effort; non-blocking)
-    if (isFirstCompletion)
+    if (isFirstCompletion && !isRecoveryChallenge)
     {
       try
       {

@@ -48,6 +48,7 @@ internal class UpdateClassroomCommandHandler(IUnitOfWork unitOfWork)
     classroom.Subject = subjects[0];
     classroom.Description = request.Description?.Trim() ?? string.Empty;
     classroom.YearLevel = requestedYearLevel;
+    ApplyThumbnail(classroom, request.ThumbnailInfo);
 
     await unitOfWork.ClassroomRepository.UpdateClassroomAsync(classroom);
     await unitOfWork.ClassroomRepository.ReplaceClassroomSubjectsAndModulesAsync(classroom.Id, subjects, classroom.TeacherId);
@@ -69,5 +70,29 @@ internal class UpdateClassroomCommandHandler(IUnitOfWork unitOfWork)
         .Select(subject => subject.Trim())
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
+  }
+
+  private static void ApplyThumbnail(Domain.Entities.Classroom.Classroom classroom, ClassroomThumbnailRequest? thumbnailInfo)
+  {
+    if (thumbnailInfo is null)
+      return;
+
+    var type = thumbnailInfo.Type?.Trim().ToUpperInvariant();
+    classroom.ThumbnailType = type switch
+    {
+      "UPLOADED" => "UPLOADED",
+      "AI_GENERATED" => "AI_GENERATED",
+      _ => "DEFAULT"
+    };
+    classroom.ThumbnailUrl = thumbnailInfo.Url?.Trim();
+    classroom.ThumbnailAssetId = thumbnailInfo.AssetId?.Trim();
+    classroom.ThumbnailPrompt = thumbnailInfo.Prompt?.Trim();
+    classroom.ThumbnailGeneratedAt =
+      string.Equals(classroom.ThumbnailType, "AI_GENERATED", StringComparison.OrdinalIgnoreCase)
+        ? DateTime.UtcNow
+        : null;
+    classroom.Thumbnail = classroom.ThumbnailType == "DEFAULT"
+      ? string.Empty
+      : (classroom.ThumbnailUrl ?? string.Empty);
   }
 }

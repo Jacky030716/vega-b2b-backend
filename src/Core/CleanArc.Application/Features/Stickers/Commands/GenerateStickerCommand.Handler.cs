@@ -15,19 +15,25 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
   private readonly IStickerImageStorageService _imageStorageService;
   private readonly IAiAuditService _aiAuditService;
   private readonly IAiPromptRegistry _promptRegistry;
+  private readonly IAiUsageService _aiUsageService;
+  private readonly IAiRateLimitService _aiRateLimitService;
 
   public GenerateStickerCommandHandler(
     IUnitOfWork unitOfWork,
     IStickerImageGenerationService imageGenerationService,
     IStickerImageStorageService imageStorageService,
     IAiAuditService aiAuditService,
-    IAiPromptRegistry promptRegistry)
+    IAiPromptRegistry promptRegistry,
+    IAiUsageService aiUsageService,
+    IAiRateLimitService aiRateLimitService)
   {
     _unitOfWork = unitOfWork;
     _imageGenerationService = imageGenerationService;
     _imageStorageService = imageStorageService;
     _aiAuditService = aiAuditService;
     _promptRegistry = promptRegistry;
+    _aiUsageService = aiUsageService;
+    _aiRateLimitService = aiRateLimitService;
   }
 
   public async ValueTask<OperationResult<GeneratedStickerDto>> Handle(GenerateStickerCommand request, CancellationToken cancellationToken)
@@ -38,6 +44,14 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
 
     if (user.DreamTokensCount <= 0)
       return OperationResult<GeneratedStickerDto>.FailureResult("You need at least 1 Dream Token to generate a sticker.");
+
+    var rateLimit = await _aiRateLimitService.TryAcquireAsync(request.UserId, AiFeatureTypes.StickerGeneration, cancellationToken);
+    if (!rateLimit.Allowed)
+      return OperationResult<GeneratedStickerDto>.FailureResult("Too many AI requests. Please try again later.");
+
+    var quota = await _aiUsageService.GetRemainingQuotaAsync(request.UserId, AiFeatureTypes.StickerGeneration, cancellationToken);
+    if (quota.Remaining <= 0)
+      return OperationResult<GeneratedStickerDto>.FailureResult("Your AI quota is exhausted for this month.");
 
     var now = DateTime.UtcNow;
     if (user.LastStickerGeneratedAtUtc.HasValue)
@@ -143,6 +157,19 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
         }),
         AiValidationStatuses.Valid,
         Array.Empty<string>(),
+        cancellationToken);
+
+      await _aiUsageService.ConsumeUsageAsync(
+        request.UserId,
+        AiFeatureTypes.StickerGeneration,
+        "POST /api/v1.1/stickers/generate",
+        "HUGGING_FACE",
+        generation.Result.ModelName,
+        1,
+        true,
+        null,
+        "sticker",
+        sticker.Id,
         cancellationToken);
 
       return OperationResult<GeneratedStickerDto>.SuccessResult(new GeneratedStickerDto(

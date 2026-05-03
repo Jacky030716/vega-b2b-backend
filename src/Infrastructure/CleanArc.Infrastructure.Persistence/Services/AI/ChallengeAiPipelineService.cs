@@ -17,6 +17,8 @@ public sealed class ChallengeAiPipelineService(
   IAiGenerationService aiGenerationService,
   IAiPromptRegistry promptRegistry,
   IAiAuditService aiAuditService,
+  IAiUsageService aiUsageService,
+  IAiRateLimitService aiRateLimitService,
   IOptions<GoogleAiOptions> googleAiOptions,
   ILogger<ChallengeAiPipelineService> logger) : IChallengeAiPipelineService
 {
@@ -35,6 +37,13 @@ public sealed class ChallengeAiPipelineService(
     CustomVocabularyGenerationRequest request,
     CancellationToken cancellationToken)
   {
+    if (request.RelatedUserId is int userId)
+    {
+      var access = await EnsureAccessAsync(userId, AiFeatureTypes.CustomChallengeGeneration, cancellationToken);
+      if (!access.IsSuccess)
+        return OperationResult<CustomVocabularyGenerationResult>.FailureResult(access.ErrorMessage ?? "AI request blocked.");
+    }
+
     var prompt = promptRegistry.Get(AiUseCases.CustomChallengeExtraction, request.GameKey);
     var systemPrompt = prompt.SystemInstruction;
     var userPrompt = BuildCustomExtractionUserPrompt(request.GameKey, request.Prompt, request.AugmentedContext);
@@ -93,6 +102,13 @@ public sealed class ChallengeAiPipelineService(
     ModuleChallengePlanRequest request,
     CancellationToken cancellationToken)
   {
+    if (request.RelatedUserId is int userId)
+    {
+      var access = await EnsureAccessAsync(userId, AiFeatureTypes.PredefinedModuleGeneration, cancellationToken);
+      if (!access.IsSuccess)
+        return OperationResult<ModuleChallengePlanResult>.FailureResult(access.ErrorMessage ?? "AI request blocked.", EmptyModulePlanResult(0));
+    }
+
     if (request.Items.Count == 0)
       return OperationResult<ModuleChallengePlanResult>.FailureResult("Module has no vocabulary items.");
 
@@ -216,6 +232,19 @@ public sealed class ChallengeAiPipelineService(
         relatedClassroomId,
         relatedModuleId),
       cancellationToken);
+  }
+
+  private async Task<OperationResult<bool>> EnsureAccessAsync(int userId, string featureType, CancellationToken cancellationToken)
+  {
+    var rateLimit = await aiRateLimitService.TryAcquireAsync(userId, featureType, cancellationToken);
+    if (!rateLimit.Allowed)
+      return OperationResult<bool>.FailureResult("Too many AI requests. Please try again later.");
+
+    var quota = await aiUsageService.GetRemainingQuotaAsync(userId, featureType, cancellationToken);
+    if (quota.Remaining <= 0)
+      return OperationResult<bool>.FailureResult("Your AI quota is exhausted for this month.");
+
+    return OperationResult<bool>.SuccessResult(true);
   }
 
   private static ModuleChallengePlanResult EmptyModulePlanResult(int auditLogId)

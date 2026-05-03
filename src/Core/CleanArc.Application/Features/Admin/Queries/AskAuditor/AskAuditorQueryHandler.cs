@@ -10,6 +10,8 @@ internal sealed class AskAuditorQueryHandler(
     IAiGenerationService aiGenerationService,
     IAiPromptRegistry promptRegistry,
     IAiAuditService aiAuditService,
+    IAiUsageService aiUsageService,
+    IAiRateLimitService aiRateLimitService,
     IUnitOfWork unitOfWork,
     IInstitutionUserReportRepository institutionUserReportRepository)
     : IRequestHandler<AskAuditorQuery, OperationResult<AskAuditorResult>>
@@ -69,6 +71,21 @@ internal sealed class AskAuditorQueryHandler(
             JsonMode: true
         );
 
+        if (request.UserId is int userId)
+        {
+            var rateLimit = await aiRateLimitService.TryAcquireAsync(userId, AiFeatureTypes.AdminAuditor, cancellationToken);
+            if (!rateLimit.Allowed)
+            {
+                return OperationResult<AskAuditorResult>.FailureResult("Too many AI requests. Please try again later.");
+            }
+
+            var quota = await aiUsageService.GetRemainingQuotaAsync(userId, AiFeatureTypes.AdminAuditor, cancellationToken);
+            if (quota.Remaining <= 0)
+            {
+                return OperationResult<AskAuditorResult>.FailureResult("Your AI quota is exhausted for this month.");
+            }
+        }
+
         var auditLogId = await aiAuditService.StartAsync(
             new AiAuditStartRequest(
                 AiUseCases.AdminAuditor,
@@ -110,6 +127,22 @@ internal sealed class AskAuditorQueryHandler(
             AiValidationStatuses.Valid,
             Array.Empty<string>(),
             cancellationToken);
+
+        if (request.UserId is int consumeUserId)
+        {
+            await aiUsageService.ConsumeUsageAsync(
+                consumeUserId,
+                AiFeatureTypes.AdminAuditor,
+                "POST /api/v1.1/advisor/auditor",
+                "GEMINI",
+                null,
+                1,
+                true,
+                null,
+                "institution",
+                request.InstitutionId,
+                cancellationToken);
+        }
 
         return OperationResult<AskAuditorResult>.SuccessResult(new AskAuditorResult
         {
