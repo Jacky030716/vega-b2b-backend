@@ -508,6 +508,122 @@ public record RecoveryMissionCompleteDto(
     DateTime ArchiveAt,
     RecoveryMissionDto Mission);
 
+public record SpellingTestConfigDto(
+    int? WordCount,
+    int? Difficulty,
+    bool IncludeUnmasteredOnly,
+    bool RandomizeOrder,
+    bool AllowRetries,
+    int? TimeLimitSeconds);
+
+public record CreateSpellingTestRequest(
+    string Subject,
+    string Title,
+    string? Description,
+    IReadOnlyList<int> ModuleIds,
+    DateTime DueAt,
+    SpellingTestConfigDto? Config);
+
+public record UpdateSpellingTestRequest(
+    string? Title,
+    string? Description,
+    DateTime? DueAt,
+    string? Status);
+
+public record SpellingTestSummaryDto(
+    int Id,
+    int ClassroomId,
+    string Subject,
+    string Title,
+    string? Description,
+    IReadOnlyList<int> ModuleIds,
+    IReadOnlyList<string> ModuleTitles,
+    DateTime DueAt,
+    string Status,
+    int WordCount,
+    int AssignedCount,
+    int CompletedCount,
+    int OverdueCount,
+    SpellingTestConfigDto Config,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
+
+public record StudentSpellingTestSummaryDto(
+    int Id,
+    int ClassroomId,
+    string Subject,
+    string Title,
+    string? Description,
+    IReadOnlyList<string> ModuleTitles,
+    DateTime DueAt,
+    string Status,
+    string StudentStatus,
+    int WordCount,
+    int? Score,
+    int? Stars,
+    DateTime? StartedAt,
+    DateTime? CompletedAt,
+    DateTime? ConfirmedAt,
+    int? RemainingSeconds,
+    DateTime? ModalSeenAt,
+    DateTime? DismissedAt,
+    bool ShouldShowModal);
+
+public record SpellingTestQuestionDto(
+    int VocabularyItemId,
+    string Word,
+    string? MeaningText,
+    string? ExampleSentence,
+    string? BmText,
+    string? EnText,
+    string? ZhText,
+    string? SyllableText,
+    int DifficultyLevel);
+
+public record StudentSpellingTestDetailDto(
+    StudentSpellingTestSummaryDto Test,
+    IReadOnlyList<SpellingTestQuestionDto> Questions,
+    int? RemainingSeconds,
+    IReadOnlyList<SpellingTestAnswerDto> SavedAnswers);
+
+public record SpellingTestAnswerDto(
+    int VocabularyItemId,
+    string AnswerText,
+    int? ResponseTimeMs,
+    int? RetriesCount,
+    int? HintsUsed);
+
+public record SubmitSpellingTestRequest(IReadOnlyList<SpellingTestAnswerDto> Answers);
+
+public record PauseSpellingTestRequest(IReadOnlyList<SpellingTestAnswerDto> Answers);
+
+public record SubmitSpellingTestResultDto(
+    int TestId,
+    string StudentStatus,
+    int Score,
+    int Stars,
+    int CorrectCount,
+    int TotalCount,
+    DateTime CompletedAt);
+
+public record SpellingTestStudentResultRowDto(
+    int StudentId,
+    string StudentName,
+    string Status,
+    int? Score,
+    int? Stars,
+    DateTime? StartedAt,
+    DateTime? CompletedAt);
+
+public record SpellingTestResultsDto(
+    int TestId,
+    string Title,
+    DateTime DueAt,
+    int AssignedCount,
+    int CompletedCount,
+    int OverdueCount,
+    IReadOnlyList<SpellingTestStudentResultRowDto> Students);
+
 public interface IRecoveryMissionService
 {
     Task<RecoveryMissionPreviewDto> PreviewAsync(int studentId, RecoveryMissionPreviewRequest request, int teacherId, CancellationToken cancellationToken);
@@ -516,4 +632,21 @@ public interface IRecoveryMissionService
     Task<IReadOnlyList<RecoveryMissionDto>> GetActiveForStudentAsync(int studentId, CancellationToken cancellationToken);
     Task<RecoveryMissionStartDto> StartAsync(int missionId, int studentId, CancellationToken cancellationToken);
     Task<RecoveryMissionCompleteDto> CompleteAsync(int missionId, int studentId, CancellationToken cancellationToken);
+}
+
+public interface ISpellingTestService
+{
+    Task<SpellingTestSummaryDto> CreateAsync(int classroomId, CreateSpellingTestRequest request, int teacherId, bool isAdmin, CancellationToken cancellationToken);
+    Task<IReadOnlyList<SpellingTestSummaryDto>> GetForTeacherAsync(int classroomId, int teacherId, bool isAdmin, CancellationToken cancellationToken);
+    Task<SpellingTestSummaryDto> GetTeacherDetailAsync(int testId, int teacherId, bool isAdmin, CancellationToken cancellationToken);
+    Task<SpellingTestResultsDto> GetTeacherResultsAsync(int testId, int teacherId, bool isAdmin, CancellationToken cancellationToken);
+    Task<SpellingTestSummaryDto> UpdateAsync(int testId, UpdateSpellingTestRequest request, int teacherId, bool isAdmin, CancellationToken cancellationToken);
+    Task<bool> ArchiveAsync(int testId, int teacherId, bool isAdmin, CancellationToken cancellationToken);
+    Task<IReadOnlyList<StudentSpellingTestSummaryDto>> GetActiveForStudentAsync(int studentId, CancellationToken cancellationToken);
+    Task<StudentSpellingTestDetailDto> GetStudentDetailAsync(int testId, int studentId, CancellationToken cancellationToken);
+    Task<StudentSpellingTestDetailDto> StartAsync(int testId, int studentId, CancellationToken cancellationToken);
+    Task<StudentSpellingTestDetailDto> ResumeAsync(int testId, int studentId, CancellationToken cancellationToken);
+    Task<StudentSpellingTestDetailDto> PauseAsync(int testId, int studentId, PauseSpellingTestRequest request, CancellationToken cancellationToken);
+    Task<SubmitSpellingTestResultDto> SubmitAsync(int testId, int studentId, SubmitSpellingTestRequest request, CancellationToken cancellationToken);
+    Task<StudentSpellingTestSummaryDto> DismissModalAsync(int testId, int studentId, CancellationToken cancellationToken);
 }

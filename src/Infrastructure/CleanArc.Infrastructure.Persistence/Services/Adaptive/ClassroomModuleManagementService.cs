@@ -581,7 +581,7 @@ public class ClassroomModuleManagementService(
     {
         new RecommendedActionDto("IMPROVE_WEAK_WORDS", "Improve Weak Words", "Generate challenges from weak vocabulary."),
         new RecommendedActionDto("PRACTICE_THIS_WEEK", "Practice This Week", "Generate focused practice for a module."),
-        new RecommendedActionDto("REVIEW_OVERDUE", "Review Overdue", "Generate review from overdue vocabulary.")
+        new RecommendedActionDto("CREATE_SPELLING_TEST", "Create Spelling Test", "Assess spelling across one or more modules.")
     };
 
     private static ModuleChallengeDto ToChallengeDto(Challenge challenge)

@@ -55,6 +55,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<StudentSkillProfile> StudentSkillProfiles { get; set; }
     public DbSet<ErrorPatternLog> ErrorPatternLogs { get; set; }
     public DbSet<RecoveryMission> RecoveryMissions { get; set; }
+    public DbSet<SpellingTest> SpellingTests { get; set; }
+    public DbSet<StudentSpellingTestAttempt> StudentSpellingTestAttempts { get; set; }
 
     // Streak
     public DbSet<DailyCheckIn> DailyCheckIns { get; set; }

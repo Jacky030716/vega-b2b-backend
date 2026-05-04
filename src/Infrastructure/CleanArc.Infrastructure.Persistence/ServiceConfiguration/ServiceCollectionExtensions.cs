@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClassroomModuleManagementService, ClassroomModuleManagementService>();
         services.AddScoped<IStudentModuleProgressionService, StudentModuleProgressionService>();
         services.AddScoped<IRecoveryMissionService, RecoveryMissionService>();
+        services.AddScoped<ISpellingTestService, SpellingTestService>();
         services.AddScoped<IAdaptiveAttemptService, AdaptiveAttemptService>();
         services.AddScoped<IAdaptiveAnalyticsService, AdaptiveAnalyticsService>();
         services.AddScoped<IAiUsageService, AiUsageService>();

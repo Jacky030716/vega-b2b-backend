@@ -214,3 +214,50 @@ public class ErrorPatternLogConfiguration : IEntityTypeConfiguration<ErrorPatter
         builder.HasOne(x => x.ChallengeItemAttempt).WithMany().HasForeignKey(x => x.ChallengeItemAttemptId).IsRequired(false);
     }
 }
+
+public class SpellingTestConfiguration : IEntityTypeConfiguration<SpellingTest>
+{
+    public void Configure(EntityTypeBuilder<SpellingTest> builder)
+    {
+        SyllabusModuleConfiguration.ConfigureBase(builder, "spelling_tests");
+        builder.Property(x => x.ClassroomId).HasColumnName("classroom_id");
+        builder.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(160).IsRequired();
+        builder.Property(x => x.Description).HasColumnName("description");
+        builder.Property(x => x.SourceModuleIdsJson).HasColumnName("source_module_ids_json").HasColumnType("jsonb").HasDefaultValue("[]");
+        builder.Property(x => x.WordItemIdsJson).HasColumnName("word_item_ids_json").HasColumnType("jsonb").HasDefaultValue("[]");
+        builder.Property(x => x.DueAt).HasColumnName("due_at");
+        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(24).HasDefaultValue(SpellingTestStatuses.Active);
+        builder.Property(x => x.CreatedByTeacherId).HasColumnName("created_by_teacher_id");
+        builder.Property(x => x.ConfigJson).HasColumnName("config_json").HasColumnType("jsonb").HasDefaultValue("{}");
+        builder.HasOne(x => x.Classroom).WithMany().HasForeignKey(x => x.ClassroomId);
+        builder.HasOne(x => x.CreatedByTeacher).WithMany().HasForeignKey(x => x.CreatedByTeacherId);
+        builder.HasIndex(x => new { x.ClassroomId, x.Status });
+        builder.HasIndex(x => new { x.ClassroomId, x.Title, x.Status });
+    }
+}
+
+public class StudentSpellingTestAttemptConfiguration : IEntityTypeConfiguration<StudentSpellingTestAttempt>
+{
+    public void Configure(EntityTypeBuilder<StudentSpellingTestAttempt> builder)
+    {
+        SyllabusModuleConfiguration.ConfigureBase(builder, "student_spelling_test_attempts");
+        builder.Property(x => x.SpellingTestId).HasColumnName("spelling_test_id");
+        builder.Property(x => x.StudentId).HasColumnName("student_id");
+        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(24).HasDefaultValue(StudentSpellingTestAttemptStatuses.NotStarted);
+        builder.Property(x => x.Score).HasColumnName("score");
+        builder.Property(x => x.Stars).HasColumnName("stars");
+        builder.Property(x => x.StartedAt).HasColumnName("started_at");
+        builder.Property(x => x.CompletedAt).HasColumnName("completed_at");
+        builder.Property(x => x.ConfirmedAt).HasColumnName("confirmed_at");
+        builder.Property(x => x.LastResumedAt).HasColumnName("last_resumed_at");
+        builder.Property(x => x.RemainingSeconds).HasColumnName("remaining_seconds");
+        builder.Property(x => x.ModalSeenAt).HasColumnName("modal_seen_at");
+        builder.Property(x => x.DismissedAt).HasColumnName("dismissed_at");
+        builder.Property(x => x.ResultJson).HasColumnName("results_json").HasColumnType("jsonb").HasDefaultValue("{}");
+        builder.HasOne(x => x.SpellingTest).WithMany(x => x.StudentAttempts).HasForeignKey(x => x.SpellingTestId);
+        builder.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId);
+        builder.HasIndex(x => new { x.SpellingTestId, x.StudentId }).IsUnique();
+        builder.HasIndex(x => new { x.StudentId, x.Status });
+    }
+}
