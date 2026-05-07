@@ -50,11 +50,98 @@ public class ChallengeGeneratorSyllableSushiTests
         Assert.Equal(new[] { "ber", "cu", "ti" }, preview.SyllableSushiSpec.CorrectSyllables);
         Assert.Equal(new[] { 0, 1, 2 }, preview.SyllableSushiSpec.CorrectOrder);
         Assert.True(preview.SyllableSushiSpec.SyllablePool.Count > preview.SyllableSushiSpec.CorrectSyllables.Count);
+        Assert.DoesNotContain(preview.SyllableSushiSpec.SyllablePool, value => string.Equals(value, "bercuti", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(preview.SyllableSushiSpec.Distractors, value => string.Equals(value, "bercuti", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(preview.SyllableSushiSpec.Distractors, value => value.StartsWith("b", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task GenerateAsync_SyllableSushi_HardDifficulty_UsesFourToSixDistractors()
+    public async Task GenerateAsync_SyllableSushi_EasyDifficulty_UsesAtLeastThreeDistractors()
+    {
+        await using var context = CreateContext();
+        var module = await SeedModuleWithWordAsync(context, "abang", "[\"a\",\"bang\"]", "a/bang", 1);
+        var generator = new ChallengeGenerator(context);
+
+        var preview = await generator.GenerateAsync(
+            new GenerateAdaptiveChallengeRequest(
+                "class",
+                null,
+                10,
+                "practice_weekly_words",
+                "predefined_module",
+                module.Id,
+                "SYLLABLE_SUSHI",
+                null,
+                null,
+                null,
+                null),
+            CancellationToken.None);
+
+        var spec = Assert.IsType<SyllableSushiSpecDto>(preview.SyllableSushiSpec);
+        Assert.True(spec.Distractors.Count >= 3);
+        Assert.DoesNotContain(spec.SyllablePool, value => string.Equals(value, "abang", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(spec.Distractors, value => string.Equals(value, "abang", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_SyllableSushi_RepairsWholeWordSyllableChoice()
+    {
+        await using var context = CreateContext();
+        var module = await SeedModuleWithWordAsync(context, "abang", "[\"abang\"]", "abang", 1);
+        var generator = new ChallengeGenerator(context);
+
+        var preview = await generator.GenerateAsync(
+            new GenerateAdaptiveChallengeRequest(
+                "class",
+                null,
+                10,
+                "practice_weekly_words",
+                "predefined_module",
+                module.Id,
+                "SYLLABLE_SUSHI",
+                null,
+                null,
+                null,
+                null),
+            CancellationToken.None);
+
+        var spec = Assert.IsType<SyllableSushiSpecDto>(preview.SyllableSushiSpec);
+        Assert.DoesNotContain(spec.CorrectSyllables, value => string.Equals(value, "abang", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(spec.SyllablePool, value => string.Equals(value, "abang", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_SyllableSushi_PhraseUsesStoredMalaySyllablesAndRelevantDistractors()
+    {
+        await using var context = CreateContext();
+        var module = await SeedModuleWithWordAsync(context, "bekal makanan", "[\"be\",\"kal\",\"ma\",\"ka\",\"nan\"]", "be/kal ma/ka/nan", 1);
+        var generator = new ChallengeGenerator(context);
+
+        var preview = await generator.GenerateAsync(
+            new GenerateAdaptiveChallengeRequest(
+                "class",
+                null,
+                10,
+                "practice_weekly_words",
+                "predefined_module",
+                module.Id,
+                "SYLLABLE_SUSHI",
+                null,
+                null,
+                null,
+                null),
+            CancellationToken.None);
+
+        var spec = Assert.IsType<SyllableSushiSpecDto>(preview.SyllableSushiSpec);
+        Assert.Equal(new[] { "be", "kal", "ma", "ka", "nan" }, spec.CorrectSyllables);
+        Assert.Contains("ber", spec.Distractors);
+        Assert.Contains("nang", spec.Distractors);
+        Assert.DoesNotContain("bek", spec.Distractors);
+        Assert.DoesNotContain("maka", spec.Distractors);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_SyllableSushi_HardDifficulty_UsesAtLeastFiveDistractors()
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "sekolah", "[\"se\",\"ko\",\"lah\"]", "se/ko/lah", 3);
@@ -76,7 +163,7 @@ public class ChallengeGeneratorSyllableSushiTests
             CancellationToken.None);
 
         var spec = Assert.IsType<SyllableSushiSpecDto>(preview.SyllableSushiSpec);
-        Assert.InRange(spec.Distractors.Count, 4, 6);
+        Assert.True(spec.Distractors.Count >= 5);
     }
 
     [Fact]

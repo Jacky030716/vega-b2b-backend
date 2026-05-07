@@ -12,7 +12,7 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
     {
         "show_syllable_count",
         "reveal_first_syllable",
-        "reveal_full_word"
+        "show_syllable_pattern"
     };
     private const string SpellCatcherAudioLanguage = "ms-MY";
 
@@ -467,9 +467,9 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         var difficulty = Math.Clamp(item.DifficultyLevel, 1, 3);
         var distractorTarget = difficulty switch
         {
-            1 => 1,
-            2 => 2,
-            _ => 4
+            1 => 3,
+            2 => 4,
+            _ => 5
         };
 
         var distractors = GenerateDistractors(correctSyllables, targetWord, distractorTarget);
@@ -494,7 +494,7 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             difficulty,
             new SyllableSushiUiConfigDto(
                 true,
-                2000,
+                0,
                 true,
                 3,
                 SyllableHints));
@@ -506,16 +506,34 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         if (parsed.Count == 0 && !string.IsNullOrWhiteSpace(item.SyllableText))
         {
             parsed = item.SyllableText
-                .Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Split(new[] { '/', ' ', '\t', '\r', '\n' }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Select(NormalizeSyllable)
                 .Where(s => s.Length > 0)
                 .ToList();
         }
 
-        return parsed
+        var normalizedTarget = NormalizeSyllable(targetWord);
+        var syllables = parsed
             .Select(NormalizeSyllable)
-            .Where(s => s.Length > 0)
+            .Where(s => s.Length > 0 && !string.Equals(s, normalizedTarget, StringComparison.OrdinalIgnoreCase))
             .ToList();
+
+        return syllables.Count > 0 ? syllables : SplitFallbackSyllables(targetWord);
+    }
+
+    private static List<string> SplitFallbackSyllables(string targetWord)
+    {
+        var normalized = NormalizeSyllable(targetWord);
+        if (normalized.Length <= 2)
+            return normalized.Select(character => character.ToString()).ToList();
+
+        var chunks = new List<string>();
+        for (var index = 0; index < normalized.Length; index += 2)
+        {
+            chunks.Add(normalized.Substring(index, Math.Min(2, normalized.Length - index)));
+        }
+
+        return chunks;
     }
 
     private static List<string> ParseJsonArray(string? raw)
@@ -549,7 +567,7 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
                     continue;
                 if (correctSyllables.Contains(candidate, StringComparer.OrdinalIgnoreCase))
                     continue;
-                if (!IsValidDistractor(candidate))
+                if (!IsValidDistractor(candidate, targetWord))
                     continue;
                 generated.Add(candidate);
             }
@@ -560,6 +578,20 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             .ThenBy(candidate => candidate, StringComparer.Ordinal)
             .Take(Math.Max(targetCount, 1))
             .ToList();
+
+        if (ranked.Count < targetCount)
+        {
+            var existing = new HashSet<string>(
+                ranked.Concat(correctSyllables),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var fallback in GenerateFallbackSyllableDistractors(targetWord, existing))
+            {
+                if (ranked.Count >= targetCount)
+                    break;
+                ranked.Add(fallback);
+                existing.Add(fallback);
+            }
+        }
 
         return ranked;
     }
@@ -580,18 +612,8 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         foreach (var consonantSwap in ConsonantSwaps(normalized))
             yield return consonantSwap;
 
-        if (normalized.Length > 1)
-            yield return normalized[..^1];
-
-        if (index < correctSyllables.Count - 1)
-            yield return normalized + NormalizeSyllable(correctSyllables[index + 1]);
-
-        if (targetWord.Length >= 4)
-        {
-            var mid = targetWord.Length / 2;
-            yield return NormalizeSyllable(targetWord[..mid]);
-            yield return NormalizeSyllable(targetWord[mid..]);
-        }
+        foreach (var codaVariant in CodaVariants(normalized, index))
+            yield return codaVariant;
     }
 
     private static IEnumerable<string> VowelSwaps(string syllable)
@@ -617,7 +639,7 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
 
     private static IEnumerable<string> ConsonantSwaps(string syllable)
     {
-        var swaps = new[] { 'b', 'p', 'm', 'k', 't', 's' };
+        var swaps = new[] { 'b', 'p', 'm', 'k', 't', 's', 'h', 'l', 'r', 'n', 'g' };
         if (syllable.Length == 0)
             yield break;
 
@@ -631,8 +653,86 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         }
     }
 
-    private static bool IsValidDistractor(string candidate)
-        => candidate.Length > 0 && candidate.All(char.IsLetter);
+    private static IEnumerable<string> CodaVariants(string syllable, int index)
+    {
+        if (!TryParseMalaySyllableShape(syllable, out var onset, out var vowel, out var coda))
+            yield break;
+
+        var codas = coda.Length == 0
+            ? new[] { "n", "ng", "r", "l", "m" }
+            : new[] { "n", "ng", "r", "l", "m", "t", "h" };
+
+        foreach (var nextCoda in codas)
+        {
+            if (string.Equals(nextCoda, coda, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            yield return $"{onset}{vowel}{nextCoda}";
+        }
+
+        if (index == 0 && string.Equals(syllable, "be", StringComparison.OrdinalIgnoreCase))
+            yield return "ber";
+    }
+
+    private static IEnumerable<string> GenerateFallbackSyllableDistractors(
+        string targetWord,
+        HashSet<string> existing)
+    {
+        var seedSyllables = new[]
+        {
+            "ba", "be", "bi", "bo", "bu",
+            "ma", "me", "mi", "mo", "mu",
+            "pa", "pe", "sa", "se", "ka", "ke", "ta", "te"
+        };
+
+        foreach (var candidate in DeterministicShuffle(seedSyllables, $"{targetWord}|fallback"))
+        {
+            if (existing.Contains(candidate))
+                continue;
+            if (!IsValidDistractor(candidate, targetWord))
+                continue;
+
+            yield return candidate;
+        }
+    }
+
+    private static bool IsValidDistractor(string candidate, string targetWord)
+    {
+        var normalized = NormalizeSyllable(candidate);
+        var normalizedTarget = NormalizeSyllable(targetWord);
+        return normalized.Length > 0
+            && normalized.All(char.IsLetter)
+            && !string.Equals(normalized, normalizedTarget, StringComparison.OrdinalIgnoreCase)
+            && !normalizedTarget.Contains(normalized, StringComparison.OrdinalIgnoreCase)
+            && TryParseMalaySyllableShape(normalized, out _, out _, out _);
+    }
+
+    private static bool TryParseMalaySyllableShape(
+        string syllable,
+        out string onset,
+        out string vowel,
+        out string coda)
+    {
+        onset = string.Empty;
+        vowel = string.Empty;
+        coda = string.Empty;
+
+        var normalized = NormalizeSyllable(syllable);
+        var vowelIndex = normalized.IndexOfAny(new[] { 'a', 'e', 'i', 'o', 'u' });
+        if (vowelIndex < 0)
+            return false;
+
+        onset = normalized[..vowelIndex];
+        vowel = normalized[vowelIndex].ToString();
+        coda = normalized[(vowelIndex + 1)..];
+
+        return onset.All(IsConsonant)
+            && coda.All(IsConsonant)
+            && (coda.Length <= 1 || string.Equals(coda, "ng", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsConsonant(char character)
+        => char.IsLetter(character) && !"aeiou".Contains(character);
 
     private static int SimilarityScore(string candidate, IReadOnlyList<string> correctSyllables)
     {
@@ -651,8 +751,11 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             best = Math.Max(best, prefix);
         }
 
-        return best;
+        return best + CommonMalayChunkBoost(candidate);
     }
+
+    private static int CommonMalayChunkBoost(string candidate)
+        => candidate is "ber" or "ter" or "per" or "nang" ? 2 : 0;
 
     private static List<string> DeterministicShuffle(IReadOnlyList<string> values, string seed)
         => values
