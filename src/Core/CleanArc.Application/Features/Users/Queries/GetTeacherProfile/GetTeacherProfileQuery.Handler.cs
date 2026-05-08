@@ -1,15 +1,21 @@
 using CleanArc.Application.Contracts.Identity;
+using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
+using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.Quiz;
 using Mediator;
 
 namespace CleanArc.Application.Features.Users.Queries.GetTeacherProfile;
 
-internal class GetTeacherProfileQueryHandler(
+internal sealed class GetTeacherProfileQueryHandler(
     IAppUserManager userManager,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IAiUsageService aiUsageService)
     : IRequestHandler<GetTeacherProfileQuery, OperationResult<TeacherProfileDto>>
 {
+  private const decimal SupportAccuracyThreshold = 40m;
+
   public async ValueTask<OperationResult<TeacherProfileDto>> Handle(
       GetTeacherProfileQuery request,
       CancellationToken cancellationToken)
@@ -19,21 +25,66 @@ internal class GetTeacherProfileQueryHandler(
       return OperationResult<TeacherProfileDto>.NotFoundResult("Teacher not found");
 
     var classrooms = await unitOfWork.ClassroomRepository.GetTeacherClassroomsAsync(request.TeacherId);
-    var uniqueStudents = new Dictionary<int, (int Diamonds, string UserName)>();
+    var studentSnapshots = new Dictionary<int, TeacherStudentSnapshot>();
 
     foreach (var classroom in classrooms)
     {
       var members = await unitOfWork.ClassroomRepository.GetClassroomMembersAsync(classroom.Id);
       foreach (var member in members)
       {
-        if (!uniqueStudents.ContainsKey(member.UserId))
+        var snapshot = GetOrCreateSnapshot(studentSnapshots, member);
+        snapshot.Experience = Math.Max(snapshot.Experience, member.User.Experience);
+      }
+
+      var challenges = await unitOfWork.ClassroomRepository.GetClassroomChallengesAsync(classroom.Id);
+      foreach (var challenge in challenges)
+      {
+        var leaderboard = await unitOfWork.ChallengeRepository.GetChallengeLeaderboardAsync(challenge.Id, classroom.Id);
+        foreach (var progress in leaderboard)
         {
-          uniqueStudents[member.UserId] = (member.User.Diamonds, member.User.UserName);
+          if (!studentSnapshots.TryGetValue(progress.UserId, out var snapshot))
+          {
+            continue;
+          }
+
+          snapshot.AttemptCount += progress.AttemptCount;
+          if (progress.HasCompleted)
+          {
+            snapshot.CompletedChallengeCount += 1;
+            snapshot.AccuracyTotal += progress.BestAccuracy ?? Math.Min(100, progress.BestScore);
+            snapshot.AccuracyCount += 1;
+          }
         }
       }
     }
 
-    var challengesLaunched = await unitOfWork.ChallengeRepository.CountChallengesCreatedByTeacherAsync(request.TeacherId);
+    var activeStudents = studentSnapshots.Values.Count(student =>
+        student.Experience > 0 || student.AttemptCount > 0 || student.CompletedChallengeCount > 0);
+    var studentsNeedingSupport = studentSnapshots.Values.Count(student =>
+        student.CompletedChallengeCount == 0 ||
+        (student.AccuracyCount > 0 && student.AverageAccuracy < SupportAccuracyThreshold));
+    var aiQuota = await aiUsageService.GetRemainingQuotaAsync(
+        request.TeacherId,
+        AiFeatureTypes.CustomChallengeGeneration,
+        cancellationToken);
+
+    TeacherSubscriptionSnapshotDto? subscription = null;
+    var institutionName = "Institution not assigned";
+    if (teacher.InstitutionId is > 0)
+    {
+      var institution = await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(teacher.InstitutionId.Value);
+      if (institution is not null)
+      {
+        institutionName = string.IsNullOrWhiteSpace(institution.Name)
+            ? "Vega Institution"
+            : institution.Name;
+        subscription = new TeacherSubscriptionSnapshotDto(
+            string.IsNullOrWhiteSpace(institution.SubscriptionTier) ? "Standard" : institution.SubscriptionTier,
+            institution.SeatsUsed,
+            institution.MaxSeats,
+            "School Admin");
+      }
+    }
 
     var avatarUrl = teacher.AvatarUrl;
     if (string.IsNullOrWhiteSpace(avatarUrl) &&
@@ -56,16 +107,44 @@ internal class GetTeacherProfileQueryHandler(
         fullName,
         teacher.Email ?? string.Empty,
         "Teacher",
+        institutionName,
+        "Teacher access",
         avatarUrl,
         "professor",
         new TeacherProfileStatsDto(
-            uniqueStudents.Count,
-            challengesLaunched,
-            uniqueStudents.Values.Sum(student => student.Diamonds)),
+            classrooms.Count,
+            activeStudents,
+            studentsNeedingSupport,
+            aiQuota.Remaining),
+        subscription,
         new TeacherPreferencesDto(
             teacher.WeeklyAiInsightsEmail,
             teacher.InactiveStudentAlerts));
 
     return OperationResult<TeacherProfileDto>.SuccessResult(result);
+  }
+
+  private static TeacherStudentSnapshot GetOrCreateSnapshot(
+      Dictionary<int, TeacherStudentSnapshot> snapshots,
+      ClassroomStudent member)
+  {
+    if (!snapshots.TryGetValue(member.UserId, out var snapshot))
+    {
+      snapshot = new TeacherStudentSnapshot(member.UserId);
+      snapshots[member.UserId] = snapshot;
+    }
+
+    return snapshot;
+  }
+
+  private sealed class TeacherStudentSnapshot(int userId)
+  {
+    public int UserId { get; } = userId;
+    public int Experience { get; set; }
+    public int AttemptCount { get; set; }
+    public int CompletedChallengeCount { get; set; }
+    public decimal AccuracyTotal { get; set; }
+    public int AccuracyCount { get; set; }
+    public decimal AverageAccuracy => AccuracyCount == 0 ? 0 : AccuracyTotal / AccuracyCount;
   }
 }

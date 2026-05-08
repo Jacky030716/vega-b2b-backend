@@ -24,7 +24,8 @@ public class TeacherEndpoints : ICarterModule
       var teacherId = int.Parse(user.Identity.GetUserId());
       var result = await sender.Send(new GetTeacherProfileQuery(teacherId));
       return result.ToEndpointResult();
-    }), Version, "GetTeacherProfile", Tag).RequireAuthorization();
+    }), Version, "GetTeacherProfile", Tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
     app.MapEndpoint(builder => builder.MapPut($"{RoutePrefix}preferences", async (
         [FromBody] UpdateTeacherPreferencesRequest request,
@@ -37,7 +38,8 @@ public class TeacherEndpoints : ICarterModule
           request.WeeklyAiInsightsEmail,
           request.InactiveStudentAlerts));
       return result.ToEndpointResult();
-    }), Version, "UpdateTeacherPreferences", Tag).RequireAuthorization();
+    }), Version, "UpdateTeacherPreferences", Tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
   }
 }
 
