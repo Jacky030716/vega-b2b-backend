@@ -14,8 +14,27 @@ public sealed class AiRateLimitService(IOptions<AiRateLimitOptions> options) : I
     string featureType,
     CancellationToken cancellationToken)
   {
+    // Global per-user limiter across all AI features. This ensures the client can't
+    // spam multiple AI endpoints rapidly (e.g., double taps) even if the per-feature
+    // policy would allow it.
+    var global = TryAcquireWindow($"{userId}:GLOBAL", _options.GlobalMaxRequests, TimeSpan.FromSeconds(_options.GlobalWindowSeconds));
+    if (!global.Allowed)
+      return Task.FromResult(global);
+
     var (limit, window) = GetPolicy(featureType);
-    var key = $"{userId}:{featureType}";
+    var featureResult = TryAcquireWindow($"{userId}:{featureType}", limit, window);
+    return Task.FromResult(featureResult);
+  }
+
+  private (bool Allowed, int RetryAfterSeconds) TryAcquireWindow(string key, int limit, TimeSpan window)
+  {
+    // Fail open if misconfigured.
+    if (limit <= 0)
+      return (true, 0);
+
+    if (window <= TimeSpan.Zero)
+      return (true, 0);
+
     var now = DateTimeOffset.UtcNow;
     var state = _windows.GetOrAdd(key, _ => new WindowState());
 
@@ -30,11 +49,11 @@ public sealed class AiRateLimitService(IOptions<AiRateLimitOptions> options) : I
       {
         var oldest = state.Requests.Peek();
         var retryAfter = Math.Max(1, (int)Math.Ceiling((window - (now - oldest)).TotalSeconds));
-        return Task.FromResult((false, retryAfter));
+        return (false, retryAfter);
       }
 
       state.Requests.Enqueue(now);
-      return Task.FromResult((true, 0));
+      return (true, 0);
     }
   }
 

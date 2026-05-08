@@ -8,7 +8,7 @@ public record ClassroomThumbnailGenerationRequest(
   int YearLevel,
   IReadOnlyList<string> Subjects,
   string? Description,
-  string? StylePreset);
+  string ThumbnailPrompt);
 
 public record ClassroomThumbnailGenerationResult(
   string AssetId,
@@ -22,7 +22,7 @@ public record ClassroomThumbnailUploadResult(string AssetId, string Url);
 
 public interface IClassroomThumbnailImageGenerationService
 {
-  Task<OperationResult<(byte[] ImageBytes, string ModelName)>> GenerateAsync(
+  Task<OperationResult<(byte[] ImageBytes, string MimeType, string ModelName)>> GenerateAsync(
     ClassroomThumbnailGenerationRequest request,
     CancellationToken cancellationToken);
 }

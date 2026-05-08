@@ -1,6 +1,4 @@
 using CleanArc.Domain.Common;
-using CleanArc.Domain.Entities.User;
-
 namespace CleanArc.Domain.Entities.Institution;
 
 public class Institution : IEntity
@@ -17,6 +15,5 @@ public class Institution : IEntity
     public string SubscriptionTier { get; set; } = "Standard";
     public string StripeCustomerId { get; set; }
 
-    // Navigation property to Users in this institution
-    public ICollection<User.User> Users { get; set; } = new List<User.User>();
+    public ICollection<InstitutionUser> UserMemberships { get; set; } = new List<InstitutionUser>();
 }

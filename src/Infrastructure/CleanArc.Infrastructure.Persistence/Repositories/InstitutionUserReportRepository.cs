@@ -12,10 +12,14 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
     {
         var institutionId = filter.InstitutionId <= 0 ? 1 : filter.InstitutionId;
         var now = DateTime.UtcNow;
+        var institutionUserIds = dbContext.InstitutionUsers
+            .AsNoTracking()
+            .Where(m => m.InstitutionId == institutionId && m.IsActive)
+            .Select(m => m.UserId);
 
         var users = await dbContext.Users
             .AsNoTracking()
-            .Where(u => u.InstitutionId == institutionId || u.InstitutionId == null)
+            .Where(u => institutionUserIds.Contains(u.Id))
             .Select(u => new
             {
                 u.Id,
@@ -157,9 +161,14 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
         CancellationToken cancellationToken)
     {
         var normalizedInstitutionId = institutionId <= 0 ? 1 : institutionId;
+        var institutionUserIds = dbContext.InstitutionUsers
+            .AsNoTracking()
+            .Where(m => m.InstitutionId == normalizedInstitutionId && m.IsActive)
+            .Select(m => m.UserId);
+
         var user = await dbContext.Users
             .AsNoTracking()
-            .Where(u => u.Id == userId && (u.InstitutionId == normalizedInstitutionId || u.InstitutionId == null))
+            .Where(u => u.Id == userId && institutionUserIds.Contains(u.Id))
             .Select(u => new
             {
                 u.Id,
@@ -269,10 +278,10 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
         CancellationToken cancellationToken)
     {
         var normalizedInstitutionId = institutionId <= 0 ? 1 : institutionId;
-        var userExists = await dbContext.Users
+        var userExists = await dbContext.InstitutionUsers
             .AsNoTracking()
             .AnyAsync(
-                u => u.Id == userId && (u.InstitutionId == normalizedInstitutionId || u.InstitutionId == null),
+                m => m.UserId == userId && m.InstitutionId == normalizedInstitutionId && m.IsActive,
                 cancellationToken);
 
         if (!userExists)

@@ -32,6 +32,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
 
     // Admin & Billing
     public DbSet<Institution> Institutions { get; set; }
+    public DbSet<InstitutionUser> InstitutionUsers { get; set; }
 
     // Word
     public DbSet<Word> Words { get; set; }

@@ -16,6 +16,11 @@ public sealed class AiUsageLimitOptions
 
 public sealed class AiRateLimitOptions
 {
+  // Global per-user guardrail across all AI endpoints/features.
+  // This is intentionally strict to prevent rapid repeat calls from the client UI.
+  public int GlobalWindowSeconds { get; set; } = 10;
+  public int GlobalMaxRequests { get; set; } = 1;
+
   public int ImageWindowMinutes { get; set; } = 10;
   public int ImageMaxRequests { get; set; } = 3;
 

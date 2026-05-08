@@ -45,7 +45,6 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
         IAiRateLimitService rateLimitService,
         IAiUsageService aiUsageService,
         IClassroomThumbnailImageGenerationService generationService,
-        IClassroomThumbnailImageStorageService storageService,
         IAiAuditService aiAuditService,
         CancellationToken cancellationToken) =>
       {
@@ -61,11 +60,17 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
         if (request.YearLevel is < 1 or > 6)
           return Results.BadRequest(new { message = "Year level must be between 1 and 6." });
 
+        if (string.IsNullOrWhiteSpace(request.ThumbnailPrompt))
+          return Results.BadRequest(new { message = "Thumbnail description is required." });
+
+        if (request.ThumbnailPrompt.Trim().Length > 180)
+          return Results.BadRequest(new { message = "Thumbnail description must be 180 characters or fewer." });
+
         var promptUsed = BuildPrompt(request);
         var auditLogId = await aiAuditService.StartAsync(
           new AiAuditStartRequest(
             AiUseCases.ClassroomThumbnailGeneration,
-            "HUGGING_FACE",
+            "GOOGLE",
             null,
             "v1",
             JsonSerializer.Serialize(request),
@@ -95,7 +100,7 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
             request.YearLevel,
             subjects,
             request.Description,
-            request.StylePreset),
+            request.ThumbnailPrompt.Trim()),
           cancellationToken);
 
         if (!generation.IsSuccess)
@@ -104,23 +109,11 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
           return Results.BadRequest(new { message = generation.ErrorMessage ?? "Thumbnail generation failed." });
         }
 
-        var upload = await storageService.UploadAsync(
-          generation.Result.ImageBytes,
-          $"classroom-{Sanitize(request.ClassroomName)}-{request.YearLevel}",
-          "image/png",
-          cancellationToken);
-
-        if (!upload.IsSuccess)
-        {
-          await aiAuditService.FailAsync(auditLogId, null, new[] { upload.ErrorMessage ?? "Thumbnail upload failed." }, cancellationToken);
-          return Results.BadRequest(new { message = upload.ErrorMessage ?? "Thumbnail upload failed." });
-        }
-
         await aiUsageService.ConsumeUsageAsync(
           userId,
           AiFeatureTypes.ClassroomThumbnailGeneration,
           "POST /api/v1.1/ai/classroom-thumbnails/generate",
-          "HUGGING_FACE",
+          "GOOGLE",
           generation.Result.ModelName,
           1,
           true,
@@ -135,9 +128,9 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
           JsonSerializer.Serialize(new { promptUsed, model = generation.Result.ModelName }),
           JsonSerializer.Serialize(new
           {
-            upload.Result.AssetId,
-            upload.Result.Url,
             promptUsed,
+            mimeType = generation.Result.MimeType,
+            imageBytes = generation.Result.ImageBytes.Length,
             remainingQuota = refreshedQuota.Remaining
           }),
           AiValidationStatuses.Valid,
@@ -146,8 +139,8 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
 
         return Results.Ok(new
         {
-          assetId = upload.Result.AssetId,
-          url = upload.Result.Url,
+          imageBase64 = Convert.ToBase64String(generation.Result.ImageBytes),
+          mimeType = generation.Result.MimeType,
           promptUsed,
           remainingQuota = refreshedQuota.Remaining
         });
@@ -159,28 +152,10 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
   private static string BuildPrompt(ClassroomThumbnailGenerationDto request)
   {
     var subjectText = request.Subjects?.Count > 0 ? string.Join(", ", request.Subjects) : "classroom learning";
-    var style = string.IsNullOrWhiteSpace(request.StylePreset) ? "playful learning" : request.StylePreset.Trim();
     var description = string.IsNullOrWhiteSpace(request.Description) ? string.Empty : $" The classroom description is: {request.Description.Trim()}";
 
     return
-      $"Create a cute, colorful classroom thumbnail for a Year {request.YearLevel} {request.ClassroomName} class in a Malaysian primary school learning app. Include playful educational elements, books, icons, and a child-safe {style} aesthetic. Subject focus: {subjectText}.{description} No text overlay. Square composition suitable for a classroom card.";
-  }
-
-  private static string Sanitize(string input)
-  {
-    if (string.IsNullOrWhiteSpace(input))
-      return "classroom";
-
-    var cleaned = new string(input
-      .Trim()
-      .ToLowerInvariant()
-      .Select(ch => char.IsLetterOrDigit(ch) ? ch : '-')
-      .ToArray());
-
-    while (cleaned.Contains("--", StringComparison.Ordinal))
-      cleaned = cleaned.Replace("--", "-", StringComparison.Ordinal);
-
-    return cleaned.Trim('-');
+      $"Create a child-safe square 1:1 classroom thumbnail for a Malaysian primary school learning app. Teacher request: {request.ThumbnailPrompt.Trim()}. Classroom: {request.ClassroomName.Trim()}, Year {request.YearLevel}, subjects: {subjectText}.{description} Use a playful Duolingo-inspired educational illustration style with books, learning icons, friendly colors, and no text overlay.";
   }
 }
 
@@ -189,4 +164,4 @@ public sealed record ClassroomThumbnailGenerationDto(
   int YearLevel,
   IReadOnlyList<string> Subjects,
   string? Description,
-  string? StylePreset);
+  string ThumbnailPrompt);

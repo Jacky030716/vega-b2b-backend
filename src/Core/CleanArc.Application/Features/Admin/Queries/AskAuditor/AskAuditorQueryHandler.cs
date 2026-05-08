@@ -51,7 +51,7 @@ internal sealed class AskAuditorQueryHandler(
         {
             InstitutionName = institution.Name,
             SeatCapacity = institution.MaxSeats,
-            SeatsUsed = institution.Users.Count,
+            SeatsUsed = institution.UserMemberships.Count(membership => membership.IsActive),
             Subscription = institution.SubscriptionTier,
             RenewalDate = institution.RenewalDate.ToString("yyyy-MM-dd"),
             RawQuestion = request.Question,

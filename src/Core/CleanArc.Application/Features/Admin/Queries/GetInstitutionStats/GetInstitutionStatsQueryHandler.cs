@@ -17,7 +17,7 @@ internal class GetInstitutionStatsQueryHandler(IUnitOfWork unitOfWork) : IReques
 
         // Dynamically update seats used based on actual attached users, 
         // or just use the pre-calculated DB value. Here we sync them.
-        var actualSeatsUsed = institution.Users.Count;
+        var actualSeatsUsed = institution.UserMemberships.Count(membership => membership.IsActive);
         if (actualSeatsUsed != institution.SeatsUsed)
         {
             institution.SeatsUsed = actualSeatsUsed;

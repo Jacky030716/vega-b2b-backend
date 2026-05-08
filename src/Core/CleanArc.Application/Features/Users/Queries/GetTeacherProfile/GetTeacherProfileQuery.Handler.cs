@@ -70,20 +70,24 @@ internal sealed class GetTeacherProfileQueryHandler(
 
     TeacherSubscriptionSnapshotDto? subscription = null;
     var institutionName = "Institution not assigned";
-    if (teacher.InstitutionId is > 0)
+    var accessScope = "Teacher access";
+    var membership = await unitOfWork.InstitutionRepository.GetPrimaryInstitutionForUserAsync(
+        request.TeacherId,
+        cancellationToken);
+    var institution = membership?.Institution;
+    if (institution is not null)
     {
-      var institution = await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(teacher.InstitutionId.Value);
-      if (institution is not null)
-      {
-        institutionName = string.IsNullOrWhiteSpace(institution.Name)
-            ? "Vega Institution"
-            : institution.Name;
-        subscription = new TeacherSubscriptionSnapshotDto(
-            string.IsNullOrWhiteSpace(institution.SubscriptionTier) ? "Standard" : institution.SubscriptionTier,
-            institution.SeatsUsed,
-            institution.MaxSeats,
-            "School Admin");
-      }
+      institutionName = string.IsNullOrWhiteSpace(institution.Name)
+          ? "Vega Institution"
+          : institution.Name;
+      accessScope = string.IsNullOrWhiteSpace(membership?.AccessScope)
+          ? "Teacher access"
+          : membership.AccessScope;
+      subscription = new TeacherSubscriptionSnapshotDto(
+          string.IsNullOrWhiteSpace(institution.SubscriptionTier) ? "Standard" : institution.SubscriptionTier,
+          institution.SeatsUsed,
+          institution.MaxSeats,
+          "School Admin");
     }
 
     var avatarUrl = teacher.AvatarUrl;
@@ -108,7 +112,7 @@ internal sealed class GetTeacherProfileQueryHandler(
         teacher.Email ?? string.Empty,
         "Teacher",
         institutionName,
-        "Teacher access",
+        accessScope,
         avatarUrl,
         "professor",
         new TeacherProfileStatsDto(

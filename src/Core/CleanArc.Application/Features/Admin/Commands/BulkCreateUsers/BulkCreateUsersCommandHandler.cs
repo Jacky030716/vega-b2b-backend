@@ -1,4 +1,5 @@
 using CleanArc.Application.Contracts.Identity;
+using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.User;
 using CsvHelper;
@@ -7,7 +8,9 @@ using System.Globalization;
 
 namespace CleanArc.Application.Features.Admin.Commands.BulkCreateUsers;
 
-internal sealed class BulkCreateUsersCommandHandler(IAppUserManager userManager) : IRequestHandler<BulkCreateUsersCommand, OperationResult<BulkCreateUsersResult>>
+internal sealed class BulkCreateUsersCommandHandler(
+    IAppUserManager userManager,
+    IUnitOfWork unitOfWork) : IRequestHandler<BulkCreateUsersCommand, OperationResult<BulkCreateUsersResult>>
 {
     private static readonly string[] VisualIconPool =
     [
@@ -57,6 +60,13 @@ internal sealed class BulkCreateUsersCommandHandler(IAppUserManager userManager)
             {
                 return OperationResult<BulkCreateUsersResult>.FailureResult($"Failed to assign role to {username}.");
             }
+
+            await unitOfWork.InstitutionRepository.AssignUserToInstitutionAsync(
+                request.InstitutionId,
+                user.Id,
+                role == "teacher" ? "Teacher access" : "Student access",
+                isPrimary: true,
+                cancellationToken);
 
             outputs.Add(new BulkUserOutput
             {

@@ -64,14 +64,24 @@ public class TeacherProfileTests
         BestAccuracy = 35
       },
     ]);
-    unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(teacher.InstitutionId.Value).Returns(
-      new Institution
+    var institution = new Institution
+    {
+      Id = teacher.InstitutionId.Value,
+      Name = "Vega Primary",
+      SubscriptionTier = "Standard",
+      SeatsUsed = 18,
+      MaxSeats = 50
+    };
+    unitOfWork.InstitutionRepository
+      .GetPrimaryInstitutionForUserAsync(teacher.Id, Arg.Any<CancellationToken>())
+      .Returns(new InstitutionUser
       {
-        Id = teacher.InstitutionId.Value,
-        Name = "Vega Primary",
-        SubscriptionTier = "Standard",
-        SeatsUsed = 18,
-        MaxSeats = 50
+        InstitutionId = institution.Id,
+        Institution = institution,
+        UserId = teacher.Id,
+        AccessScope = "Teacher access",
+        IsActive = true,
+        IsPrimary = true
       });
 
     var aiUsageService = Substitute.For<IAiUsageService>();
