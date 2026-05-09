@@ -20,6 +20,7 @@ internal class GetClassroomDetailQueryHandler : IRequestHandler<GetClassroomDeta
       return OperationResult<ClassroomDetailDto>.NotFoundResult("Classroom not found");
 
     var studentCount = await _unitOfWork.ClassroomRepository.GetStudentCountAsync(request.ClassroomId);
+    var modulesCount = await _unitOfWork.ClassroomRepository.GetModuleCountAsync(request.ClassroomId);
     var challenges = await _unitOfWork.ClassroomRepository.GetClassroomChallengesAsync(request.ClassroomId);
     var subjects = classroom.Subjects.Count > 0
         ? classroom.Subjects.Select(s => s.Subject).ToList()
@@ -37,6 +38,7 @@ internal class GetClassroomDetailQueryHandler : IRequestHandler<GetClassroomDeta
         classroom.Teacher?.UserName ?? "",
         studentCount,
         challenges.Count,
+        modulesCount,
         subjects);
 
     return OperationResult<ClassroomDetailDto>.SuccessResult(result);

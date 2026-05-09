@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using CleanArc.Application.Contracts.Adaptive;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Quiz;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,13 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         ChallengeLifecycleState.Active,
         ChallengeLifecycleState.Scheduled,
         ChallengeLifecycleState.Completed
+    };
+    private static readonly HashSet<string> StudentVisibleStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "assigned",
+        "active",
+        "scheduled",
+        "completed"
     };
 
     public async Task<IReadOnlyList<StudentModuleTrackDto>> GetClassroomModulesAsync(
@@ -39,7 +47,9 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
 
         var moduleQuery = dbContext.ClassroomModules.AsNoTracking()
             .Include(link => link.Module)
-            .Where(link => link.ClassroomId == classroomId && link.Module.IsActive);
+            .Where(link => link.ClassroomId == classroomId
+                           && link.Module.IsActive
+                           && link.Module.ModuleType == SyllabusModule.PredefinedModuleType);
 
         if (!string.IsNullOrWhiteSpace(subject))
         {
@@ -68,9 +78,9 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 challenge.ClassroomId == classroomId &&
                 challenge.ModuleId != null &&
                 moduleIds.Contains(challenge.ModuleId.Value) &&
-                challenge.CustomModuleId == null &&
-                challenge.SourceType != RecoverySourceType &&
-                StudentVisibleStates.Contains(challenge.LifecycleState))
+                (challenge.SourceType == null || challenge.SourceType != RecoverySourceType) &&
+                (StudentVisibleStates.Contains(challenge.LifecycleState) ||
+                 StudentVisibleStatuses.Contains(challenge.Status)))
             .ToListAsync(cancellationToken);
 
         var challengeGroups = challengeRows
@@ -115,6 +125,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         var subjects = await dbContext.ClassroomModules.AsNoTracking()
             .Include(link => link.Module)
             .Where(link => link.ClassroomId == classroomId && link.Module.IsActive)
+            .Where(link => link.Module.ModuleType == SyllabusModule.PredefinedModuleType)
             .Select(link => link.Module.Subject)
             .Distinct()
             .OrderBy(subject => subject)
@@ -155,9 +166,9 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             .Where(challenge =>
                 challenge.ClassroomId == classroomId &&
                 challenge.ModuleId == moduleId &&
-                challenge.CustomModuleId == null &&
-                challenge.SourceType != RecoverySourceType &&
-                StudentVisibleStates.Contains(challenge.LifecycleState))
+                (challenge.SourceType == null || challenge.SourceType != RecoverySourceType) &&
+                (StudentVisibleStates.Contains(challenge.LifecycleState) ||
+                 StudentVisibleStatuses.Contains(challenge.Status)))
             .OrderBy(challenge => challenge.OrderIndex)
             .ThenBy(challenge => challenge.DifficultyLevel)
             .ThenBy(challenge => challenge.Id)
@@ -181,14 +192,17 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         var challenges = await dbContext.Challenges.AsNoTracking()
             .Include(challenge => challenge.Game)
             .Include(challenge => challenge.GameTemplate)
+            .Include(challenge => challenge.Module)
             .Include(challenge => challenge.Progresses.Where(progress =>
                 progress.UserId == studentId && progress.ClassroomId == classroomId))
             .Where(challenge =>
                 challenge.ClassroomId == classroomId &&
-                challenge.CustomModuleId != null &&
-                challenge.ModuleId == null &&
-                challenge.SourceType != RecoverySourceType &&
-                StudentVisibleStates.Contains(challenge.LifecycleState))
+                challenge.ModuleId != null &&
+                challenge.Module != null &&
+                challenge.Module.ModuleType == SyllabusModule.CustomModuleType &&
+                (challenge.SourceType == null || challenge.SourceType != RecoverySourceType) &&
+                (StudentVisibleStates.Contains(challenge.LifecycleState) ||
+                 StudentVisibleStatuses.Contains(challenge.Status)))
             .OrderByDescending(challenge => challenge.LastActivityAt ?? challenge.ModifiedDate ?? challenge.CreatedTime)
             .ThenBy(challenge => challenge.Id)
             .ToListAsync(cancellationToken);
@@ -269,6 +283,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
 
         var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
             .Where(module => module.IsActive
+                             && module.ModuleType == SyllabusModule.PredefinedModuleType
                              && module.YearLevel == classroom.YearLevel
                              && subjects.Contains(module.Subject))
             .Select(module => module.Id)
@@ -289,16 +304,28 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             });
         }
 
-        var hasCustomModule = await dbContext.CustomModules.AsNoTracking()
-            .AnyAsync(module => module.ClassroomId == classroom.Id, cancellationToken);
+        var hasCustomModule = await dbContext.ClassroomModules.AsNoTracking()
+            .Include(link => link.Module)
+            .AnyAsync(link => link.ClassroomId == classroom.Id && link.Module.ModuleType == SyllabusModule.CustomModuleType, cancellationToken);
         if (!hasCustomModule)
         {
-            dbContext.CustomModules.Add(new Domain.Entities.Classroom.CustomModule
+            dbContext.ClassroomModules.Add(new Domain.Entities.Classroom.ClassroomModule
             {
                 ClassroomId = classroom.Id,
-                Name = "Custom Module",
-                YearLevel = classroom.YearLevel,
-                CreatedByTeacherId = classroom.TeacherId
+                Module = new SyllabusModule
+                {
+                    ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
+                    Subject = string.IsNullOrWhiteSpace(classroom.Subject) ? "Custom" : classroom.Subject.Trim(),
+                    Language = "ms",
+                    YearLevel = classroom.YearLevel,
+                    Term = string.Empty,
+                    UnitTitle = "Custom Module",
+                    Title = "Custom Module",
+                    Description = "Teacher-created learning module.",
+                    ModuleType = SyllabusModule.CustomModuleType,
+                    SourceType = "teacher_created",
+                    CreatedByTeacherId = classroom.TeacherId
+                }
             });
         }
 

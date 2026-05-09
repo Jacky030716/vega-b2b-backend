@@ -9,7 +9,7 @@ public class SyllabusModuleConfiguration : IEntityTypeConfiguration<SyllabusModu
 {
     public void Configure(EntityTypeBuilder<SyllabusModule> builder)
     {
-        ConfigureBase(builder, "syllabus_modules");
+        ConfigureBase(builder, "learning_modules");
         builder.Property(x => x.PublicId).HasColumnName("public_id").HasDefaultValueSql("gen_random_uuid()").IsRequired();
         builder.Property(x => x.ModuleCode).HasColumnName("module_code").HasMaxLength(120).IsRequired();
         builder.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(100).IsRequired();
@@ -21,10 +21,14 @@ public class SyllabusModuleConfiguration : IEntityTypeConfiguration<SyllabusModu
         builder.Property(x => x.UnitTitle).HasColumnName("unit_title").HasMaxLength(200);
         builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
         builder.Property(x => x.Description).HasColumnName("description");
+        builder.Property(x => x.ModuleType).HasColumnName("module_type").HasMaxLength(24).HasDefaultValue(SyllabusModule.PredefinedModuleType).IsRequired();
         builder.Property(x => x.SourceType).HasColumnName("source_type").HasMaxLength(50).IsRequired();
+        builder.Property(x => x.CreatedByTeacherId).HasColumnName("created_by_teacher_id");
         builder.Property(x => x.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+        builder.HasOne(x => x.CreatedByTeacher).WithMany().HasForeignKey(x => x.CreatedByTeacherId).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         builder.HasIndex(x => x.PublicId).IsUnique();
         builder.HasIndex(x => x.ModuleCode).IsUnique();
+        builder.HasIndex(x => new { x.ModuleType, x.CreatedByTeacherId });
         builder.HasIndex(x => new { x.Subject, x.Language, x.YearLevel, x.Term, x.Week });
     }
 

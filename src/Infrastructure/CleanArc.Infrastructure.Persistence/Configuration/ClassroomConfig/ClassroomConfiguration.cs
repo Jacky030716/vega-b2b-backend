@@ -65,30 +65,3 @@ public class ClassroomModuleConfiguration : IEntityTypeConfiguration<ClassroomMo
     builder.HasIndex(c => c.ModuleId);
   }
 }
-
-public class CustomModuleConfiguration : IEntityTypeConfiguration<CustomModule>
-{
-  public void Configure(EntityTypeBuilder<CustomModule> builder)
-  {
-    builder.ToTable("custom_modules");
-    builder.Property(c => c.Id).HasColumnName("id");
-    builder.Property(c => c.ClassroomId).HasColumnName("classroom_id").IsRequired();
-    builder.Property(c => c.Name).HasColumnName("name").HasMaxLength(160).HasDefaultValue("Custom Module").IsRequired();
-    builder.Property(c => c.YearLevel).HasColumnName("year_level").HasDefaultValue(1);
-    builder.Property(c => c.CreatedByTeacherId).HasColumnName("created_by_teacher_id").IsRequired();
-    builder.Property(c => c.CreatedTime).HasColumnName("created_at");
-    builder.Property(c => c.ModifiedDate).HasColumnName("updated_at");
-
-    builder.HasOne(c => c.Classroom)
-        .WithMany(c => c.CustomModules)
-        .HasForeignKey(c => c.ClassroomId)
-        .OnDelete(DeleteBehavior.Cascade);
-
-    builder.HasOne(c => c.CreatedByTeacher)
-        .WithMany()
-        .HasForeignKey(c => c.CreatedByTeacherId)
-        .OnDelete(DeleteBehavior.Restrict);
-
-    builder.HasIndex(c => c.ClassroomId).IsUnique();
-  }
-}

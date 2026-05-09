@@ -21,12 +21,13 @@ internal class GetTeacherClassroomsQueryHandler : IRequestHandler<GetTeacherClas
     foreach (var c in classrooms)
     {
       var studentCount = await _unitOfWork.ClassroomRepository.GetStudentCountAsync(c.Id);
+      var modulesCount = await _unitOfWork.ClassroomRepository.GetModuleCountAsync(c.Id);
       var challenges = await _unitOfWork.ClassroomRepository.GetClassroomChallengesAsync(c.Id);
       var subjects = c.Subjects.Count > 0
           ? c.Subjects.Select(s => s.Subject).ToList()
           : string.IsNullOrWhiteSpace(c.Subject) ? new List<string>() : new List<string> { c.Subject };
       result.Add(new ClassroomDto(c.Id, c.Name, c.Description, c.Subject, c.YearLevel, c.Thumbnail,
-          c.JoinCode, c.TeacherId, c.Teacher?.Name ?? c.Teacher?.UserName ?? "Teacher", studentCount, challenges.Count, subjects));
+          c.JoinCode, c.TeacherId, c.Teacher?.Name ?? c.Teacher?.UserName ?? "Teacher", studentCount, challenges.Count, modulesCount, subjects));
     }
 
     return OperationResult<List<ClassroomDto>>.SuccessResult(result);

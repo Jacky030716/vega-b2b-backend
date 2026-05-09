@@ -73,6 +73,7 @@ public class GameEndpoints : ICarterModule
               request.SourcePrompt,
               request.SourceDocumentName,
               request.ClassroomId,
+              request.ModuleId,
               request.AiAuditLogId
           ));
 
@@ -160,6 +161,8 @@ public record CreateChallengeRequest(
   string? SourceDocumentName,
   // Classroom to assign this challenge to. Required for teacher-created classroom challenges.
   int? ClassroomId = null,
+  // Module to attach the classroom challenge to, when launched from a selected module.
+  int? ModuleId = null,
   // AI audit row returned by the draft generation endpoint when saving an AI draft.
   int? AiAuditLogId = null
 );

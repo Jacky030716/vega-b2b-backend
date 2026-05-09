@@ -34,6 +34,13 @@ public class ChallengeOrchestrator(
             .Select(c => (int?)c.OrderIndex)
             .MaxAsync(cancellationToken) ?? 0;
 
+        var classroomId = request.ClassId ?? preview.ClassId;
+        var moduleId = preview.ModuleId;
+        if (classroomId.HasValue)
+        {
+            moduleId = await ResolveChallengeModuleIdAsync(classroomId.Value, moduleId, cancellationToken);
+        }
+
         var assignedAt = DateTime.UtcNow;
         var challenge = new Challenge
         {
@@ -52,14 +59,13 @@ public class ChallengeOrchestrator(
                 : AiGenerationStatuses.None),
             AiUseCase = request.AiUseCase,
             AiAuditLogId = request.AiAuditLogId,
-            ClassroomId = request.ClassId ?? preview.ClassId,
+            ClassroomId = classroomId,
             StudentId = request.StudentId ?? preview.StudentId,
-            ModuleId = preview.ModuleId,
+            ModuleId = moduleId,
             GameTemplateId = template.Id,
             ChallengeMode = preview.ChallengeMode,
             SourceType = preview.SourceType,
             Subject = request.Subject,
-            CustomModuleId = request.CustomModuleId,
             ConfigJson = preview.ConfigJson,
             Status = "assigned",
             AssignedAt = assignedAt,
@@ -108,6 +114,43 @@ public class ChallengeOrchestrator(
             items.Count,
             challenge.StudentId,
             challenge.ClassroomId);
+    }
+
+    private async Task<int?> ResolveChallengeModuleIdAsync(int classroomId, int? requestedModuleId, CancellationToken cancellationToken)
+    {
+        if (requestedModuleId.HasValue)
+        {
+            var isAttached = await dbContext.ClassroomModules.AsNoTracking()
+                .AnyAsync(link => link.ClassroomId == classroomId && link.ModuleId == requestedModuleId.Value, cancellationToken);
+            if (!isAttached)
+                throw new InvalidOperationException("Module is not attached to this classroom");
+
+            return requestedModuleId;
+        }
+
+        var modules = await dbContext.ClassroomModules.AsNoTracking()
+            .Include(link => link.Module)
+            .Where(link => link.ClassroomId == classroomId && link.Module.IsActive)
+            .Select(link => new
+            {
+                link.ModuleId,
+                link.Module.ModuleType
+            })
+            .ToListAsync(cancellationToken);
+
+        var predefinedModules = modules
+            .Where(module => module.ModuleType == SyllabusModule.PredefinedModuleType)
+            .ToList();
+        if (predefinedModules.Count == 1)
+            return predefinedModules[0].ModuleId;
+
+        var customModuleId = modules
+            .FirstOrDefault(module => module.ModuleType == SyllabusModule.CustomModuleType)
+            ?.ModuleId;
+        if (customModuleId.HasValue)
+            return customModuleId;
+
+        throw new InvalidOperationException("Select a classroom module before creating this challenge");
     }
 
     public async Task<GeneratedAdaptiveChallengePreviewDto?> GetChallengeAsync(int challengeId, CancellationToken cancellationToken)

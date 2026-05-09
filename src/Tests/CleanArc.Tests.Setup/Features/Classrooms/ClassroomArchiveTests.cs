@@ -1,5 +1,6 @@
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Features.Classrooms.Commands;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Persistence;
@@ -109,12 +110,23 @@ public class ClassroomArchiveTests
     unitOfWork.ClassroomRepository.Returns(repo);
     var teacher = await AddUserAsync(context, "teacher-module");
     var classroom = await AddClassroomAsync(context, teacher.Id, "Class Name");
-    context.CustomModules.Add(new CustomModule
+    context.ClassroomModules.Add(new ClassroomModule
     {
       ClassroomId = classroom.Id,
-      Name = "Custom Module",
-      YearLevel = 1,
-      CreatedByTeacherId = teacher.Id
+      Module = new SyllabusModule
+      {
+        ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
+        Subject = classroom.Subject,
+        Language = "ms",
+        YearLevel = 1,
+        Term = string.Empty,
+        UnitTitle = "Custom Module",
+        Title = "Custom Module",
+        Description = "Teacher-created learning module.",
+        ModuleType = SyllabusModule.CustomModuleType,
+        SourceType = "teacher_created",
+        CreatedByTeacherId = teacher.Id
+      }
     });
     await context.SaveChangesAsync();
     var handler = new UpdateClassroomCommandHandler(unitOfWork);

@@ -33,7 +33,9 @@ public class ClassroomModuleManagementService(
 
         var modules = await dbContext.ClassroomModules.AsNoTracking()
             .Include(link => link.Module)
-            .Where(link => link.ClassroomId == classroomId && link.Module.IsActive)
+            .Where(link => link.ClassroomId == classroomId
+                           && link.Module.IsActive
+                           && link.Module.ModuleType == SyllabusModule.PredefinedModuleType)
             .Select(link => link.Module)
             .OrderBy(m => m.Subject)
             .ThenBy(m => m.UnitNumber ?? int.MaxValue)
@@ -48,7 +50,7 @@ public class ClassroomModuleManagementService(
             .ToDictionaryAsync(x => x.ModuleId, x => x.Count, cancellationToken);
 
         var challengeCounts = await dbContext.Challenges.AsNoTracking()
-            .Where(c => c.ClassroomId == classroomId && c.ModuleId != null && moduleIds.Contains(c.ModuleId.Value) && c.SourceType != RecoverySourceType)
+            .Where(c => c.ClassroomId == classroomId && c.ModuleId != null && moduleIds.Contains(c.ModuleId.Value) && (c.SourceType == null || c.SourceType != RecoverySourceType))
             .GroupBy(c => c.ModuleId!.Value)
             .Select(g => new
             {
@@ -63,7 +65,7 @@ public class ClassroomModuleManagementService(
                 c.ClassroomId == classroomId &&
                 c.ModuleId != null &&
                 moduleIds.Contains(c.ModuleId.Value) &&
-                c.SourceType != RecoverySourceType)
+                (c.SourceType == null || c.SourceType != RecoverySourceType))
             .Select(c => new
             {
                 ModuleId = c.ModuleId!.Value,
@@ -121,7 +123,7 @@ public class ClassroomModuleManagementService(
 
         var customChallengeCounts = await GetCustomModuleSummaryAsync(customModule.Id, cancellationToken);
         var activeChallengeCount = await dbContext.Challenges.AsNoTracking()
-            .CountAsync(c => c.ClassroomId == classroomId && c.SourceType != RecoverySourceType && ActiveStates.Contains(c.LifecycleState), cancellationToken);
+            .CountAsync(c => c.ClassroomId == classroomId && (c.SourceType == null || c.SourceType != RecoverySourceType) && ActiveStates.Contains(c.LifecycleState), cancellationToken);
 
         return new ClassroomModuleOverviewDto(
             classroom.Id,
@@ -132,7 +134,7 @@ public class ClassroomModuleManagementService(
             activeChallengeCount,
             RecommendedActions(),
             subjectGroups,
-            new CustomModuleSummaryDto(customModule.Id, customModule.Name, customChallengeCounts.Total, customChallengeCounts.Active));
+            new CustomModuleSummaryDto(customModule.Id, GetModuleDisplayName(customModule), customChallengeCounts.Total, customChallengeCounts.Active));
     }
 
     public async Task<IReadOnlyList<SubjectModuleGroupDto>> GetClassroomModulesAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
@@ -146,7 +148,7 @@ public class ClassroomModuleManagementService(
         var classroom = await GetTeacherClassroomAsync(classroomId, teacherId, cancellationToken);
         var customModule = await EnsureCustomModuleAsync(classroom, teacherId, cancellationToken);
         var counts = await GetCustomModuleSummaryAsync(customModule.Id, cancellationToken);
-        return new CustomModuleSummaryDto(customModule.Id, customModule.Name, counts.Total, counts.Active);
+        return new CustomModuleSummaryDto(customModule.Id, GetModuleDisplayName(customModule), counts.Total, counts.Active);
     }
 
     public async Task<IReadOnlyList<ModuleChallengeDto>> GetModuleChallengesAsync(int moduleId, int classroomId, int teacherId, CancellationToken cancellationToken)
@@ -158,8 +160,8 @@ public class ClassroomModuleManagementService(
             .Include(c => c.Game)
             .Include(c => c.GameTemplate)
             .Include(c => c.Progresses)
-            .Where(c => c.ClassroomId == classroomId && c.ModuleId == moduleId && c.CustomModuleId == null)
-            .Where(c => c.SourceType != RecoverySourceType)
+            .Where(c => c.ClassroomId == classroomId && c.ModuleId == moduleId)
+            .Where(c => c.SourceType == null || c.SourceType != RecoverySourceType)
             .OrderByDescending(c => c.ModifiedDate ?? c.CreatedTime)
             .ToListAsync(cancellationToken);
 
@@ -170,7 +172,7 @@ public class ClassroomModuleManagementService(
     {
         var classroom = await GetTeacherClassroomAsync(request.ClassroomId, teacherId, cancellationToken);
         var module = await dbContext.SyllabusModules.AsNoTracking()
-            .FirstOrDefaultAsync(m => m.Id == moduleId && m.IsActive, cancellationToken)
+            .FirstOrDefaultAsync(m => m.Id == moduleId && m.IsActive && m.ModuleType == SyllabusModule.PredefinedModuleType, cancellationToken)
             ?? throw new InvalidOperationException("Syllabus module not found");
 
         if (module.YearLevel != classroom.YearLevel)
@@ -291,8 +293,8 @@ public class ClassroomModuleManagementService(
             .Include(c => c.Game)
             .Include(c => c.GameTemplate)
             .Include(c => c.Progresses)
-            .Where(c => c.CustomModuleId == customModule.Id && c.ModuleId == null)
-            .Where(c => c.SourceType != RecoverySourceType)
+            .Where(c => c.ModuleId == customModule.Id)
+            .Where(c => c.SourceType == null || c.SourceType != RecoverySourceType)
             .OrderByDescending(c => c.ModifiedDate ?? c.CreatedTime)
             .ToListAsync(cancellationToken);
 
@@ -306,10 +308,11 @@ public class ClassroomModuleManagementService(
         if (string.IsNullOrWhiteSpace(name))
             throw new InvalidOperationException("Custom module name is required");
 
-        customModule.Name = name;
+        customModule.Title = name;
+        customModule.UnitTitle = name;
         await dbContext.SaveChangesAsync(cancellationToken);
         var counts = await GetCustomModuleSummaryAsync(customModule.Id, cancellationToken);
-        return new CustomModuleSummaryDto(customModule.Id, customModule.Name, counts.Total, counts.Active);
+        return new CustomModuleSummaryDto(customModule.Id, GetModuleDisplayName(customModule), counts.Total, counts.Active);
     }
 
     public async Task<AssignedAdaptiveChallengeDto> CreateCustomModuleChallengeAsync(int customModuleId, CreateCustomModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken)
@@ -320,28 +323,53 @@ public class ClassroomModuleManagementService(
             throw new InvalidOperationException("At least one item is required");
 
         var preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
-            "class", null, customModule.ClassroomId, "CUSTOM_MODULE", "manual_input", null,
+            "class", null, GetCustomModuleClassroomId(customModule), "CUSTOM_MODULE", "manual_input", customModule.Id,
             request.GameType, "custom module", words, null, null), cancellationToken);
 
         var title = string.IsNullOrWhiteSpace(request.Title) ? "Custom Challenge" : request.Title.Trim();
 
         return await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
-            teacherId, null, customModule.ClassroomId, null,
-            preview with { Title = title, SourceType = "CUSTOM_MODULE", ModuleId = null },
-            null, customModule.Id), cancellationToken);
+            teacherId, null, GetCustomModuleClassroomId(customModule), null,
+            preview with { Title = title, SourceType = "CUSTOM_MODULE", ModuleId = customModule.Id },
+            customModule.Subject, null), cancellationToken);
+    }
+
+    public async Task<bool> DeleteCustomModuleAsync(int customModuleId, int teacherId, CancellationToken cancellationToken)
+    {
+        var customModule = await GetTeacherCustomModuleAsync(customModuleId, teacherId, cancellationToken, tracking: true);
+        var linkedChallenges = await dbContext.Challenges
+            .Where(c => c.ModuleId == customModule.Id)
+            .ToListAsync(cancellationToken);
+
+        if (linkedChallenges.Count == 0 || linkedChallenges.Any(c => !IsArchived(c)))
+            throw new InvalidOperationException("Only archived modules can be deleted");
+
+        await DeleteChallengeDependentsAsync(linkedChallenges.Select(c => c.Id).ToArray(), cancellationToken);
+        dbContext.Challenges.RemoveRange(linkedChallenges);
+        dbContext.ClassroomModules.RemoveRange(customModule.ClassroomModules);
+        dbContext.SyllabusModules.Remove(customModule);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task<bool> DeleteChallengeAsync(int challengeId, int teacherId, CancellationToken cancellationToken)
     {
         var challenge = await dbContext.Challenges
-            .FirstOrDefaultAsync(c => c.Id == challengeId && c.CreatedById == teacherId, cancellationToken)
+            .Include(c => c.Classroom)
+            .FirstOrDefaultAsync(c => c.Id == challengeId, cancellationToken)
             ?? throw new InvalidOperationException("Challenge not found");
 
-        var hasAssignments = challenge.AssignedAt.HasValue || string.Equals(challenge.Status, "assigned", StringComparison.OrdinalIgnoreCase);
-        var canDelete = challenge.LifecycleState == ChallengeLifecycleState.Draft || !hasAssignments;
-        if (!canDelete)
-            throw new InvalidOperationException("Only draft or unassigned challenges can be deleted");
+        var isOwnedByTeacher =
+            challenge.CreatedById == teacherId ||
+            challenge.Classroom?.TeacherId == teacherId;
 
+        if (!isOwnedByTeacher)
+            throw new UnauthorizedAccessException("You do not manage this challenge");
+
+        if (!IsArchived(challenge))
+            throw new InvalidOperationException($"Only archived challenges can be deleted. Current state is {challenge.LifecycleState} / {challenge.Status}.");
+
+        await DeleteChallengeDependentsAsync(new[] { challenge.Id }, cancellationToken);
         dbContext.Challenges.Remove(challenge);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
@@ -356,32 +384,120 @@ public class ClassroomModuleManagementService(
         return classroom;
     }
 
-    private async Task<CustomModule> GetTeacherCustomModuleAsync(int customModuleId, int teacherId, CancellationToken cancellationToken, bool tracking = false)
+    private static bool IsArchived(Challenge challenge) =>
+        challenge.LifecycleState == ChallengeLifecycleState.Archived ||
+        string.Equals(challenge.Status, "archived", StringComparison.OrdinalIgnoreCase);
+
+    private async Task DeleteChallengeDependentsAsync(IReadOnlyCollection<int> challengeIds, CancellationToken cancellationToken)
     {
-        var query = tracking ? dbContext.CustomModules : dbContext.CustomModules.AsNoTracking();
-        var customModule = await query.Include(c => c.Classroom)
-            .FirstOrDefaultAsync(c => c.Id == customModuleId, cancellationToken)
+        if (challengeIds.Count == 0)
+            return;
+
+        await dbContext.AiAuditLogs
+            .Where(log => log.RelatedChallengeId.HasValue && challengeIds.Contains(log.RelatedChallengeId.Value))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(log => log.RelatedChallengeId, (int?)null), cancellationToken);
+
+        await dbContext.RecoveryMissions
+            .Where(mission => mission.LinkedChallengeId.HasValue && challengeIds.Contains(mission.LinkedChallengeId.Value))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(mission => mission.LinkedChallengeId, (int?)null), cancellationToken);
+
+        var challengeItemIds = await dbContext.ChallengeItems
+            .Where(item => challengeIds.Contains(item.ChallengeId))
+            .Select(item => item.Id)
+            .ToListAsync(cancellationToken);
+
+        var studentAttemptIds = await dbContext.StudentChallengeAttempts
+            .Where(attempt => challengeIds.Contains(attempt.ChallengeId))
+            .Select(attempt => attempt.Id)
+            .ToListAsync(cancellationToken);
+
+        var itemAttemptIds = await dbContext.StudentChallengeItemAttempts
+            .Where(attempt =>
+                studentAttemptIds.Contains(attempt.StudentChallengeAttemptId) ||
+                challengeItemIds.Contains(attempt.ChallengeItemId))
+            .Select(attempt => attempt.Id)
+            .ToListAsync(cancellationToken);
+
+        if (itemAttemptIds.Count > 0)
+        {
+            await dbContext.ErrorPatternLogs
+                .Where(log => log.ChallengeItemAttemptId.HasValue && itemAttemptIds.Contains(log.ChallengeItemAttemptId.Value))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(log => log.ChallengeItemAttemptId, (int?)null), cancellationToken);
+
+            await dbContext.StudentChallengeItemAttempts
+                .Where(attempt => itemAttemptIds.Contains(attempt.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        if (studentAttemptIds.Count > 0)
+        {
+            await dbContext.StudentChallengeAttempts
+                .Where(attempt => studentAttemptIds.Contains(attempt.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        await dbContext.Attempts
+            .Where(attempt => challengeIds.Contains(attempt.ChallengeId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.ChallengeProgresses
+            .Where(progress => challengeIds.Contains(progress.ChallengeId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        if (challengeItemIds.Count > 0)
+        {
+            await dbContext.ChallengeItems
+                .Where(item => challengeItemIds.Contains(item.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+    }
+
+    private async Task<SyllabusModule> GetTeacherCustomModuleAsync(int customModuleId, int teacherId, CancellationToken cancellationToken, bool tracking = false)
+    {
+        var query = tracking ? dbContext.SyllabusModules : dbContext.SyllabusModules.AsNoTracking();
+        var customModule = await query
+            .Include(module => module.ClassroomModules)
+                .ThenInclude(link => link.Classroom)
+            .FirstOrDefaultAsync(module => module.Id == customModuleId && module.ModuleType == SyllabusModule.CustomModuleType, cancellationToken)
             ?? throw new InvalidOperationException("Custom module not found");
-        if (!customModule.Classroom.IsActive || customModule.Classroom.IsDeleted)
+        var classroom = customModule.ClassroomModules.Select(link => link.Classroom).FirstOrDefault()
+            ?? throw new InvalidOperationException("Classroom not found");
+        if (!classroom.IsActive || classroom.IsDeleted)
             throw new InvalidOperationException("Classroom not found");
-        if (customModule.Classroom.TeacherId != teacherId)
+        if (classroom.TeacherId != teacherId)
             throw new UnauthorizedAccessException("You do not manage this custom module");
         return customModule;
     }
 
-    private async Task<CustomModule> EnsureCustomModuleAsync(Classroom classroom, int teacherId, CancellationToken cancellationToken)
+    private async Task<SyllabusModule> EnsureCustomModuleAsync(Classroom classroom, int teacherId, CancellationToken cancellationToken)
     {
-        var existing = await dbContext.CustomModules.FirstOrDefaultAsync(c => c.ClassroomId == classroom.Id, cancellationToken);
+        var existing = await dbContext.ClassroomModules
+            .Include(link => link.Module)
+            .Where(link => link.ClassroomId == classroom.Id && link.Module.ModuleType == SyllabusModule.CustomModuleType)
+            .Select(link => link.Module)
+            .FirstOrDefaultAsync(cancellationToken);
         if (existing is not null) return existing;
 
-        var customModule = new CustomModule
+        var customModule = new SyllabusModule
         {
-            ClassroomId = classroom.Id,
-            Name = "Custom Module",
+            ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
+            Subject = string.IsNullOrWhiteSpace(classroom.Subject) ? "Custom" : classroom.Subject.Trim(),
+            Language = "ms",
             YearLevel = classroom.YearLevel,
+            Term = string.Empty,
+            UnitTitle = "Custom Module",
+            Title = "Custom Module",
+            Description = "Teacher-created learning module.",
+            ModuleType = SyllabusModule.CustomModuleType,
+            SourceType = "teacher_created",
             CreatedByTeacherId = teacherId
         };
-        dbContext.CustomModules.Add(customModule);
+        dbContext.SyllabusModules.Add(customModule);
+        dbContext.ClassroomModules.Add(new ClassroomModule
+        {
+            ClassroomId = classroom.Id,
+            Module = customModule
+        });
         await dbContext.SaveChangesAsync(cancellationToken);
         return customModule;
     }
@@ -424,6 +540,7 @@ public class ClassroomModuleManagementService(
 
         var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
             .Where(module => module.IsActive
+                             && module.ModuleType == SyllabusModule.PredefinedModuleType
                              && module.YearLevel == classroom.YearLevel
                              && subjects.Contains(module.Subject))
             .Select(module => module.Id)
@@ -466,7 +583,7 @@ public class ClassroomModuleManagementService(
     private async Task<(int Total, int Active)> GetCustomModuleSummaryAsync(int customModuleId, CancellationToken cancellationToken)
     {
         var rows = await dbContext.Challenges.AsNoTracking()
-            .Where(c => c.CustomModuleId == customModuleId && c.SourceType != RecoverySourceType)
+            .Where(c => c.ModuleId == customModuleId && (c.SourceType == null || c.SourceType != RecoverySourceType))
             .Select(c => c.LifecycleState)
             .ToListAsync(cancellationToken);
         return (rows.Count, rows.Count(ActiveStates.Contains));
@@ -579,10 +696,16 @@ public class ClassroomModuleManagementService(
 
     private static IReadOnlyList<RecommendedActionDto> RecommendedActions() => new[]
     {
-        new RecommendedActionDto("IMPROVE_WEAK_WORDS", "Improve Weak Words", "Generate challenges from weak vocabulary."),
-        new RecommendedActionDto("PRACTICE_THIS_WEEK", "Practice This Week", "Generate focused practice for a module."),
-        new RecommendedActionDto("CREATE_SPELLING_TEST", "Create Spelling Test", "Assess spelling across one or more modules.")
+        new RecommendedActionDto("MANAGE_MODULES", "Manage syllabus modules", "Browse and configure classroom modules."),
+        new RecommendedActionDto("CREATE_SPELLING_TEST", "Create Spelling Test", "Assess spelling across selected modules."),
+        new RecommendedActionDto("GENERATE_RECOVERY", "Generate Recovery Challenge", "Create practice from students’ weak words.")
     };
+
+    private static string GetModuleDisplayName(SyllabusModule module) =>
+        string.IsNullOrWhiteSpace(module.UnitTitle) ? module.Title : module.UnitTitle;
+
+    private static int GetCustomModuleClassroomId(SyllabusModule module) =>
+        module.ClassroomModules.Select(link => link.ClassroomId).FirstOrDefault();
 
     private static ModuleChallengeDto ToChallengeDto(Challenge challenge)
     {
@@ -590,17 +713,28 @@ public class ClassroomModuleManagementService(
         var completed = challenge.Progresses?.Count(p => p.HasCompleted) ?? 0;
         var progress = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
         var lastUpdated = challenge.LastActivityAt ?? challenge.ModifiedDate ?? challenge.CreatedTime;
-        var isAssigned = challenge.AssignedAt.HasValue || string.Equals(challenge.Status, "assigned", StringComparison.OrdinalIgnoreCase);
+        var lifecycleState = ResolveModuleLifecycleState(challenge);
         return new ModuleChallengeDto(
             challenge.Id,
             challenge.Title,
             challenge.Game?.Key ?? string.Empty,
             challenge.GameTemplate?.Code ?? challenge.Game?.Key ?? string.Empty,
-            challenge.LifecycleState.ToString().ToUpperInvariant(),
+            lifecycleState.ToString().ToUpperInvariant(),
             challenge.Status,
             progress,
             lastUpdated,
-            challenge.LifecycleState == ChallengeLifecycleState.Draft || !isAssigned);
+            IsArchived(challenge));
+    }
+
+    private static ChallengeLifecycleState ResolveModuleLifecycleState(Challenge challenge)
+    {
+        if (string.Equals(challenge.Status, "archived", StringComparison.OrdinalIgnoreCase))
+            return ChallengeLifecycleState.Archived;
+
+        if (string.Equals(challenge.Status, "completed", StringComparison.OrdinalIgnoreCase))
+            return ChallengeLifecycleState.Completed;
+
+        return challenge.LifecycleState;
     }
 
     private sealed record ModuleWeaknessContext(IReadOnlyList<string> WeakWords, string? WeakSkill);

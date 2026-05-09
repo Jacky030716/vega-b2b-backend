@@ -14,7 +14,8 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
         int? yearLevel,
         CancellationToken cancellationToken)
     {
-        var query = dbContext.SyllabusModules.AsNoTracking().Where(m => m.IsActive);
+        var query = dbContext.SyllabusModules.AsNoTracking()
+            .Where(m => m.IsActive && m.ModuleType == SyllabusModule.PredefinedModuleType);
         var normalizedSubject = SyllabusSubjectMapper.NormalizeSubject(subject);
 
         if (!string.IsNullOrWhiteSpace(normalizedSubject))
@@ -70,6 +71,7 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
             UnitTitle = request.UnitTitle?.Trim() ?? title,
             Title = title,
             Description = request.Description?.Trim() ?? string.Empty,
+            ModuleType = SyllabusModule.PredefinedModuleType,
             SourceType = request.SourceType?.Trim() ?? "teacher_created",
             IsActive = true
         };

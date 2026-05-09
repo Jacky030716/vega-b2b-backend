@@ -31,6 +31,27 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork, IAiA
       return OperationResult<CreateChallengeDto>.FailureResult(normalizedContentResult.ErrorMessage!);
 
     var nextOrderIndex = await unitOfWork.ChallengeRepository.GetNextOrderIndexForGameAsync(game.Id);
+    var assignedAt = request.ClassroomId.HasValue ? DateTime.UtcNow : (DateTime?)null;
+
+    var moduleId = request.ModuleId;
+    if (request.ClassroomId.HasValue && !moduleId.HasValue)
+    {
+      moduleId = await unitOfWork.ClassroomRepository.ResolveChallengeModuleIdAsync(request.ClassroomId.Value);
+      if (!moduleId.HasValue)
+        return OperationResult<CreateChallengeDto>.FailureResult("Select a classroom module before creating this challenge");
+    }
+
+    if (moduleId.HasValue)
+    {
+      if (!request.ClassroomId.HasValue)
+        return OperationResult<CreateChallengeDto>.FailureResult("ClassroomId is required when assigning a challenge to a module");
+
+      var isAttached = await unitOfWork.ClassroomRepository.IsModuleAttachedToClassroomAsync(
+        request.ClassroomId.Value,
+        moduleId.Value);
+      if (!isAttached)
+        return OperationResult<CreateChallengeDto>.FailureResult("Module is not attached to this classroom");
+    }
 
     var challenge = await unitOfWork.ChallengeRepository.CreateChallengeAsync(new Challenge
     {
@@ -46,7 +67,14 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork, IAiA
       AiGenerationStatus = request.IsAIGenerated ? AiGenerationStatuses.AiGenerated : AiGenerationStatuses.None,
       AiUseCase = request.IsAIGenerated ? AiUseCases.CustomChallengeExtraction : null,
       AiAuditLogId = request.IsAIGenerated ? request.AiAuditLogId : null,
-      ClassroomId = request.ClassroomId
+      ClassroomId = request.ClassroomId,
+      ModuleId = moduleId,
+      Status = request.ClassroomId.HasValue ? "assigned" : "draft",
+      AssignedAt = assignedAt,
+      LifecycleState = request.ClassroomId.HasValue
+        ? ChallengeLifecycleState.Active
+        : ChallengeLifecycleState.Draft,
+      LastActivityAt = assignedAt
     });
 
     if (request.IsAIGenerated && request.AiAuditLogId is int auditLogId)
@@ -61,7 +89,8 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork, IAiA
       challenge.OrderIndex,
       challenge.IsAIGenerated,
       challenge.CreatedById,
-      challenge.ClassroomId
+      challenge.ClassroomId,
+      challenge.ModuleId
     ));
   }
 }

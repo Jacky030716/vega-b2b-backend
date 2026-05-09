@@ -15,7 +15,8 @@ public record CreateChallengeDto(
     int OrderIndex,
     bool IsAIGenerated,
     int? CreatedById,
-    int? ClassroomId
+    int? ClassroomId,
+    int? ModuleId
 );
 
 /// <summary>
@@ -34,6 +35,8 @@ public record CreateChallengeCommand(
     string? SourceDocumentName,
     /// <summary>When set, the challenge belongs to this classroom (teacher-created).</summary>
     int? ClassroomId = null,
+    /// <summary>When set, the classroom challenge belongs to this learning module.</summary>
+    int? ModuleId = null,
     /// <summary>AI audit row from the draft generation step, when the challenge came from an AI draft.</summary>
     int? AiAuditLogId = null
 ) : IRequest<OperationResult<CreateChallengeDto>>;

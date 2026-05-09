@@ -86,7 +86,6 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<ClassroomStudent> ClassroomStudents { get; set; }
     public DbSet<ClassroomSubject> ClassroomSubjects { get; set; }
     public DbSet<ClassroomModule> ClassroomModules { get; set; }
-    public DbSet<CustomModule> CustomModules { get; set; }
     public DbSet<StudentCredential> StudentCredentials { get; set; }
 
     // Progression

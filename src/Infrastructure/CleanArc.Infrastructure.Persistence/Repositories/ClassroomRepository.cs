@@ -1,4 +1,5 @@
 using CleanArc.Application.Contracts.Persistence;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
@@ -116,6 +117,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
 
     var matchingModuleIds = await DbContext.SyllabusModules.AsNoTracking()
         .Where(m => m.IsActive
+                    && m.ModuleType == SyllabusModule.PredefinedModuleType
                     && m.YearLevel == classroom.YearLevel
                     && normalizedSubjects.Contains(m.Subject))
         .Select(m => m.Id)
@@ -139,16 +141,15 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
       }
     }
 
-    var hasCustomModule = await DbContext.CustomModules.AsNoTracking()
-        .AnyAsync(m => m.ClassroomId == classroom.Id);
+    var hasCustomModule = await DbContext.ClassroomModules.AsNoTracking()
+        .Include(m => m.Module)
+        .AnyAsync(m => m.ClassroomId == classroom.Id && m.Module.ModuleType == SyllabusModule.CustomModuleType);
     if (!hasCustomModule)
     {
-      DbContext.CustomModules.Add(new CustomModule
+      DbContext.ClassroomModules.Add(new ClassroomModule
       {
         ClassroomId = classroom.Id,
-        Name = "Custom Module",
-        YearLevel = classroom.YearLevel,
-        CreatedByTeacherId = teacherId
+        Module = CreateCustomLearningModule(classroom, teacherId)
       });
     }
 
@@ -219,6 +220,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
 
     var desiredModuleIds = await DbContext.SyllabusModules.AsNoTracking()
         .Where(module => module.IsActive
+                         && module.ModuleType == SyllabusModule.PredefinedModuleType
                          && module.YearLevel == classroom.YearLevel
                          && normalizedSubjects.Contains(module.Subject))
         .Select(module => module.Id)
@@ -228,7 +230,12 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     var existingLinks = await DbContext.ClassroomModules
         .Where(link => link.ClassroomId == classroom.Id)
         .ToListAsync();
-    DbContext.ClassroomModules.RemoveRange(existingLinks.Where(link => !desiredSet.Contains(link.ModuleId)));
+    var customModuleIds = await DbContext.SyllabusModules.AsNoTracking()
+        .Where(module => module.ModuleType == SyllabusModule.CustomModuleType)
+        .Select(module => module.Id)
+        .ToListAsync();
+    var customSet = customModuleIds.ToHashSet();
+    DbContext.ClassroomModules.RemoveRange(existingLinks.Where(link => !desiredSet.Contains(link.ModuleId) && !customSet.Contains(link.ModuleId)));
 
     var existingModuleIds = existingLinks.Select(link => link.ModuleId).ToHashSet();
     foreach (var moduleId in desiredModuleIds.Where(moduleId => !existingModuleIds.Contains(moduleId)))
@@ -240,16 +247,15 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
       });
     }
 
-    var hasCustomModule = await DbContext.CustomModules.AsNoTracking()
-        .AnyAsync(module => module.ClassroomId == classroom.Id);
+    var hasCustomModule = await DbContext.ClassroomModules.AsNoTracking()
+        .Include(module => module.Module)
+        .AnyAsync(module => module.ClassroomId == classroom.Id && module.Module.ModuleType == SyllabusModule.CustomModuleType);
     if (!hasCustomModule)
     {
-      DbContext.CustomModules.Add(new CustomModule
+      DbContext.ClassroomModules.Add(new ClassroomModule
       {
         ClassroomId = classroom.Id,
-        Name = "Custom Module",
-        YearLevel = classroom.YearLevel,
-        CreatedByTeacherId = teacherId
+        Module = CreateCustomLearningModule(classroom, teacherId)
       });
     }
 
@@ -260,6 +266,31 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   {
     return await DbContext.ClassroomModules.AsNoTracking()
         .AnyAsync(m => m.ClassroomId == classroomId && m.ModuleId == moduleId);
+  }
+
+  public async Task<int?> ResolveChallengeModuleIdAsync(int classroomId)
+  {
+    var modules = await DbContext.ClassroomModules.AsNoTracking()
+        .Include(link => link.Module)
+        .Where(link => link.ClassroomId == classroomId && link.Module.IsActive)
+        .Select(link => new
+        {
+          link.ModuleId,
+          link.Module.ModuleType
+        })
+        .ToListAsync();
+
+    var predefinedModules = modules
+        .Where(module => module.ModuleType == SyllabusModule.PredefinedModuleType)
+        .ToList();
+    if (predefinedModules.Count == 1)
+    {
+      return predefinedModules[0].ModuleId;
+    }
+
+    return modules
+        .FirstOrDefault(module => module.ModuleType == SyllabusModule.CustomModuleType)
+        ?.ModuleId;
   }
 
   public async Task DeleteClassroomAsync(int classroomId)
@@ -292,8 +323,8 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
       return true;
     }
 
-    return await DbContext.CustomModules.AsNoTracking()
-        .AnyAsync(c => c.ClassroomId == classroomId);
+    return await DbContext.ClassroomModules.AsNoTracking()
+        .AnyAsync(link => link.ClassroomId == classroomId);
   }
 
   // Students
@@ -313,6 +344,11 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   public async Task<int> GetStudentCountAsync(int classroomId)
   {
     return await DbContext.ClassroomStudents.CountAsync(cs => cs.ClassroomId == classroomId);
+  }
+
+  public async Task<int> GetModuleCountAsync(int classroomId)
+  {
+    return await DbContext.ClassroomModules.CountAsync(cm => cm.ClassroomId == classroomId);
   }
 
   public async Task<List<ClassroomStudent>> GetClassroomMembersAsync(int classroomId)
@@ -488,4 +524,19 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
   }
+
+  private static SyllabusModule CreateCustomLearningModule(Classroom classroom, int teacherId) => new()
+  {
+    ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
+    Subject = string.IsNullOrWhiteSpace(classroom.Subject) ? "Custom" : classroom.Subject.Trim(),
+    Language = "ms",
+    YearLevel = classroom.YearLevel,
+    Term = string.Empty,
+    UnitTitle = "Custom Module",
+    Title = "Custom Module",
+    Description = "Teacher-created learning module.",
+    ModuleType = SyllabusModule.CustomModuleType,
+    SourceType = "teacher_created",
+    CreatedByTeacherId = teacherId
+  };
 }

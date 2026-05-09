@@ -537,6 +537,10 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<int?>("CreatedByTeacherId")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_teacher_id");
+
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
@@ -927,6 +931,14 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("module_code");
 
+                    b.Property<string>("ModuleType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasDefaultValue("PREDEFINED")
+                        .HasColumnName("module_type");
+
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -979,15 +991,19 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedByTeacherId");
+
                     b.HasIndex("ModuleCode")
                         .IsUnique();
+
+                    b.HasIndex("ModuleType", "CreatedByTeacherId");
 
                     b.HasIndex("PublicId")
                         .IsUnique();
 
                     b.HasIndex("Subject", "Language", "YearLevel", "Term", "Week");
 
-                    b.ToTable("syllabus_modules", (string)null);
+                    b.ToTable("learning_modules", (string)null);
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.VocabularyItem", b =>
@@ -2892,6 +2908,16 @@ namespace CleanArc.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Module");
+                });
+
+            modelBuilder.Entity("CleanArc.Domain.Entities.Adaptive.SyllabusModule", b =>
+                {
+                    b.HasOne("CleanArc.Domain.Entities.User.User", "CreatedByTeacher")
+                        .WithMany()
+                        .HasForeignKey("CreatedByTeacherId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByTeacher");
                 });
 
             modelBuilder.Entity("CleanArc.Domain.Entities.Classroom.Classroom", b =>

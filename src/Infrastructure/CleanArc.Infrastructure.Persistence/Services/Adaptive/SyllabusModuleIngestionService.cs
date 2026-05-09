@@ -104,6 +104,7 @@ public class SyllabusModuleIngestionService(
                 ? moduleCode
                 : seedModule.UnitTitle.Trim();
             module.Description = $"Predefined syllabus module {moduleCode}.";
+            module.ModuleType = SyllabusModule.PredefinedModuleType;
             module.SourceType = sourceType;
             module.IsActive = true;
 

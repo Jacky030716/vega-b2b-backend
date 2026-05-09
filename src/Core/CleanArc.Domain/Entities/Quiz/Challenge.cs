@@ -47,8 +47,6 @@ public class Challenge : BaseEntity<int>
     public string? ChallengeMode { get; set; }
     public string? SourceType { get; set; }
     public string? Subject { get; set; }
-    public int? CustomModuleId { get; set; }
-    public CustomModule? CustomModule { get; set; }
     public string ConfigJson { get; set; } = "{}";
     public string Status { get; set; } = "assigned";
     public DateTime? AssignedAt { get; set; }

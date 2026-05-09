@@ -159,6 +159,10 @@ public sealed class ModuleManagementEndpoints : ICarterModule
         {
           return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+          return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+        }
       }), Version, "DeleteChallenge", Tag)
       .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
   }

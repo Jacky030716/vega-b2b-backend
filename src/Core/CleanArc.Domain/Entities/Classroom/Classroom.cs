@@ -27,7 +27,6 @@ public class Classroom : BaseEntity<int>
   public User.User Teacher { get; set; }
   public ICollection<ClassroomStudent> Students { get; set; } = new List<ClassroomStudent>();
   public ICollection<Challenge> Challenges { get; set; } = new List<Challenge>();
-  public ICollection<CustomModule> CustomModules { get; set; } = new List<CustomModule>();
   public ICollection<ClassroomSubject> Subjects { get; set; } = new List<ClassroomSubject>();
   public ICollection<ClassroomModule> Modules { get; set; } = new List<ClassroomModule>();
 

@@ -16,9 +16,11 @@ public interface IClassroomRepository
   Task ReplaceClassroomSubjectsAndModulesAsync(int classroomId, IEnumerable<string> subjects, int teacherId);
   Task<IReadOnlyList<string>> GetClassroomSubjectsAsync(int classroomId);
   Task<bool> IsModuleAttachedToClassroomAsync(int classroomId, int moduleId);
+  Task<int?> ResolveChallengeModuleIdAsync(int classroomId);
   Task ArchiveClassroomAsync(Classroom classroom, int deletedBy);
   Task DeleteClassroomAsync(int classroomId);
   Task<bool> HasModulesOrChallengesAsync(int classroomId);
+
 
   // Students
   Task<ClassroomStudent> JoinClassroomAsync(ClassroomStudent student);
@@ -28,5 +30,6 @@ public interface IClassroomRepository
 
   // Challenges assigned to this classroom
   Task<List<Challenge>> GetClassroomChallengesAsync(int classroomId);
-}
 
+  Task<int> GetModuleCountAsync(int classroomId);
+}
