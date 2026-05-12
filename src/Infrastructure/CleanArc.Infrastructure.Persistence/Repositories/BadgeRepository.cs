@@ -10,7 +10,11 @@ internal class BadgeRepository(ApplicationDbContext dbContext)
 {
   public async Task<List<Badge>> GetAllBadgesAsync()
   {
-    return await TableNoTracking.OrderBy(b => b.Category).ThenBy(b => b.Id).ToListAsync();
+    return await TableNoTracking
+      .Where(b => b.IsActive)
+      .OrderBy(b => b.Category)
+      .ThenBy(b => b.Id)
+      .ToListAsync();
   }
 
   public async Task<Badge?> GetBadgeByIdAsync(int badgeId)

@@ -18,6 +18,25 @@ public class AchievementsEndpoints : ICarterModule
 
   public void AddRoutes(IEndpointRouteBuilder app)
   {
+    app.MapEndpoint(builder => builder.MapGet(
+      "/api/v{version:apiVersion}/student/achievements",
+      async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+      {
+        var userId = int.Parse(user.Identity.GetUserId());
+        var result = await sender.Send(new GetStudentAchievementsQuery(userId), ct);
+        return result.ToEndpointResult();
+      }), _version, "GetStudentAchievements", "Student Achievements")
+      .RequireAuthorization(b => b.RequireRole("student"));
+
+    app.MapEndpoint(builder => builder.MapPost(
+      "/api/v{version:apiVersion}/student/achievements/sync",
+      async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+      {
+        var userId = int.Parse(user.Identity.GetUserId());
+        var result = await sender.Send(new SyncStudentAchievementsCommand(userId), ct);
+        return result.ToEndpointResult();
+      }), _version, "SyncStudentAchievements", "Student Achievements")
+      .RequireAuthorization(b => b.RequireRole("student", "admin"));
     // GET /Badges/ — full badge catalog (all badges, no unlock state)
     app.MapEndpoint(builder => builder.MapGet(_routePrefix, async (ISender sender) =>
     {

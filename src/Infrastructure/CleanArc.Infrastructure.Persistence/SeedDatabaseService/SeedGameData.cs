@@ -225,9 +225,114 @@ public class SeedGameData : ISeedGameData
                 RewardXp = 220,
                 RewardDiamonds = 40,
             },
+            new()
+            {
+                Code = "FIRST_CHALLENGE",
+                Name = "Practice Rookie",
+                Description = "Complete your first assigned challenge.",
+                ImageRef = "badges/first_step.png",
+                Category = "milestone",
+                Rarity = "wood",
+                Requirement = "Complete 1 challenge",
+                IsSecret = false,
+                RewardXp = 60,
+                RewardDiamonds = 8,
+            },
+            new()
+            {
+                Code = "COMPLETE_3_CHALLENGES",
+                Name = "Challenge Climber",
+                Description = "Complete 3 learning challenges.",
+                ImageRef = "badges/team_player.png",
+                Category = "milestone",
+                Rarity = "silver",
+                Requirement = "Complete 3 challenges",
+                IsSecret = false,
+                RewardXp = 100,
+                RewardDiamonds = 15,
+            },
+            new()
+            {
+                Code = "COMPLETE_10_CHALLENGES",
+                Name = "Challenge Champion",
+                Description = "Complete 10 learning challenges.",
+                ImageRef = "badges/perfect_score.png",
+                Category = "milestone",
+                Rarity = "gold",
+                Requirement = "Complete 10 challenges",
+                IsSecret = false,
+                RewardXp = 220,
+                RewardDiamonds = 35,
+            },
+            new()
+            {
+                Code = "REACH_LEVEL_5",
+                Name = "Level 5 Explorer",
+                Description = "Reach level 5.",
+                ImageRef = "badges/first_step.png",
+                Category = "milestone",
+                Rarity = "silver",
+                Requirement = "Reach level 5",
+                IsSecret = false,
+                RewardXp = 120,
+                RewardDiamonds = 20,
+            },
+            new()
+            {
+                Code = "REACH_LEVEL_10",
+                Name = "Level 10 Legend",
+                Description = "Reach level 10.",
+                ImageRef = "badges/perfect_score.png",
+                Category = "milestone",
+                Rarity = "gold",
+                Requirement = "Reach level 10",
+                IsSecret = false,
+                RewardXp = 260,
+                RewardDiamonds = 45,
+            },
+            new()
+            {
+                Code = "OWN_3_MASCOTS",
+                Name = "Mascot Collector",
+                Description = "Own 3 mascot avatars.",
+                ImageRef = "badges/team_player.png",
+                Category = "discovery",
+                Rarity = "silver",
+                Requirement = "Own 3 mascots",
+                IsSecret = false,
+                RewardXp = 140,
+                RewardDiamonds = 25,
+            },
+            new()
+            {
+                Code = "COMPLETE_1_MODULE",
+                Name = "Module Finisher",
+                Description = "Complete every challenge in a module.",
+                ImageRef = "badges/50_words.png",
+                Category = "mastery",
+                Rarity = "silver",
+                Requirement = "Complete 1 module",
+                IsSecret = false,
+                RewardXp = 180,
+                RewardDiamonds = 30,
+            },
         };
 
-        var existingBadges = await _dbContext.Badges.ToDictionaryAsync(
+        foreach (var seedBadge in badgeSeeds)
+        {
+            seedBadge.Code = string.IsNullOrWhiteSpace(seedBadge.Code)
+                ? ToAchievementCode(seedBadge.Name)
+                : seedBadge.Code.Trim().ToUpperInvariant();
+            seedBadge.IsActive = true;
+        }
+
+        var existingBadgesByCode = await _dbContext.Badges
+            .Where(badge => badge.Code != "")
+            .ToDictionaryAsync(
+            badge => badge.Code,
+            badge => badge,
+            StringComparer.OrdinalIgnoreCase);
+        var existingBadgesByName = await _dbContext.Badges.ToDictionaryAsync(
             badge => badge.Name,
             badge => badge,
             StringComparer.OrdinalIgnoreCase);
@@ -235,13 +340,15 @@ public class SeedGameData : ISeedGameData
         var hasBadgeChanges = false;
         foreach (var seedBadge in badgeSeeds)
         {
-            if (!existingBadges.TryGetValue(seedBadge.Name, out var existingBadge))
+            if (!existingBadgesByCode.TryGetValue(seedBadge.Code, out var existingBadge)
+                && !existingBadgesByName.TryGetValue(seedBadge.Name, out existingBadge))
             {
                 await _dbContext.Badges.AddAsync(seedBadge);
                 hasBadgeChanges = true;
                 continue;
             }
 
+            existingBadge.Code = seedBadge.Code;
             existingBadge.Description = seedBadge.Description;
             existingBadge.ImageRef = seedBadge.ImageRef;
             existingBadge.Category = seedBadge.Category;
@@ -249,6 +356,7 @@ public class SeedGameData : ISeedGameData
             existingBadge.Requirement = seedBadge.Requirement;
             existingBadge.RuleJson = seedBadge.RuleJson;
             existingBadge.IsSecret = seedBadge.IsSecret;
+            existingBadge.IsActive = seedBadge.IsActive;
             existingBadge.RewardXp = seedBadge.RewardXp;
             existingBadge.RewardDiamonds = seedBadge.RewardDiamonds;
             existingBadge.RewardDreamTokens = seedBadge.RewardDreamTokens;
@@ -259,6 +367,8 @@ public class SeedGameData : ISeedGameData
         {
             await _dbContext.SaveChangesAsync();
         }
+
+        await SeedDemoAchievementTriggers();
 
         if (!await _dbContext.Classrooms.AnyAsync())
         {
@@ -432,4 +542,93 @@ public class SeedGameData : ISeedGameData
 
         await _dbContext.SaveChangesAsync();
     }
+
+    private async Task SeedDemoAchievementTriggers()
+    {
+        var badges = await _dbContext.Badges
+            .Where(b => b.IsActive)
+            .ToDictionaryAsync(b => b.Code, b => b, StringComparer.OrdinalIgnoreCase);
+
+        var triggerSeeds = new[]
+        {
+            CreateTrigger("FIRST_CHALLENGE", "CHALLENGE_COMPLETED", "Complete 1 challenge", "count", null, 1m),
+            CreateTrigger("COMPLETE_3_CHALLENGES", "CHALLENGE_COMPLETED", "Complete 3 challenges", "count", null, 3m),
+            CreateTrigger("COMPLETE_10_CHALLENGES", "CHALLENGE_COMPLETED", "Complete 10 challenges", "count", null, 10m),
+            CreateTrigger("REACH_LEVEL_5", "LEVEL_REACHED", "Reach level 5", "max", "level", 5m),
+            CreateTrigger("REACH_LEVEL_10", "LEVEL_REACHED", "Reach level 10", "max", "level", 10m),
+            CreateTrigger("OWN_3_MASCOTS", "MASCOT_PURCHASED", "Own 3 mascots", "max", "ownedMascotCount", 3m),
+            CreateTrigger("COMPLETE_1_MODULE", "MODULE_COMPLETED", "Complete 1 module", "count", null, 1m),
+            CreateTrigger("PERFECT_SCORE", "STARS_EARNED", "Earn 3 stars in a challenge", "max", "starsEarned", 3m),
+        };
+
+        var hasChanges = false;
+        foreach (var seed in triggerSeeds)
+        {
+            if (!badges.TryGetValue(seed.Code, out var badge))
+            {
+                continue;
+            }
+
+            var existing = await _dbContext.AchievementTriggers
+                .FirstOrDefaultAsync(t => t.BadgeId == badge.Id && t.EventType == seed.EventType);
+
+            if (existing is null)
+            {
+                _dbContext.AchievementTriggers.Add(new AchievementTrigger
+                {
+                    BadgeId = badge.Id,
+                    EventType = seed.EventType,
+                    Description = seed.Description,
+                    AggregationType = seed.AggregationType,
+                    AggregationSourceField = seed.AggregationSourceField,
+                    Threshold = seed.Threshold,
+                    IsActive = true,
+                    EvaluationOrder = 0,
+                });
+                hasChanges = true;
+                continue;
+            }
+
+            existing.Description = seed.Description;
+            existing.AggregationType = seed.AggregationType;
+            existing.AggregationSourceField = seed.AggregationSourceField;
+            existing.Threshold = seed.Threshold;
+            existing.IsActive = true;
+            existing.EvaluationOrder = 0;
+            hasChanges = true;
+        }
+
+        if (hasChanges)
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+    }
+
+    private static AchievementTriggerSeed CreateTrigger(
+        string code,
+        string eventType,
+        string description,
+        string aggregationType,
+        string? aggregationSourceField,
+        decimal threshold)
+        => new(code, eventType, description, aggregationType, aggregationSourceField, threshold);
+
+    private static string ToAchievementCode(string name)
+    {
+        var chars = name
+            .Trim()
+            .Select(ch => char.IsLetterOrDigit(ch) ? char.ToUpperInvariant(ch) : '_')
+            .ToArray();
+
+        return string.Join("_", new string(chars)
+            .Split('_', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private sealed record AchievementTriggerSeed(
+        string Code,
+        string EventType,
+        string Description,
+        string AggregationType,
+        string? AggregationSourceField,
+        decimal Threshold);
 }

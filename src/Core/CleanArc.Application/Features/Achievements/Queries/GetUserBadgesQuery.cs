@@ -8,6 +8,7 @@ public record GetUserBadgesQuery(int UserId) : IRequest<OperationResult<List<Use
 /// <summary>Badge earned by the user — includes unlock state and featured info.</summary>
 public record UserBadgeDto(
     int Id,
+    string Code,
     string Name,
     string Description,
     string ImageRef,
@@ -15,6 +16,7 @@ public record UserBadgeDto(
     string Rarity,
     string Requirement,
     bool IsSecret,
+    bool IsActive,
     DateTime EarnedAt,
     bool IsFeatured,
     int? SlotIndex,

@@ -97,8 +97,29 @@ internal class CompleteAttemptCommandHandler(
     {
       try
       {
+        var previousProgress = await unitOfWork.ProgressionRepository.GetOrCreateUserProgressAsync(request.UserId);
+        var previousLevel = previousProgress.CurrentLevel;
+
         await unitOfWork.ProgressionRepository.AddXpAsync(request.UserId, xp);
         await unitOfWork.ProgressionRepository.AddDiamondsAsync(request.UserId, coins);
+
+        var updatedProgress = await unitOfWork.ProgressionRepository.GetUserProgressAsync(request.UserId);
+        if (updatedProgress is not null && updatedProgress.CurrentLevel > previousLevel)
+        {
+          await achievementTrackingService.TrackEventAsync(
+            request.UserId,
+            "LEVEL_REACHED",
+            $"level-reached:{request.UserId}:{updatedProgress.CurrentLevel}",
+            JsonSerializer.Serialize(new
+            {
+              level = updatedProgress.CurrentLevel,
+              previousLevel,
+              source = "challenge_completed",
+              attemptId = attempt.Id,
+              challengeId = attempt.ChallengeId,
+            }),
+            cancellationToken);
+        }
       }
       catch
       {
@@ -128,6 +149,44 @@ internal class CompleteAttemptCommandHandler(
         "attempt_completed",
         $"attempt-completed:{attempt.Id}",
         achievementPayload,
+        cancellationToken);
+
+    if (isFirstCompletion && !isRecoveryChallenge)
+    {
+      await achievementTrackingService.TrackEventAsync(
+          request.UserId,
+          "CHALLENGE_COMPLETED",
+          $"challenge-completed:{request.UserId}:{attempt.ChallengeId}",
+          JsonSerializer.Serialize(new
+          {
+            attemptId = attempt.Id,
+            challengeId = attempt.ChallengeId,
+            gameId = challenge?.GameId,
+            gameKey = challenge?.Game?.Key,
+            classroomId = challenge?.ClassroomId,
+            moduleId = challenge?.ModuleId,
+            score = attempt.Score,
+            starsEarned = clampedStars,
+            durationSeconds,
+            accuracy,
+          }),
+          cancellationToken);
+    }
+
+    await achievementTrackingService.TrackEventAsync(
+        request.UserId,
+        "STARS_EARNED",
+        $"stars-earned:attempt:{attempt.Id}",
+        JsonSerializer.Serialize(new
+        {
+          attemptId = attempt.Id,
+          challengeId = attempt.ChallengeId,
+          gameId = challenge?.GameId,
+          gameKey = challenge?.Game?.Key,
+          starsEarned = clampedStars,
+          score = attempt.Score,
+          accuracy,
+        }),
         cancellationToken);
 
     if (coins > 0)
@@ -176,6 +235,27 @@ internal class CompleteAttemptCommandHandler(
         };
 
         await unitOfWork.ChallengeRepository.UpsertChallengeProgressAsync(progress);
+
+        if (isFirstCompletion
+            && challenge.ModuleId is int moduleId
+            && await unitOfWork.ChallengeRepository.IsStudentModuleCompletedAsync(
+              request.UserId,
+              classroomId,
+              moduleId))
+        {
+          await achievementTrackingService.TrackEventAsync(
+            request.UserId,
+            "MODULE_COMPLETED",
+            $"module-completed:{request.UserId}:{classroomId}:{moduleId}",
+            JsonSerializer.Serialize(new
+            {
+              classroomId,
+              moduleId,
+              completedChallengeId = attempt.ChallengeId,
+              attemptId = attempt.Id,
+            }),
+            cancellationToken);
+        }
       }
       catch
       {

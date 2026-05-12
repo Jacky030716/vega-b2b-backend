@@ -211,4 +211,32 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
                 cp.UserId == userId &&
                 cp.ChallengeId == challengeId &&
                 cp.ClassroomId == classroomId);
+
+    public async Task<bool> IsStudentModuleCompletedAsync(int userId, int classroomId, int moduleId)
+    {
+        var challengeIds = await DbContext.Challenges.AsNoTracking()
+            .Where(challenge =>
+                challenge.ClassroomId == classroomId &&
+                challenge.ModuleId == moduleId &&
+                (challenge.SourceType == null || challenge.SourceType != RecoverySourceType))
+            .Select(challenge => challenge.Id)
+            .ToListAsync();
+
+        if (challengeIds.Count == 0)
+        {
+            return false;
+        }
+
+        var completedCount = await DbContext.ChallengeProgresses.AsNoTracking()
+            .Where(progress =>
+                progress.UserId == userId &&
+                progress.ClassroomId == classroomId &&
+                progress.HasCompleted &&
+                challengeIds.Contains(progress.ChallengeId))
+            .Select(progress => progress.ChallengeId)
+            .Distinct()
+            .CountAsync();
+
+        return completedCount >= challengeIds.Count;
+    }
 }

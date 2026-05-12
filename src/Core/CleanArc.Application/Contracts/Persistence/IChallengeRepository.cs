@@ -58,6 +58,8 @@ public interface IChallengeRepository
   /// Returns a single student's progress row for a (challenge, classroom) pair, or null if none.
   /// </summary>
   Task<ChallengeProgress?> GetStudentChallengeProgressAsync(int userId, int challengeId, int classroomId);
+
+  Task<bool> IsStudentModuleCompletedAsync(int userId, int classroomId, int moduleId);
 }
 
 public sealed record ChallengeLeaderboardSnapshot(

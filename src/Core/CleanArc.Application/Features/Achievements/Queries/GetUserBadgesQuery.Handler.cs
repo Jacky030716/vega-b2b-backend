@@ -17,9 +17,9 @@ internal class GetUserBadgesQueryHandler : IRequestHandler<GetUserBadgesQuery, O
   {
     var userBadges = await _unitOfWork.BadgeRepository.GetUserBadgesAsync(request.UserId);
     var result = userBadges.Select(ub => new UserBadgeDto(
-        ub.Badge.Id, ub.Badge.Name, ub.Badge.Description, ub.Badge.ImageRef,
+        ub.Badge.Id, ub.Badge.Code, ub.Badge.Name, ub.Badge.Description, ub.Badge.ImageRef,
         ub.Badge.Category, ub.Badge.Rarity, ub.Badge.Requirement, ub.Badge.IsSecret,
-        ub.EarnedAt, ub.IsFeatured, ub.SlotIndex,
+        ub.Badge.IsActive, ub.EarnedAt, ub.IsFeatured, ub.SlotIndex,
         ub.Badge.RewardXp, ub.Badge.RewardDiamonds, ub.Badge.RewardDreamTokens
     )).ToList();
     return OperationResult<List<UserBadgeDto>>.SuccessResult(result);

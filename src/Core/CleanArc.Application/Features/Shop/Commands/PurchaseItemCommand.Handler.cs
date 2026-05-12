@@ -60,6 +60,27 @@ internal class PurchaseItemCommandHandler : IRequestHandler<PurchaseItemCommand,
       AcquiredAt = DateTime.UtcNow
     });
 
+    if (string.Equals(shopItem.Category, "avatar", StringComparison.OrdinalIgnoreCase))
+    {
+      var ownedMascotCount = (await _unitOfWork.ShopRepository.GetUserInventoryAsync(request.UserId, "avatar"))
+        .Select(item => item.ShopItemId)
+        .Distinct()
+        .Count();
+
+      await _achievementTrackingService.TrackEventAsync(
+        request.UserId,
+        "MASCOT_PURCHASED",
+        $"mascot-purchased:{request.UserId}:{shopItem.Id}:{DateTime.UtcNow:yyyyMMddHHmmssfff}",
+        JsonSerializer.Serialize(new
+        {
+          shopItemId = shopItem.Id,
+          shopItemName = shopItem.Name,
+          category = shopItem.Category,
+          ownedMascotCount,
+        }),
+        cancellationToken);
+    }
+
     // Record transaction
     await _unitOfWork.ShopRepository.AddDiamondTransactionAsync(new DiamondTransaction
     {

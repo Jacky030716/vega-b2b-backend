@@ -73,6 +73,11 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
       return Array.Empty<int>();
     }
 
+    var activeBadgeIds = await dbContext.Badges
+        .AsNoTracking()
+        .Where(b => b.IsActive)
+        .Select(b => b.Id)
+        .ToListAsync(cancellationToken);
     var earnedBadgeIdList = await dbContext.UserBadges
         .AsNoTracking()
         .Where(ub => ub.UserId == userId)
@@ -86,7 +91,7 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
     // 1) Preferred path: evaluate rules from AchievementTrigger table.
     var triggerRows = await dbContext.AchievementTriggers
         .AsNoTracking()
-        .Where(t => t.IsActive)
+        .Where(t => t.IsActive && activeBadgeIds.Contains(t.BadgeId))
         .ToListAsync(cancellationToken);
 
     foreach (var trigger in triggerRows)
@@ -116,7 +121,7 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
     var triggerBadgeIds = triggerRows.Select(t => t.BadgeId).ToHashSet();
     var fallbackBadges = await dbContext.Badges
         .AsNoTracking()
-        .Where(b => !string.IsNullOrWhiteSpace(b.RuleJson) && !triggerBadgeIds.Contains(b.Id))
+        .Where(b => b.IsActive && !string.IsNullOrWhiteSpace(b.RuleJson) && !triggerBadgeIds.Contains(b.Id))
         .ToListAsync(cancellationToken);
 
     foreach (var badge in fallbackBadges)
@@ -201,8 +206,190 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
 
     await dbContext.SaveChangesAsync(cancellationToken);
 
+    var unlockedNow = await UnlockBadgesAsync(userId, unlockBadgeIds, now, cancellationToken);
+
+    await transaction.CommitAsync(cancellationToken);
+    return unlockedNow;
+  }
+
+  public async Task<IReadOnlyList<StudentAchievementDto>> GetStudentAchievementsAsync(
+      int userId,
+      CancellationToken cancellationToken = default)
+  {
+    var badges = await dbContext.Badges
+        .AsNoTracking()
+        .Where(b => b.IsActive)
+        .OrderBy(b => b.Category)
+        .ThenBy(b => b.Id)
+        .ToListAsync(cancellationToken);
+
+    var badgeIds = badges.Select(b => b.Id).ToList();
+
+    var triggers = await dbContext.AchievementTriggers
+        .AsNoTracking()
+        .Where(t => t.IsActive && badgeIds.Contains(t.BadgeId))
+        .OrderBy(t => t.EvaluationOrder)
+        .ThenBy(t => t.Id)
+        .ToListAsync(cancellationToken);
+
+    var triggerMap = triggers
+        .GroupBy(t => t.BadgeId)
+        .ToDictionary(g => g.Key, g => g.First());
+
+    var progressMap = await dbContext.UserBadgeProgresses
+        .AsNoTracking()
+        .Where(p => p.UserId == userId && badgeIds.Contains(p.BadgeId))
+        .ToDictionaryAsync(p => p.BadgeId, p => p.ProgressValue, cancellationToken);
+
+    var unlockMap = await dbContext.UserBadges
+        .AsNoTracking()
+        .Where(ub => ub.UserId == userId && badgeIds.Contains(ub.BadgeId))
+        .ToDictionaryAsync(ub => ub.BadgeId, ub => ub.EarnedAt, cancellationToken);
+
+    return badges.Select(badge =>
+    {
+      triggerMap.TryGetValue(badge.Id, out var trigger);
+      progressMap.TryGetValue(badge.Id, out var progressValue);
+      unlockMap.TryGetValue(badge.Id, out var unlockedAt);
+
+      var target = trigger?.Threshold ?? ResolveRuleThreshold(badge.RuleJson);
+      var isUnlocked = unlockMap.ContainsKey(badge.Id);
+      var displayProgress = isUnlocked && target > 0 && progressValue < target
+          ? target
+          : progressValue;
+
+      return new StudentAchievementDto(
+        badge.Id,
+        badge.Code,
+        badge.Name,
+        badge.Description,
+        badge.Category,
+        trigger?.EventType ?? ResolveRuleEventType(badge.RuleJson),
+        displayProgress,
+        target,
+        isUnlocked,
+        unlockedAt,
+        badge.RewardXp,
+        badge.RewardDiamonds,
+        badge.ImageRef,
+        badge.ImageRef);
+    }).ToList();
+  }
+
+  public async Task<IReadOnlyList<int>> SyncStudentAchievementsAsync(
+      int userId,
+      CancellationToken cancellationToken = default)
+  {
+    await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+    await dbContext.Database.ExecuteSqlInterpolatedAsync(
+        $"SELECT pg_advisory_xact_lock({userId})",
+        cancellationToken);
+
+    var unlocked = new List<int>();
+
+    var completedChallengeCount = await dbContext.Attempts
+        .AsNoTracking()
+        .Where(a => a.UserId == userId && a.IsCompleted)
+        .Select(a => a.ChallengeId)
+        .Distinct()
+        .CountAsync(cancellationToken);
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "FIRST_CHALLENGE", completedChallengeCount, cancellationToken));
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "COMPLETE_3_CHALLENGES", completedChallengeCount, cancellationToken));
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "COMPLETE_10_CHALLENGES", completedChallengeCount, cancellationToken));
+
+    var perfectScoreProgress = await dbContext.Attempts
+        .AsNoTracking()
+        .AnyAsync(a => a.UserId == userId && a.IsCompleted && a.StarsEarned >= 3, cancellationToken)
+        ? 3m
+        : 0m;
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "PERFECT_SCORE", perfectScoreProgress, cancellationToken));
+
+    var userLevel = await dbContext.UserProgresses
+        .AsNoTracking()
+        .Where(up => up.UserId == userId)
+        .Select(up => (int?)up.CurrentLevel)
+        .FirstOrDefaultAsync(cancellationToken);
+    userLevel ??= await dbContext.Users
+        .AsNoTracking()
+        .Where(u => u.Id == userId)
+        .Select(u => (int?)u.Level)
+        .FirstOrDefaultAsync(cancellationToken) ?? 1;
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "REACH_LEVEL_5", userLevel.Value, cancellationToken));
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "REACH_LEVEL_10", userLevel.Value, cancellationToken));
+
+    var ownedMascotCount = await dbContext.UserInventoryItems
+        .AsNoTracking()
+        .Include(item => item.ShopItem)
+        .Where(item => item.UserId == userId && item.ShopItem.Category.ToLower() == "avatar")
+        .Select(item => item.ShopItemId)
+        .Distinct()
+        .CountAsync(cancellationToken);
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "OWN_3_MASCOTS", ownedMascotCount, cancellationToken));
+
+    var completedModuleCount = await CountCompletedModulesAsync(userId, cancellationToken);
+    unlocked.AddRange(await SetProgressByCodeAsync(userId, "COMPLETE_1_MODULE", completedModuleCount, cancellationToken));
+
+    await transaction.CommitAsync(cancellationToken);
+    return unlocked.Distinct().ToList();
+  }
+
+  private async Task<IReadOnlyList<int>> SetProgressByCodeAsync(
+      int userId,
+      string badgeCode,
+      decimal progressValue,
+      CancellationToken cancellationToken)
+  {
+    var badge = await dbContext.Badges
+        .FirstOrDefaultAsync(b => b.Code == badgeCode && b.IsActive, cancellationToken);
+
+    if (badge is null)
+      return Array.Empty<int>();
+
+    var target = await dbContext.AchievementTriggers
+        .AsNoTracking()
+        .Where(t => t.BadgeId == badge.Id && t.IsActive)
+        .OrderBy(t => t.EvaluationOrder)
+        .ThenBy(t => t.Id)
+        .Select(t => (decimal?)t.Threshold)
+        .FirstOrDefaultAsync(cancellationToken)
+        ?? ResolveRuleThreshold(badge.RuleJson);
+
+    var now = DateTime.UtcNow;
+    var existing = await dbContext.UserBadgeProgresses
+        .FirstOrDefaultAsync(p => p.UserId == userId && p.BadgeId == badge.Id, cancellationToken);
+
+    if (existing is null)
+    {
+      dbContext.UserBadgeProgresses.Add(new UserBadgeProgress
+      {
+        UserId = userId,
+        BadgeId = badge.Id,
+        ProgressValue = progressValue,
+        LastEvaluatedAt = now,
+      });
+    }
+    else
+    {
+      existing.ProgressValue = progressValue;
+      existing.LastEvaluatedAt = now;
+    }
+
+    await dbContext.SaveChangesAsync(cancellationToken);
+
+    if (target <= 0 || progressValue < target)
+      return Array.Empty<int>();
+
+    return await UnlockBadgesAsync(userId, new[] { badge.Id }, now, cancellationToken);
+  }
+
+  private async Task<IReadOnlyList<int>> UnlockBadgesAsync(
+      int userId,
+      IEnumerable<int> badgeIds,
+      DateTime now,
+      CancellationToken cancellationToken)
+  {
     var unlockedNow = new List<int>();
-    foreach (var badgeId in unlockBadgeIds.Distinct())
+    foreach (var badgeId in badgeIds.Distinct())
     {
       var rows = await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO ""UserBadges"" (""UserId"", ""BadgeId"", ""EarnedAt"", ""IsFeatured"", ""SlotIndex"", ""CreatedTime"", ""ModifiedDate"")
@@ -220,8 +407,92 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
       await AwardBadgeRewardsAsync(userId, unlockedNow, cancellationToken);
     }
 
-    await transaction.CommitAsync(cancellationToken);
     return unlockedNow;
+  }
+
+  private async Task<int> CountCompletedModulesAsync(int userId, CancellationToken cancellationToken)
+  {
+    var progressRows = await dbContext.ChallengeProgresses
+        .AsNoTracking()
+        .Include(progress => progress.Challenge)
+        .Where(progress =>
+            progress.UserId == userId &&
+            progress.HasCompleted &&
+            progress.Challenge.ModuleId != null &&
+            progress.Challenge.ClassroomId != null &&
+            (progress.Challenge.SourceType == null || progress.Challenge.SourceType != "RECOVERY_MISSION"))
+        .Select(progress => new
+        {
+          ClassroomId = progress.Challenge.ClassroomId!.Value,
+          ModuleId = progress.Challenge.ModuleId!.Value,
+        })
+        .Distinct()
+        .ToListAsync(cancellationToken);
+
+    var completed = 0;
+    foreach (var row in progressRows)
+    {
+      var total = await dbContext.Challenges.AsNoTracking()
+          .CountAsync(challenge =>
+              challenge.ClassroomId == row.ClassroomId &&
+              challenge.ModuleId == row.ModuleId &&
+              (challenge.SourceType == null || challenge.SourceType != "RECOVERY_MISSION"),
+              cancellationToken);
+
+      if (total == 0)
+        continue;
+
+      var completedInModule = await dbContext.ChallengeProgresses.AsNoTracking()
+          .CountAsync(progress =>
+              progress.UserId == userId &&
+              progress.ClassroomId == row.ClassroomId &&
+              progress.HasCompleted &&
+              progress.Challenge.ModuleId == row.ModuleId,
+              cancellationToken);
+
+      if (completedInModule >= total)
+        completed++;
+    }
+
+    return completed;
+  }
+
+  private static decimal ResolveRuleThreshold(string? ruleJson)
+  {
+    if (string.IsNullOrWhiteSpace(ruleJson))
+      return 0m;
+
+    try
+    {
+      using var doc = JsonDocument.Parse(ruleJson);
+      return doc.RootElement.TryGetProperty("threshold", out var threshold)
+          && threshold.TryGetDecimal(out var value)
+        ? value
+        : 0m;
+    }
+    catch
+    {
+      return 0m;
+    }
+  }
+
+  private static string? ResolveRuleEventType(string? ruleJson)
+  {
+    if (string.IsNullOrWhiteSpace(ruleJson))
+      return null;
+
+    try
+    {
+      using var doc = JsonDocument.Parse(ruleJson);
+      return doc.RootElement.TryGetProperty("eventType", out var eventType)
+          && eventType.ValueKind == JsonValueKind.String
+        ? eventType.GetString()
+        : null;
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private async Task AwardBadgeRewardsAsync(
@@ -282,12 +553,20 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
       if (eligibleLevel is not null && eligibleLevel.LevelNumber > progress.CurrentLevel)
       {
         progress.CurrentLevel = eligibleLevel.LevelNumber;
+        user.Level = eligibleLevel.LevelNumber;
       }
     }
 
     if (totalDiamonds > 0)
     {
       user.Diamonds += totalDiamonds;
+      dbContext.DiamondTransactions.Add(new Domain.Entities.Shop.DiamondTransaction
+      {
+        UserId = userId,
+        Amount = totalDiamonds,
+        Reason = "achievement_reward",
+        ReferenceId = string.Join(",", unlockedBadgeIds),
+      });
     }
 
     if (totalDreamTokens > 0)

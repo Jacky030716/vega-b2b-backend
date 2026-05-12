@@ -11,6 +11,14 @@ public enum AchievementEventType
   diamond_spent = 4,
   classroom_joined = 5,
 
+  // Demo/scalable achievement events
+  CHALLENGE_COMPLETED = 20,
+  MODULE_COMPLETED = 21,
+  LEVEL_REACHED = 22,
+  MASCOT_PURCHASED = 23,
+  MASCOT_EQUIPPED = 24,
+  STARS_EARNED = 25,
+
   // Quiz-related events
   QuizCompleted = 100,
   QuizPerfectScore = 101,
@@ -71,6 +79,16 @@ public static class AchievementEventTypeExtensions
       ["attempt_completed"] = AchievementEventType.attempt_completed,
       ["diamond_earned"] = AchievementEventType.diamond_earned,
       ["diamond_spent"] = AchievementEventType.diamond_spent,
+      ["challenge_completed"] = AchievementEventType.CHALLENGE_COMPLETED,
+      ["module_completed"] = AchievementEventType.MODULE_COMPLETED,
+      ["level_reached"] = AchievementEventType.LEVEL_REACHED,
+      ["mascot_purchased"] = AchievementEventType.MASCOT_PURCHASED,
+      ["mascot_equipped"] = AchievementEventType.MASCOT_EQUIPPED,
+      ["stars_earned"] = AchievementEventType.STARS_EARNED,
+      ["QuizCompleted"] = AchievementEventType.CHALLENGE_COMPLETED,
+      ["LevelMilestone"] = AchievementEventType.LEVEL_REACHED,
+      ["ItemPurchased"] = AchievementEventType.MASCOT_PURCHASED,
+      ["AvatarChanged"] = AchievementEventType.MASCOT_EQUIPPED,
     };
 
   /// <summary>Gets the string representation of an event type for storage/API.</summary>

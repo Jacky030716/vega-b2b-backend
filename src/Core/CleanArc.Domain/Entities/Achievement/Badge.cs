@@ -11,6 +11,9 @@ namespace CleanArc.Domain.Entities.Achievement;
 /// </summary>
 public class Badge : BaseEntity<int>
 {
+  /// <summary>Stable achievement key used by seed data and clients.</summary>
+  public string Code { get; set; } = string.Empty;
+
   public string Name { get; set; }
   public string Description { get; set; }
 
@@ -33,6 +36,8 @@ public class Badge : BaseEntity<int>
   public string? RuleJson { get; set; }
 
   public bool IsSecret { get; set; }
+
+  public bool IsActive { get; set; } = true;
 
   /// <summary>Experience points awarded when this badge is unlocked.</summary>
   public int RewardXp { get; set; }

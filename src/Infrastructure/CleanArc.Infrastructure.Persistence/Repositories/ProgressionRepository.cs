@@ -87,14 +87,18 @@ internal class ProgressionRepository(ApplicationDbContext dbContext) : BaseAsync
       user.Experience += xpAmount;
     }
 
-    // Check for level up
     var nextLevel = await DbContext.Levels.AsNoTracking()
-        .Where(l => l.LevelNumber == progress.CurrentLevel + 1 && l.RequiredXP <= progress.TotalXP)
+        .Where(l => l.LevelNumber > progress.CurrentLevel && l.RequiredXP <= progress.TotalXP)
+        .OrderByDescending(l => l.LevelNumber)
         .FirstOrDefaultAsync();
 
-    if (nextLevel != null)
+    if (nextLevel is not null)
     {
       progress.CurrentLevel = nextLevel.LevelNumber;
+      if (user is not null)
+      {
+        user.Level = nextLevel.LevelNumber;
+      }
     }
 
     await DbContext.SaveChangesAsync();

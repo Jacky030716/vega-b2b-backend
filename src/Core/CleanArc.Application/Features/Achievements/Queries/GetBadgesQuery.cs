@@ -10,6 +10,7 @@ public record GetBadgesQuery() : IRequest<OperationResult<List<BadgeDto>>>;
 /// <summary>Badge catalog item — no user-specific unlock state.</summary>
 public record BadgeDto(
     int Id,
+    string Code,
     string Name,
     string Description,
     /// <summary>Firebase Storage relative path, e.g. "badges/perfect_score.png"</summary>
@@ -18,6 +19,7 @@ public record BadgeDto(
     string Rarity,
     string Requirement,
     bool IsSecret,
+    bool IsActive,
     string? RuleJson,
     int RewardXp,
     int RewardDiamonds,
