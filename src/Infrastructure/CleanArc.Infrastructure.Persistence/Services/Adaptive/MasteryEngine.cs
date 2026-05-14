@@ -100,7 +100,9 @@ public class MasteryEngine(ApplicationDbContext dbContext) : IMasteryEngine
         mastery.CorrectAttempts,
         mastery.LastPracticedAt,
         mastery.NextReviewAt,
-        mastery.WeaknessTagsJson);
+        mastery.WeaknessTagsJson,
+        mastery.NextReviewAt.HasValue && mastery.NextReviewAt.Value <= DateTime.UtcNow,
+        null);
 
     private static int? RollingAverage(int? currentAverage, int? nextValue, int count)
     {

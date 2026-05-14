@@ -466,6 +466,7 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
     {
       using var doc = JsonDocument.Parse(ruleJson);
       return doc.RootElement.TryGetProperty("threshold", out var threshold)
+          && threshold.ValueKind == JsonValueKind.Number
           && threshold.TryGetDecimal(out var value)
         ? value
         : 0m;

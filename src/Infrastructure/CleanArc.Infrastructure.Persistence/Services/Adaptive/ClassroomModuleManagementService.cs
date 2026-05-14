@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Domain.Entities.Adaptive;
@@ -30,6 +31,10 @@ public class ClassroomModuleManagementService(
         await EnsureClassroomModuleLinksAsync(classroom, teacherId, cancellationToken);
         var customModule = await EnsureCustomModuleAsync(classroom, teacherId, cancellationToken);
         var studentCount = await dbContext.ClassroomStudents.CountAsync(s => s.ClassroomId == classroomId, cancellationToken);
+        var studentIds = await dbContext.ClassroomStudents.AsNoTracking()
+            .Where(s => s.ClassroomId == classroomId)
+            .Select(s => s.UserId)
+            .ToListAsync(cancellationToken);
 
         var modules = await dbContext.ClassroomModules.AsNoTracking()
             .Include(link => link.Module)
@@ -56,7 +61,8 @@ public class ClassroomModuleManagementService(
             {
                 ModuleId = g.Key,
                 Generated = g.Count(),
-                Active = g.Count(c => c.LifecycleState == ChallengeLifecycleState.Active || c.LifecycleState == ChallengeLifecycleState.Scheduled)
+                Active = g.Count(c => c.LifecycleState == ChallengeLifecycleState.Active || c.LifecycleState == ChallengeLifecycleState.Scheduled),
+                LastActivityAt = g.Max(c => c.LastActivityAt ?? c.ModifiedDate ?? c.CreatedTime)
             })
             .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
 
@@ -80,24 +86,30 @@ public class ClassroomModuleManagementService(
             .Select(g => new
             {
                 ModuleId = g.Key,
+                Completed = g.Count(x => x.IsCompleted),
                 Progress = g.Any() ? (int)Math.Round((double)g.Count(x => x.IsCompleted) / g.Count() * 100) : 0
             })
             .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
 
-        var weakCounts = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Where(m => m.ModuleId != null && moduleIds.Contains(m.ModuleId.Value))
+        var masteryStats = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => m.ModuleId != null && moduleIds.Contains(m.ModuleId.Value) && studentIds.Contains(m.StudentId))
             .GroupBy(m => m.ModuleId!.Value)
             .Select(g => new
             {
                 ModuleId = g.Key,
-                Weak = g.Count(x => x.MasteryScore < 65)
+                Weak = g.Count(x => x.MasteryScore < 65),
+                AverageScore = Math.Round(g.Average(x => (decimal)x.MasteryScore), 2)
             })
-            .ToDictionaryAsync(x => x.ModuleId, x => x.Weak, cancellationToken);
+            .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
 
         var moduleDtos = modules.Select(module =>
         {
             challengeCounts.TryGetValue(module.Id, out var challengeCount);
             progress.TryGetValue(module.Id, out var moduleProgress);
+            masteryStats.TryGetValue(module.Id, out var mastery);
+            var generated = challengeCount?.Generated ?? 0;
+            var progressPercent = moduleProgress?.Progress ?? 0;
+            var weakWordCount = mastery?.Weak ?? 0;
             return new ModuleSummaryDto(
                 module.Id,
                 string.IsNullOrWhiteSpace(module.UnitTitle) ? module.Title : module.UnitTitle,
@@ -105,10 +117,15 @@ public class ClassroomModuleManagementService(
                 module.Subject,
                 module.YearLevel,
                 vocabularyCounts.GetValueOrDefault(module.Id),
-                challengeCount?.Generated ?? 0,
+                generated,
                 challengeCount?.Active ?? 0,
-                moduleProgress?.Progress ?? 0,
-                weakCounts.GetValueOrDefault(module.Id));
+                progressPercent,
+                weakWordCount,
+                generated,
+                moduleProgress?.Completed ?? 0,
+                mastery?.AverageScore ?? 0,
+                challengeCount?.LastActivityAt,
+                ResolveModuleProgressStatus(generated, progressPercent, weakWordCount));
         }).ToList();
 
         var subjectGroups = moduleDtos
@@ -159,6 +176,7 @@ public class ClassroomModuleManagementService(
         var challenges = await dbContext.Challenges.AsNoTracking()
             .Include(c => c.Game)
             .Include(c => c.GameTemplate)
+            .Include(c => c.AiAuditLog)
             .Include(c => c.Progresses)
             .Where(c => c.ClassroomId == classroomId && c.ModuleId == moduleId)
             .Where(c => c.SourceType == null || c.SourceType != RecoverySourceType)
@@ -292,6 +310,7 @@ public class ClassroomModuleManagementService(
         var challenges = await dbContext.Challenges.AsNoTracking()
             .Include(c => c.Game)
             .Include(c => c.GameTemplate)
+            .Include(c => c.AiAuditLog)
             .Include(c => c.Progresses)
             .Where(c => c.ModuleId == customModule.Id)
             .Where(c => c.SourceType == null || c.SourceType != RecoverySourceType)
@@ -714,6 +733,8 @@ public class ClassroomModuleManagementService(
         var progress = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
         var lastUpdated = challenge.LastActivityAt ?? challenge.ModifiedDate ?? challenge.CreatedTime;
         var lifecycleState = ResolveModuleLifecycleState(challenge);
+        var aiPlan = ReadAiPlan(challenge.AiAuditLog?.ParsedOutputJson);
+        var validationErrors = ReadStringArray(challenge.AiAuditLog?.ValidationErrorsJson);
         return new ModuleChallengeDto(
             challenge.Id,
             challenge.Title,
@@ -723,7 +744,14 @@ public class ClassroomModuleManagementService(
             challenge.Status,
             progress,
             lastUpdated,
-            IsArchived(challenge));
+            IsArchived(challenge),
+            aiPlan.SelectedWords,
+            aiPlan.RecommendedGameType,
+            aiPlan.DifficultyLevel,
+            aiPlan.Reason,
+            aiPlan.FocusType,
+            challenge.AiAuditLog?.ValidationStatus,
+            validationErrors);
     }
 
     private static ChallengeLifecycleState ResolveModuleLifecycleState(Challenge challenge)
@@ -737,5 +765,97 @@ public class ClassroomModuleManagementService(
         return challenge.LifecycleState;
     }
 
+    private static string ResolveModuleProgressStatus(int challengeCount, int progressPercent, int weakWordCount)
+    {
+        if (challengeCount == 0)
+            return "NOT_STARTED";
+        if (progressPercent >= 100)
+            return weakWordCount > 0 ? "REVIEW_NEEDED" : "COMPLETED";
+        if (progressPercent > 0)
+            return "IN_PROGRESS";
+        return "ASSIGNED";
+    }
+
     private sealed record ModuleWeaknessContext(IReadOnlyList<string> WeakWords, string? WeakSkill);
+
+    private static ModuleChallengePlanDisplay ReadAiPlan(string? parsedOutputJson)
+    {
+        if (string.IsNullOrWhiteSpace(parsedOutputJson))
+            return ModuleChallengePlanDisplay.Empty;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(parsedOutputJson);
+            var root = doc.RootElement;
+            return new ModuleChallengePlanDisplay(
+                ReadStringArray(root, "selectedWords"),
+                ReadString(root, "recommendedGameType"),
+                ReadInt(root, "difficultyLevel"),
+                ReadString(root, "reason"),
+                ReadString(root, "focusType"));
+        }
+        catch
+        {
+            return ModuleChallengePlanDisplay.Empty;
+        }
+    }
+
+    private static IReadOnlyList<string> ReadStringArray(string? rawJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson))
+            return Array.Empty<string>();
+
+        try
+        {
+            using var doc = JsonDocument.Parse(rawJson);
+            return doc.RootElement.ValueKind == JsonValueKind.Array
+                ? doc.RootElement.EnumerateArray()
+                    .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item!)
+                    .ToList()
+                : Array.Empty<string>();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    private static IReadOnlyList<string> ReadStringArray(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Array)
+            return Array.Empty<string>();
+
+        return value.EnumerateArray()
+            .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => item!)
+            .ToList();
+    }
+
+    private static string? ReadString(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static int? ReadInt(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var parsed)
+            ? parsed
+            : null;
+
+    private sealed record ModuleChallengePlanDisplay(
+        IReadOnlyList<string> SelectedWords,
+        string? RecommendedGameType,
+        int? DifficultyLevel,
+        string? Reason,
+        string? FocusType)
+    {
+        public static ModuleChallengePlanDisplay Empty { get; } = new(
+            Array.Empty<string>(),
+            null,
+            null,
+            null,
+            null);
+    }
 }

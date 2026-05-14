@@ -87,10 +87,22 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             .GroupBy(challenge => challenge.ModuleId!.Value)
             .ToDictionary(group => group.Key, group => group.ToList());
 
+        var masteryStats = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(mastery => mastery.StudentId == studentId && mastery.ModuleId != null && moduleIds.Contains(mastery.ModuleId.Value))
+            .GroupBy(mastery => mastery.ModuleId!.Value)
+            .Select(group => new
+            {
+                ModuleId = group.Key,
+                Weak = group.Count(item => item.MasteryScore < 65),
+                AverageScore = Math.Round(group.Average(item => (decimal)item.MasteryScore), 2)
+            })
+            .ToDictionaryAsync(item => item.ModuleId, item => item, cancellationToken);
+
         return modules.Select(module =>
         {
             challengeGroups.TryGetValue(module.Id, out var challenges);
             challenges ??= new List<Challenge>();
+            masteryStats.TryGetValue(module.Id, out var mastery);
 
             var completed = challenges.Count(challenge =>
                 challenge.LifecycleState == ChallengeLifecycleState.Completed ||
@@ -100,6 +112,10 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             var progress = challenges.Count > 0
                 ? (int)Math.Round((double)completed / challenges.Count * 100)
                 : 0;
+            var weakWordCount = mastery?.Weak ?? 0;
+            var lastActivityAt = challenges.Count == 0
+                ? (DateTime?)null
+                : challenges.Max(challenge => challenge.LastActivityAt ?? challenge.ModifiedDate ?? challenge.CreatedTime);
 
             return new StudentModuleTrackDto(
                 module.Id,
@@ -111,7 +127,12 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 active,
                 completed,
                 progress,
-                challenges.Any(challenge => challenge.IsPinned || challenge.RecommendedScore > 0));
+                challenges.Any(challenge => challenge.IsPinned || challenge.RecommendedScore > 0),
+                challenges.Count,
+                weakWordCount,
+                mastery?.AverageScore ?? 0,
+                lastActivityAt,
+                ResolveModuleProgressStatus(challenges.Count, progress, weakWordCount));
         }).ToList();
     }
 
@@ -445,5 +466,16 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         return key.Length == 1
             ? key.ToLowerInvariant()
             : char.ToLowerInvariant(key[0]) + key[1..];
+    }
+
+    private static string ResolveModuleProgressStatus(int challengeCount, int progressPercent, int weakWordCount)
+    {
+        if (challengeCount == 0)
+            return "NOT_STARTED";
+        if (progressPercent >= 100)
+            return weakWordCount > 0 ? "REVIEW_NEEDED" : "COMPLETED";
+        if (progressPercent > 0)
+            return "IN_PROGRESS";
+        return "ASSIGNED";
     }
 }

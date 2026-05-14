@@ -40,19 +40,19 @@ internal sealed class GetClassWeaknessOverviewQueryHandler(IAdaptiveAnalyticsSer
 }
 
 internal sealed class GetClassModuleProgressQueryHandler(IAdaptiveAnalyticsService adaptiveAnalyticsService)
-    : IRequestHandler<GetClassModuleProgressQuery, IReadOnlyList<ModuleProgressDto>>
+    : IRequestHandler<GetClassModuleProgressQuery, IReadOnlyList<ModuleProgressSummaryDto>>
 {
-    public async ValueTask<IReadOnlyList<ModuleProgressDto>> Handle(
+    public async ValueTask<IReadOnlyList<ModuleProgressSummaryDto>> Handle(
         GetClassModuleProgressQuery request,
         CancellationToken cancellationToken)
-        => await adaptiveAnalyticsService.GetModuleProgressAsync(request.ClassId, cancellationToken);
+        => await adaptiveAnalyticsService.GetModuleProgressSummaryAsync(request.ClassId, cancellationToken);
 }
 
 internal sealed class GetStudentPerformanceQueryHandler(IAdaptiveAnalyticsService adaptiveAnalyticsService)
-    : IRequestHandler<GetStudentPerformanceQuery, StudentPerformanceDto>
+    : IRequestHandler<GetStudentPerformanceQuery, StudentPerformanceSummaryDto>
 {
-    public async ValueTask<StudentPerformanceDto> Handle(
+    public async ValueTask<StudentPerformanceSummaryDto> Handle(
         GetStudentPerformanceQuery request,
         CancellationToken cancellationToken)
-        => await adaptiveAnalyticsService.GetStudentPerformanceAsync(request.StudentId, cancellationToken);
+        => await adaptiveAnalyticsService.GetStudentPerformanceSummaryAsync(request.StudentId, cancellationToken);
 }

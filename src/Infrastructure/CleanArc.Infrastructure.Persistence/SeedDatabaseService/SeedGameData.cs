@@ -341,7 +341,8 @@ public class SeedGameData : ISeedGameData
         foreach (var seedBadge in badgeSeeds)
         {
             if (!existingBadgesByCode.TryGetValue(seedBadge.Code, out var existingBadge)
-                && !existingBadgesByName.TryGetValue(seedBadge.Name, out existingBadge))
+                && !existingBadgesByName.TryGetValue(seedBadge.Name, out existingBadge)
+                && !TryGetLegacyBadge(seedBadge.Code, existingBadgesByCode, existingBadgesByName, out existingBadge))
             {
                 await _dbContext.Badges.AddAsync(seedBadge);
                 hasBadgeChanges = true;
@@ -349,6 +350,7 @@ public class SeedGameData : ISeedGameData
             }
 
             existingBadge.Code = seedBadge.Code;
+            existingBadge.Name = seedBadge.Name;
             existingBadge.Description = seedBadge.Description;
             existingBadge.ImageRef = seedBadge.ImageRef;
             existingBadge.Category = seedBadge.Category;
@@ -362,6 +364,8 @@ public class SeedGameData : ISeedGameData
             existingBadge.RewardDreamTokens = seedBadge.RewardDreamTokens;
             hasBadgeChanges = true;
         }
+
+        hasBadgeChanges |= await DeactivateDuplicateLegacyBadges();
 
         if (hasBadgeChanges)
         {
@@ -612,6 +616,51 @@ public class SeedGameData : ISeedGameData
         string? aggregationSourceField,
         decimal threshold)
         => new(code, eventType, description, aggregationType, aggregationSourceField, threshold);
+
+    private static bool TryGetLegacyBadge(
+        string seedCode,
+        Dictionary<string, Badge> existingBadgesByCode,
+        Dictionary<string, Badge> existingBadgesByName,
+        out Badge? badge)
+    {
+        badge = null;
+
+        if (!string.Equals(seedCode, "OWN_3_MASCOTS", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return existingBadgesByCode.TryGetValue("FASHION_ICON", out badge)
+            || existingBadgesByName.TryGetValue("Fashion Icon", out badge);
+    }
+
+    private async Task<bool> DeactivateDuplicateLegacyBadges()
+    {
+        var canonicalMascotBadge = await _dbContext.Badges
+            .FirstOrDefaultAsync(b => b.Code == "OWN_3_MASCOTS");
+
+        if (canonicalMascotBadge is null)
+        {
+            return false;
+        }
+
+        var legacyMascotBadges = await _dbContext.Badges
+            .Where(b =>
+                b.Id != canonicalMascotBadge.Id &&
+                !b.Code.StartsWith("LEGACY_") &&
+                (b.Code == "FASHION_ICON" || b.Name == "Fashion Icon"))
+            .ToListAsync();
+
+        var hasChanges = false;
+        foreach (var legacyBadge in legacyMascotBadges)
+        {
+            legacyBadge.IsActive = false;
+            legacyBadge.Code = $"LEGACY_{legacyBadge.Code}";
+            hasChanges = true;
+        }
+
+        return hasChanges;
+    }
 
     private static string ToAchievementCode(string name)
     {

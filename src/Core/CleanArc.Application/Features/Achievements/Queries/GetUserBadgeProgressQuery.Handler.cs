@@ -95,8 +95,9 @@ internal class GetUserBadgeProgressQueryHandler : IRequestHandler<GetUserBadgePr
     {
       using var doc = JsonDocument.Parse(ruleJson);
       var root = doc.RootElement;
-      if (root.ValueKind == JsonValueKind.Object
+        if (root.ValueKind == JsonValueKind.Object
           && root.TryGetProperty("threshold", out var thresholdElement)
+          && thresholdElement.ValueKind == JsonValueKind.Number
           && thresholdElement.TryGetDecimal(out var threshold))
       {
         return new BadgeProgressDefinition

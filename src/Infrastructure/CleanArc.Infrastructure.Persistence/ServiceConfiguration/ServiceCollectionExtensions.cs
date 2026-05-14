@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISpellingTestService, SpellingTestService>();
         services.AddScoped<IAdaptiveAttemptService, AdaptiveAttemptService>();
         services.AddScoped<IAdaptiveAnalyticsService, AdaptiveAnalyticsService>();
+        services.AddScoped<IAttemptConsistencyService, AttemptConsistencyService>();
         services.AddScoped<IAiUsageService, AiUsageService>();
         services.AddSingleton<IAiRateLimitService, AiRateLimitService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomGeneratorService, ClassroomGeneratorService>();

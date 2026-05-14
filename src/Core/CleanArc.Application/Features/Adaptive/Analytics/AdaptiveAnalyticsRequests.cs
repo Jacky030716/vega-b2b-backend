@@ -21,8 +21,8 @@ public sealed record GetClassWeaknessOverviewQuery(
 
 public sealed record GetClassModuleProgressQuery(
     int ClassId)
-    : IRequest<IReadOnlyList<ModuleProgressDto>>;
+    : IRequest<IReadOnlyList<ModuleProgressSummaryDto>>;
 
 public sealed record GetStudentPerformanceQuery(
     int StudentId)
-    : IRequest<StudentPerformanceDto>;
+    : IRequest<StudentPerformanceSummaryDto>;

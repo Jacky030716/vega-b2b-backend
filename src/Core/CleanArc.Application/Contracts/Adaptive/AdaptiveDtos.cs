@@ -302,7 +302,37 @@ public record StudentWordMasteryDto(
     int CorrectAttempts,
     DateTime? LastPracticedAt,
     DateTime? NextReviewAt,
-    string WeaknessTagsJson);
+    string WeaknessTagsJson,
+    bool IsDueForReview,
+    string? ErrorPatternsJson);
+
+public record WordMasterySummaryDto(
+    int Id,
+    int StudentId,
+    int VocabularyItemId,
+    int? ModuleId,
+    string Word,
+    int MasteryScore,
+    string MasteryLevel,
+    int TotalAttempts,
+    int CorrectAttempts,
+    DateTime? LastPracticedAt,
+    DateTime? NextReviewAt,
+    bool IsDueForReview,
+    string WeaknessTagsJson,
+    string? ErrorPatternsJson);
+
+public record ChallengeAttemptSummaryDto(
+    int ChallengeId,
+    int StudentId,
+    int LegacyAttemptCount,
+    int AdaptiveAttemptCount,
+    int CompletedLegacyAttemptCount,
+    int CompletedAdaptiveAttemptCount,
+    int ItemAttemptCount,
+    int BestScore,
+    int BestStars,
+    DateTime? LastAttemptAt);
 
 public record WeaknessSummaryDto(
     int StudentId,
@@ -325,11 +355,63 @@ public record ModuleProgressDto(
     int PracticedWordCount,
     decimal AverageMasteryScore);
 
+public record ModuleProgressSummaryDto(
+    int ClassroomId,
+    int ModuleId,
+    string Title,
+    string Subject,
+    int YearLevel,
+    int VocabularyCount,
+    int ChallengeCount,
+    int CompletedChallengeCount,
+    int ProgressPercent,
+    int WeakWordCount,
+    decimal AverageScore,
+    DateTime? LastActivityAt,
+    string Status);
+
 public record StudentPerformanceDto(
     int StudentId,
     IReadOnlyList<StudentWordMasteryDto> Mastery,
     WeaknessSummaryDto WeaknessSummary,
     IReadOnlyList<AdaptiveRecommendationDto> RecommendedNextChallenges);
+
+public record StudentPerformanceSummaryDto(
+    int StudentId,
+    IReadOnlyList<WordMasterySummaryDto> Mastery,
+    WeaknessSummaryDto WeaknessSummary,
+    IReadOnlyList<ChallengeAttemptSummaryDto> Attempts,
+    IReadOnlyList<AdaptiveRecommendationDto> RecommendedNextChallenges);
+
+public record AttemptConsistencyIssueDto(
+    string Severity,
+    string Code,
+    string Message,
+    int? StudentId,
+    int? ChallengeId,
+    int? ModuleId,
+    int? LegacyAttemptId,
+    int? AdaptiveAttemptId);
+
+public record AttemptConsistencyReportDto(
+    int ClassroomId,
+    int? ModuleId,
+    int? StudentId,
+    int? ChallengeId,
+    int IssueCount,
+    IReadOnlyList<AttemptConsistencyIssueDto> Issues,
+    DateTime CheckedAt);
+
+public record AttemptConsistencyHealthDto(
+    int MissingAdaptiveAttempts,
+    int MissingLegacyAttempts,
+    int MissingItemTelemetry,
+    int MissingWordMasteryUpdates,
+    IReadOnlyList<int> AffectedStudentIds,
+    IReadOnlyList<int> AffectedChallengeIds,
+    string Severity,
+    string SuggestedFix,
+    DateTime CheckedAt);
 
 public record RecommendedActionDto(
     string Type,
@@ -363,7 +445,12 @@ public record ModuleSummaryDto(
     int GeneratedChallengeCount,
     int ActiveChallengeCount,
     int ProgressPercent,
-    int WeakWordCount);
+    int WeakWordCount,
+    int ChallengeCount,
+    int CompletedChallengeCount,
+    decimal AverageScore,
+    DateTime? LastActivityAt,
+    string Status);
 
 public record CustomModuleSummaryDto(
     int CustomModuleId,
@@ -380,7 +467,14 @@ public record ModuleChallengeDto(
     string Status,
     int ProgressPercent,
     DateTime LastUpdated,
-    bool CanDelete);
+    bool CanDelete,
+    IReadOnlyList<string> SelectedWords,
+    string? RecommendedGameType,
+    int? AiDifficultyLevel,
+    string? AiReason,
+    string? AiFocusType,
+    string? AiValidationStatus,
+    IReadOnlyList<string> AiValidationErrors);
 
 public record GenerateModuleChallengeRequest(
     int ClassroomId,
@@ -404,7 +498,12 @@ public record StudentModuleTrackDto(
     int ActiveChallengeCount,
     int CompletedChallengeCount,
     int ProgressPercent,
-    bool Recommended);
+    bool Recommended,
+    int ChallengeCount,
+    int WeakWordCount,
+    decimal AverageScore,
+    DateTime? LastActivityAt,
+    string Status);
 
 public record StudentModuleProgressionDto(
     int ModuleId,

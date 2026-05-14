@@ -215,6 +215,39 @@ public class ClassroomEndpoints : ICarterModule
     }), _version, "GetClassroomModuleOverview", _tag)
     .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId:int}}/progress/consistency", async (
+        int classroomId,
+        [FromQuery] int? moduleId,
+        [FromQuery] int? studentId,
+        [FromQuery] int? challengeId,
+        ClaimsPrincipal user,
+        IAttemptConsistencyService service,
+        CancellationToken cancellationToken) =>
+    {
+      try
+      {
+        var teacherId = int.Parse(user.Identity.GetUserId());
+        var result = await service.CheckClassroomAsync(
+          classroomId,
+          teacherId,
+          user.IsInRole("admin"),
+          moduleId,
+          studentId,
+          challengeId,
+          cancellationToken);
+        return Results.Ok(result);
+      }
+      catch (UnauthorizedAccessException ex)
+      {
+        return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+      }
+      catch (InvalidOperationException ex)
+      {
+        return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
+      }
+    }), _version, "GetClassroomAttemptConsistency", _tag)
+    .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
     app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId:int}}/modules", async (
         int classroomId,
         ClaimsPrincipal user,

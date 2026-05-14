@@ -89,6 +89,7 @@ var app = builder.Build();
 
 
 await app.ApplyMigrationsAsync();
+await app.SeedGameDataAsync();
 
 if (args.Length >= 2 && args[0].Equals("--seed-syllabus", StringComparison.OrdinalIgnoreCase))
 {

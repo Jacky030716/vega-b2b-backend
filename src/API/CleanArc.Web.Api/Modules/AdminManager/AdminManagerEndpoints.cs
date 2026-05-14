@@ -1,4 +1,5 @@
-﻿using Carter;
+using Carter;
+using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Features.Admin.Commands.AddAdminCommand;
 using CleanArc.Application.Features.Admin.Queries.GetToken;
 using CleanArc.WebFramework.WebExtensions;
@@ -18,15 +19,37 @@ public class AdminManagerEndpoints : ICarterModule
             builder => builder.MapPost($"{_routePrefix}Login"
                 , async (AdminGetTokenQuery model, ISender sender) => (await sender.Send(model)).ToEndpointResult())
                 , _version
-                ,"AdminLogin"
-                ,_tag);
-
+                , "AdminLogin"
+                , _tag);
 
         app.MapEndpoint(
             builder => builder.MapPost($"{_routePrefix}NewAdmin"
                 , async (AddAdminCommand model, ISender sender) => (await sender.Send(model)).ToEndpointResult())
             , _version
             , "AddAdmin"
+            , _tag)
+            .RequireAuthorization(builder => builder.RequireRole("admin"));
+
+        app.MapGet("/api/admin/health/attempt-consistency",
+            async (IAttemptConsistencyService service, CancellationToken cancellationToken) =>
+            {
+                var result = await service.CheckHealthAsync(cancellationToken);
+                return Results.Ok(result);
+            })
+            .WithOpenApi()
+            .WithName("GetAttemptConsistencyHealth")
+            .WithTags(_tag)
+            .RequireAuthorization(builder => builder.RequireRole("admin"));
+
+        app.MapEndpoint(
+            builder => builder.MapGet($"{_routePrefix}health/attempt-consistency",
+                async (IAttemptConsistencyService service, CancellationToken cancellationToken) =>
+                {
+                    var result = await service.CheckHealthAsync(cancellationToken);
+                    return Results.Ok(result);
+                })
+            , _version
+            , "GetVersionedAttemptConsistencyHealth"
             , _tag)
             .RequireAuthorization(builder => builder.RequireRole("admin"));
     }

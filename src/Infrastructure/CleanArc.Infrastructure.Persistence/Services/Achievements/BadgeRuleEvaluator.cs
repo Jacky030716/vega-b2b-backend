@@ -126,8 +126,8 @@ internal sealed class BadgeRuleEvaluator
     {
       JsonValueKind.String => left.GetString() == right.GetString(),
       JsonValueKind.Number =>
-        left.TryGetDecimal(out var leftDecimal)
-        && right.TryGetDecimal(out var rightDecimal)
+        TryReadDecimal(left, out var leftDecimal)
+        && TryReadDecimal(right, out var rightDecimal)
         && leftDecimal == rightDecimal,
       JsonValueKind.True or JsonValueKind.False =>
         left.GetBoolean() == right.GetBoolean(),
@@ -167,13 +167,13 @@ internal sealed class BadgeRuleEvaluator
     if (string.IsNullOrWhiteSpace(fieldName) || !props.TryGetValue(fieldName, out var element))
       return 0m;
 
-    if (element.TryGetDecimal(out var value))
+    if (TryReadDecimal(element, out var value))
       return value;
 
-    if (element.TryGetInt32(out var intValue))
+    if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var intValue))
       return intValue;
 
-    if (element.TryGetInt64(out var longValue))
+    if (element.ValueKind == JsonValueKind.Number && element.TryGetInt64(out var longValue))
       return longValue;
 
     return 0m;
@@ -187,9 +187,9 @@ internal sealed class BadgeRuleEvaluator
     JsonElement compareValue,
     Func<int, bool> compareFn)
   {
-    if (!value.TryGetDecimal(out var valDecimal))
+    if (!TryReadDecimal(value, out var valDecimal))
       return false;
-    if (!compareValue.TryGetDecimal(out var compDecimal))
+    if (!TryReadDecimal(compareValue, out var compDecimal))
       return false;
 
     var cmp = valDecimal.CompareTo(compDecimal);
@@ -204,6 +204,11 @@ internal sealed class BadgeRuleEvaluator
     JsonElement compareValue,
     Func<string, string, bool> compareFn)
   {
+    if (value.ValueKind is not JsonValueKind.String && value.ValueKind is not JsonValueKind.Null)
+      return false;
+    if (compareValue.ValueKind is not JsonValueKind.String && compareValue.ValueKind is not JsonValueKind.Null)
+      return false;
+
     var valueStr = value.GetString();
     var compareStr = compareValue.GetString();
 
@@ -211,6 +216,12 @@ internal sealed class BadgeRuleEvaluator
       return false;
 
     return compareFn(valueStr, compareStr);
+  }
+
+  private static bool TryReadDecimal(JsonElement element, out decimal value)
+  {
+    value = 0m;
+    return element.ValueKind == JsonValueKind.Number && element.TryGetDecimal(out value);
   }
 }
 
