@@ -186,7 +186,7 @@ public class ClassroomModuleManagementService(
         return challenges.Select(ToChallengeDto).ToList();
     }
 
-    public async Task<AssignedAdaptiveChallengeDto> GenerateModuleChallengeAsync(int moduleId, GenerateModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken)
+    public async Task<ModuleChallengeDto> GenerateModuleChallengeAsync(int moduleId, GenerateModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken)
     {
         var classroom = await GetTeacherClassroomAsync(request.ClassroomId, teacherId, cancellationToken);
         var module = await dbContext.SyllabusModules.AsNoTracking()
@@ -252,7 +252,7 @@ public class ClassroomModuleManagementService(
                 if (aiPlan.Result.AiAuditLogId is int auditLogId)
                     await aiAuditService.AttachChallengeAsync(auditLogId, assigned.ChallengeId, cancellationToken);
 
-                return assigned;
+                return await GetGeneratedChallengeDtoAsync(assigned.ChallengeId, cancellationToken);
             }
 
             logger.LogWarning(
@@ -268,13 +268,19 @@ public class ClassroomModuleManagementService(
                 aiPlan.ErrorMessage);
         }
 
-        return await GenerateRuleBasedModuleChallengeAsync(
+        var failedAiAuditLogId = aiPlan.Result?.AiAuditLogId is > 0
+            ? aiPlan.Result.AiAuditLogId
+            : null;
+        var fallback = await GenerateRuleBasedModuleChallengeAsync(
             module,
             classroom.Id,
             request,
             teacherId,
-            aiPlan.Result?.AiAuditLogId,
+            failedAiAuditLogId,
+            true,
             cancellationToken);
+
+        return await GetGeneratedChallengeDtoAsync(fallback.ChallengeId, cancellationToken);
     }
 
     private async Task<AssignedAdaptiveChallengeDto> GenerateRuleBasedModuleChallengeAsync(
@@ -283,6 +289,7 @@ public class ClassroomModuleManagementService(
         GenerateModuleChallengeRequest request,
         int teacherId,
         int? failedAiAuditLogId,
+        bool fallbackUsed,
         CancellationToken cancellationToken)
     {
         var preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
@@ -294,14 +301,27 @@ public class ClassroomModuleManagementService(
             preview with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id },
             module.Subject,
             null,
-            failedAiAuditLogId.HasValue ? AiGenerationStatuses.FailedFallback : AiGenerationStatuses.None,
-            failedAiAuditLogId.HasValue ? AiUseCases.ModuleChallengePlanning : null,
+            fallbackUsed ? AiGenerationStatuses.FailedFallback : AiGenerationStatuses.None,
+            fallbackUsed ? AiUseCases.ModuleChallengePlanning : null,
             failedAiAuditLogId), cancellationToken);
 
         if (failedAiAuditLogId is int auditLogId)
             await aiAuditService.AttachChallengeAsync(auditLogId, assigned.ChallengeId, cancellationToken);
 
         return assigned;
+    }
+
+    private async Task<ModuleChallengeDto> GetGeneratedChallengeDtoAsync(int challengeId, CancellationToken cancellationToken)
+    {
+        var challenge = await dbContext.Challenges.AsNoTracking()
+            .Include(c => c.Game)
+            .Include(c => c.GameTemplate)
+            .Include(c => c.AiAuditLog)
+            .Include(c => c.Progresses)
+            .FirstOrDefaultAsync(c => c.Id == challengeId, cancellationToken)
+            ?? throw new InvalidOperationException("Generated challenge not found");
+
+        return ToChallengeDto(challenge);
     }
 
     public async Task<IReadOnlyList<ModuleChallengeDto>> GetCustomModuleChallengesAsync(int customModuleId, int teacherId, CancellationToken cancellationToken)
@@ -735,6 +755,9 @@ public class ClassroomModuleManagementService(
         var lifecycleState = ResolveModuleLifecycleState(challenge);
         var aiPlan = ReadAiPlan(challenge.AiAuditLog?.ParsedOutputJson);
         var validationErrors = ReadStringArray(challenge.AiAuditLog?.ValidationErrorsJson);
+        var wasFallbackUsed = string.Equals(challenge.AiGenerationStatus, AiGenerationStatuses.FailedFallback, StringComparison.OrdinalIgnoreCase);
+        var validationStatus = challenge.AiAuditLog?.ValidationStatus;
+        var trustIndicators = BuildTrustIndicators(challenge, aiPlan, validationStatus, validationErrors, wasFallbackUsed);
         return new ModuleChallengeDto(
             challenge.Id,
             challenge.Title,
@@ -750,8 +773,13 @@ public class ClassroomModuleManagementService(
             aiPlan.DifficultyLevel,
             aiPlan.Reason,
             aiPlan.FocusType,
-            challenge.AiAuditLog?.ValidationStatus,
-            validationErrors);
+            validationStatus,
+            validationErrors,
+            challenge.AiAuditLog?.Provider,
+            wasFallbackUsed,
+            validationStatus,
+            trustIndicators,
+            ResolveGenerationSource(challenge, wasFallbackUsed));
     }
 
     private static ChallengeLifecycleState ResolveModuleLifecycleState(Challenge challenge)
@@ -843,6 +871,53 @@ public class ClassroomModuleManagementService(
         => root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var parsed)
             ? parsed
             : null;
+
+    private static IReadOnlyList<string> BuildTrustIndicators(
+        Challenge challenge,
+        ModuleChallengePlanDisplay aiPlan,
+        string? validationStatus,
+        IReadOnlyList<string> validationErrors,
+        bool wasFallbackUsed)
+    {
+        var indicators = new List<string>();
+        if (wasFallbackUsed)
+        {
+            indicators.Add("Professor Vega used a safe rule-based plan because AI was unavailable.");
+            return indicators;
+        }
+
+        if (string.Equals(validationStatus, AiValidationStatuses.Valid, StringComparison.OrdinalIgnoreCase))
+        {
+            if (aiPlan.SelectedWords.Count > 0)
+                indicators.Add("Words verified from this module");
+            if (validationErrors.Count == 0)
+                indicators.Add("No outside words detected");
+        }
+
+        if (string.Equals(challenge.ChallengeMode, "WEAKNESS_REMEDIATION", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(aiPlan.FocusType, "WEAKNESS_REMEDIATION", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(aiPlan.FocusType, "FIX_WEAK_WORDS", StringComparison.OrdinalIgnoreCase))
+        {
+            indicators.Add("Generated using classroom weakness data");
+        }
+
+        return indicators.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static string ResolveGenerationSource(Challenge challenge, bool wasFallbackUsed)
+    {
+        if (wasFallbackUsed)
+            return "Rule-based fallback";
+
+        var provider = challenge.AiAuditLog?.Provider;
+        if (!string.IsNullOrWhiteSpace(provider))
+            return provider.Contains("gemini", StringComparison.OrdinalIgnoreCase) ||
+                provider.Contains("google", StringComparison.OrdinalIgnoreCase)
+                ? "Gemini"
+                : provider;
+
+        return challenge.IsAIGenerated ? "Gemini" : "Rule-based";
+    }
 
     private sealed record ModuleChallengePlanDisplay(
         IReadOnlyList<string> SelectedWords,

@@ -43,8 +43,10 @@ public class ClassroomArchiveTests
         false,
         "New classroom name",
         "Bahasa Melayu",
+        null,
         1,
-        "Updated description"), CancellationToken.None);
+        "Updated description",
+        null), CancellationToken.None);
 
     Assert.True(result.IsSuccess);
     Assert.Equal("New classroom name", result.Result.Name);
@@ -69,7 +71,9 @@ public class ClassroomArchiveTests
         false,
         " ",
         "Science",
+        null,
         1,
+        null,
         null), CancellationToken.None);
 
     Assert.False(result.IsSuccess);
@@ -94,7 +98,9 @@ public class ClassroomArchiveTests
         false,
         "New Name",
         "Science",
+        null,
         1,
+        null,
         null), CancellationToken.None);
 
     Assert.False(result.IsSuccess);
@@ -137,7 +143,9 @@ public class ClassroomArchiveTests
         false,
         "Class Name",
         "Science",
+        null,
         2,
+        null,
         null), CancellationToken.None);
 
     Assert.False(result.IsSuccess);

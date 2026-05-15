@@ -17,21 +17,20 @@ public class TeacherProfileTests
   [Fact]
   public async Task GetTeacherProfile_ReturnsB2BSnapshotWithoutRewardStats()
   {
-    var teacher = new User
+    var teacher = SetId(new User
     {
-      Id = 7,
       UserName = "teacher01",
       Name = "Ms Vega",
       Email = "teacher@school.test",
       InstitutionId = 3,
       WeeklyAiInsightsEmail = true,
       InactiveStudentAlerts = false
-    };
-    var classroom = new Classroom { Id = 11, Name = "Year 1", TeacherId = teacher.Id };
-    var activeStudent = new User { Id = 21, UserName = "active", Name = "Active", Experience = 80 };
-    var lowScoreStudent = new User { Id = 22, UserName = "support", Name = "Support", Experience = 20 };
-    var noCompletionStudent = new User { Id = 23, UserName = "new", Name = "New", Experience = 0 };
-    var challenge = new Challenge { Id = 31, ClassroomId = classroom.Id, CreatedById = teacher.Id };
+    }, 7);
+    var classroom = SetId(new Classroom { Name = "Year 1", TeacherId = teacher.Id }, 11);
+    var activeStudent = SetId(new User { UserName = "active", Name = "Active", Experience = 80 }, 21);
+    var lowScoreStudent = SetId(new User { UserName = "support", Name = "Support", Experience = 20 }, 22);
+    var noCompletionStudent = SetId(new User { UserName = "new", Name = "New", Experience = 0 }, 23);
+    var challenge = SetId(new Challenge { ClassroomId = classroom.Id, CreatedById = teacher.Id }, 31);
 
     var userManager = Substitute.For<IAppUserManager>();
     userManager.GetUserByIdAsync(teacher.Id).Returns(teacher);
@@ -111,13 +110,12 @@ public class TeacherProfileTests
   [Fact]
   public async Task UpdateTeacherPreferences_PersistsSupportedPreferenceFields()
   {
-    var teacher = new User
+    var teacher = SetId(new User
     {
-      Id = 9,
       UserName = "teacher-prefs",
       WeeklyAiInsightsEmail = true,
       InactiveStudentAlerts = false
-    };
+    }, 9);
     var userManager = Substitute.For<IAppUserManager>();
     userManager.GetUserByIdAsync(teacher.Id).Returns(teacher);
     userManager.UpdateUser(teacher).Returns(IdentityResult.Success);
@@ -133,5 +131,11 @@ public class TeacherProfileTests
     Assert.False(teacher.WeeklyAiInsightsEmail);
     Assert.True(teacher.InactiveStudentAlerts);
     await userManager.Received(1).UpdateUser(teacher);
+  }
+
+  private static T SetId<T>(T entity, int id)
+  {
+    entity.GetType().GetProperty("Id")!.SetValue(entity, id);
+    return entity;
   }
 }

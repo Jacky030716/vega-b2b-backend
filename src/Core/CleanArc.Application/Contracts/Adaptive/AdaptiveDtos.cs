@@ -474,7 +474,12 @@ public record ModuleChallengeDto(
     string? AiReason,
     string? AiFocusType,
     string? AiValidationStatus,
-    IReadOnlyList<string> AiValidationErrors);
+    IReadOnlyList<string> AiValidationErrors,
+    string? AiProvider,
+    bool WasFallbackUsed,
+    string? ValidationStatus,
+    IReadOnlyList<string> TrustIndicators,
+    string GenerationSource);
 
 public record GenerateModuleChallengeRequest(
     int ClassroomId,

@@ -230,6 +230,8 @@ public class ChallengeAiPipelineServiceTests
             ai,
             new AiPromptRegistry(),
             audit,
+            Substitute.For<IAiUsageService>(),
+            Substitute.For<IAiRateLimitService>(),
             Options.Create(new GoogleAiOptions { ModelId = "gemini-test" }),
             Substitute.For<ILogger<ChallengeAiPipelineService>>());
     }

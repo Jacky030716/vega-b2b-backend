@@ -76,7 +76,7 @@ public interface IClassroomModuleManagementService
     Task<IReadOnlyList<SubjectModuleGroupDto>> GetClassroomModulesAsync(int classroomId, int teacherId, CancellationToken cancellationToken);
     Task<CustomModuleSummaryDto> GetCustomModuleAsync(int classroomId, int teacherId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ModuleChallengeDto>> GetModuleChallengesAsync(int moduleId, int classroomId, int teacherId, CancellationToken cancellationToken);
-    Task<AssignedAdaptiveChallengeDto> GenerateModuleChallengeAsync(int moduleId, GenerateModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken);
+    Task<ModuleChallengeDto> GenerateModuleChallengeAsync(int moduleId, GenerateModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ModuleChallengeDto>> GetCustomModuleChallengesAsync(int customModuleId, int teacherId, CancellationToken cancellationToken);
     Task<CustomModuleSummaryDto> RenameCustomModuleAsync(int customModuleId, RenameCustomModuleRequest request, int teacherId, CancellationToken cancellationToken);
     Task<AssignedAdaptiveChallengeDto> CreateCustomModuleChallengeAsync(int customModuleId, CreateCustomModuleChallengeRequest request, int teacherId, CancellationToken cancellationToken);
