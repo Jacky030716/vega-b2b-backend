@@ -12,6 +12,7 @@ public interface IUnitOfWork
     public IProgressionRepository ProgressionRepository { get; }
     public IActivityLogRepository ActivityLogRepository { get; }
     public IInstitutionRepository InstitutionRepository { get; }
+    public IBillingRepository BillingRepository { get; }
     public IChallengeRepository ChallengeRepository { get; }
     public IBadgeRepository BadgeRepository { get; }
     public IStudentCredentialRepository StudentCredentialRepository { get; }

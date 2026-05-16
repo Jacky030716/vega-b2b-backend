@@ -1,6 +1,7 @@
 using CleanArc.Application.Contracts.Achievements;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Infrastructure.AI;
+using CleanArc.Application.Contracts.Infrastructure.Billing;
 using CleanArc.Application.Contracts.Infrastructure.Documents;
 using CleanArc.Application.Contracts.Infrastructure.Rag;
 using CleanArc.Application.Contracts.Infrastructure.Exports;
@@ -12,6 +13,7 @@ using CleanArc.Infrastructure.Persistence.SeedDatabaseService;
 using CleanArc.Infrastructure.Persistence.Services.AI;
 using CleanArc.Infrastructure.Persistence.Services;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Services.Billing;
 using CleanArc.Infrastructure.Persistence.Services.Classrooms;
 using CleanArc.Infrastructure.Persistence.Services.RAG;
 using CleanArc.Infrastructure.Persistence.Services.Stickers;
@@ -38,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProgressionRepository, ProgressionRepository>();
         services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
         services.AddScoped<IChallengeRepository, ChallengeRepository>();
+        services.AddScoped<IBillingRepository, BillingRepository>();
         services.AddScoped<IStickerRepository, StickerRepository>();
         services.AddScoped<IInstitutionUserReportRepository, InstitutionUserReportRepository>();
         services.AddScoped<IAchievementTrackingService, AchievementTrackingService>();
@@ -57,6 +60,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdaptiveAttemptService, AdaptiveAttemptService>();
         services.AddScoped<IAdaptiveAnalyticsService, AdaptiveAnalyticsService>();
         services.AddScoped<IAttemptConsistencyService, AttemptConsistencyService>();
+        services.AddScoped<IBillingPaymentService, StripeBillingPaymentService>();
         services.AddScoped<IAiUsageService, AiUsageService>();
         services.AddSingleton<IAiRateLimitService, AiRateLimitService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomGeneratorService, ClassroomGeneratorService>();

@@ -1,5 +1,7 @@
+using CleanArc.Domain.Entities.Institution;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Identity.Identity.Manager;
+using CleanArc.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanArc.Infrastructure.Identity.Identity.SeedDatabaseService;
@@ -13,11 +15,16 @@ public class SeedDataBase : ISeedDataBase
 {
     private readonly AppUserManager _userManager;
     private readonly AppRoleManager _roleManager;
+    private readonly ApplicationDbContext _dbContext;
 
-    public SeedDataBase(AppUserManager userManager, AppRoleManager roleManager)
+    public SeedDataBase(
+        AppUserManager userManager,
+        AppRoleManager roleManager,
+        ApplicationDbContext dbContext)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _dbContext = dbContext;
     }
 
     public async Task Seed()
@@ -114,6 +121,74 @@ public class SeedDataBase : ISeedDataBase
             await _userManager.CreateAsync(user, "Admin@123");
             await _userManager.AddToRoleAsync(user, "InstitutionAdmin");
         }
+
+        await SeedVegaAdminAsync();
+
+    }
+
+    private async Task SeedVegaAdminAsync()
+    {
+        var existingInstitution = await _dbContext.Institutions
+            .OrderBy(x => x.Id)
+            .FirstOrDefaultAsync();
+
+        if (existingInstitution is null)
+            return;
+
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.UserName == "VegaAdmin");
+
+        if (user is null)
+        {
+            user = new User
+            {
+                UserName = "VegaAdmin",
+                Email = "vega.admin@site.com",
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                InstitutionId = existingInstitution.Id,
+            };
+
+            var createResult = await _userManager.CreateAsync(user, "Vega1234");
+            if (!createResult.Succeeded)
+                return;
+        }
+
+        if (user.InstitutionId != existingInstitution.Id)
+        {
+            user.InstitutionId = existingInstitution.Id;
+            await _userManager.UpdateAsync(user);
+        }
+
+        if (!await _userManager.IsInRoleAsync(user, "InstitutionAdmin"))
+        {
+            await _userManager.AddToRoleAsync(user, "InstitutionAdmin");
+        }
+
+        var membership = await _dbContext.InstitutionUsers
+            .FirstOrDefaultAsync(x =>
+                x.UserId == user.Id
+                && x.InstitutionId == existingInstitution.Id);
+
+        if (membership is null)
+        {
+            _dbContext.InstitutionUsers.Add(new InstitutionUser
+            {
+                InstitutionId = existingInstitution.Id,
+                UserId = user.Id,
+                AccessScope = "Admin access",
+                IsPrimary = true,
+                IsActive = true,
+                JoinedAt = DateTime.UtcNow,
+            });
+        }
+        else if (!membership.IsActive)
+        {
+            membership.IsActive = true;
+            membership.LeftAt = null;
+        }
+
+        await _dbContext.SaveChangesAsync();
 
     }
 }

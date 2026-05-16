@@ -4,6 +4,7 @@ using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.AI;
 using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Activity;
+using CleanArc.Domain.Entities.Billing;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Institution;
 using CleanArc.Domain.Entities.Mission;
@@ -33,6 +34,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     // Admin & Billing
     public DbSet<Institution> Institutions { get; set; }
     public DbSet<InstitutionUser> InstitutionUsers { get; set; }
+    public DbSet<BillingAccount> BillingAccounts { get; set; }
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
     // Word
     public DbSet<Word> Words { get; set; }

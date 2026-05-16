@@ -17,6 +17,7 @@ public class UnitOfWork : IUnitOfWork
     public IProgressionRepository ProgressionRepository { get; }
     public IActivityLogRepository ActivityLogRepository { get; }
     public IInstitutionRepository InstitutionRepository { get; }
+    public IBillingRepository BillingRepository { get; }
     public IChallengeRepository ChallengeRepository { get; }
     public IBadgeRepository BadgeRepository { get; }
     public IStudentCredentialRepository StudentCredentialRepository { get; }
@@ -36,6 +37,7 @@ public class UnitOfWork : IUnitOfWork
         ProgressionRepository = new ProgressionRepository(_db);
         ActivityLogRepository = new ActivityLogRepository(_db);
         InstitutionRepository = new InstitutionRepository(_db);
+        BillingRepository = new BillingRepository(_db);
         ChallengeRepository = new ChallengeRepository(_db);
         BadgeRepository = new BadgeRepository(_db);
         StudentCredentialRepository = new StudentCredentialRepository(_db);
