@@ -16,6 +16,7 @@ public interface IShopRepository
   Task<List<UserInventoryItem>> GetUserInventoryAsync(int userId, string category = null);
   Task<UserInventoryItem> GetUserInventoryItemAsync(int userId, int shopItemId);
   Task<UserInventoryItem> AddToInventoryAsync(UserInventoryItem item);
+  Task<(UserInventoryItem Item, bool WasAdded)> TryAddToInventoryAsync(UserInventoryItem item);
 
   // Equipped items
   Task<List<UserEquippedItem>> GetUserEquippedItemsAsync(int userId);

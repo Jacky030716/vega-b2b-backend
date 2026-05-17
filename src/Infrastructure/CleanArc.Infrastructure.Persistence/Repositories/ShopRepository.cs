@@ -2,6 +2,7 @@ using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Domain.Entities.Shop;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace CleanArc.Infrastructure.Persistence.Repositories;
 
@@ -83,6 +84,36 @@ internal class ShopRepository(ApplicationDbContext dbContext) : BaseAsyncReposit
     DbContext.UserInventoryItems.Add(item);
     await DbContext.SaveChangesAsync();
     return item;
+  }
+
+  public async Task<(UserInventoryItem Item, bool WasAdded)> TryAddToInventoryAsync(UserInventoryItem item)
+  {
+    var existing = await DbContext.UserInventoryItems
+      .AsNoTracking()
+      .FirstOrDefaultAsync(ui => ui.UserId == item.UserId && ui.ShopItemId == item.ShopItemId);
+
+    if (existing != null)
+    {
+      return (existing, false);
+    }
+
+    try
+    {
+      DbContext.UserInventoryItems.Add(item);
+      await DbContext.SaveChangesAsync();
+      return (item, true);
+    }
+    catch (DbUpdateException ex) when (
+      ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+    {
+      DbContext.Entry(item).State = EntityState.Detached;
+
+      var existingAfterRace = await DbContext.UserInventoryItems
+        .AsNoTracking()
+        .FirstAsync(ui => ui.UserId == item.UserId && ui.ShopItemId == item.ShopItemId);
+
+      return (existingAfterRace, false);
+    }
   }
 
   // Equipped items

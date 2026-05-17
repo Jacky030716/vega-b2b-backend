@@ -41,9 +41,23 @@ internal class PurchaseItemCommandHandler : IRequestHandler<PurchaseItemCommand,
     if (user.Level < shopItem.RequiredLevel)
       return OperationResult<bool>.FailureResult($"You need to be level {shopItem.RequiredLevel} to purchase this item");
 
+    var ownedItem = await _unitOfWork.ShopRepository.GetUserInventoryItemAsync(request.UserId, request.ShopItemId);
+    if (ownedItem != null)
+      return OperationResult<bool>.SuccessResult(true);
+
     // Check balance
     if (shopItem.Currency == "diamonds" && user.Diamonds < shopItem.Price)
       return OperationResult<bool>.FailureResult("Insufficient diamonds");
+
+    var inventoryResult = await _unitOfWork.ShopRepository.TryAddToInventoryAsync(new UserInventoryItem
+    {
+      UserId = request.UserId,
+      ShopItemId = request.ShopItemId,
+      AcquiredAt = DateTime.UtcNow
+    });
+
+    if (!inventoryResult.WasAdded)
+      return OperationResult<bool>.SuccessResult(true);
 
     // Deduct currency
     if (shopItem.Currency == "diamonds")
@@ -51,14 +65,6 @@ internal class PurchaseItemCommandHandler : IRequestHandler<PurchaseItemCommand,
       user.Diamonds -= shopItem.Price;
       await _userManager.UpdateUserAsync(user);
     }
-
-    // Add to inventory
-    await _unitOfWork.ShopRepository.AddToInventoryAsync(new UserInventoryItem
-    {
-      UserId = request.UserId,
-      ShopItemId = request.ShopItemId,
-      AcquiredAt = DateTime.UtcNow
-    });
 
     if (string.Equals(shopItem.Category, "avatar", StringComparison.OrdinalIgnoreCase))
     {
