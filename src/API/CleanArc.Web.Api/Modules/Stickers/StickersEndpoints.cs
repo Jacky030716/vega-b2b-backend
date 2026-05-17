@@ -38,7 +38,7 @@ public class StickersEndpoints : ICarterModule
       var userId = int.Parse(user.Identity.GetUserId());
       var result = await sender.Send(new GenerateStickerCommand(userId, request.Subject, request.Style, request.Mood));
       return result.ToEndpointResult();
-    }), _version, "GenerateSticker", _tag).RequireAuthorization();
+    }), _version, "GenerateSticker", _tag).RequireAuthorization(builder => builder.RequireRole("student"));
 
     app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}gifts/send", async (
       [FromBody] SendStickerGiftRequest request,

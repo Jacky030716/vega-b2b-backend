@@ -12,6 +12,7 @@ public interface IStickerRepository
   Task<StickerInventoryItem?> GetStickerByIdAsync(int stickerId, CancellationToken cancellationToken);
   Task<StickerInventoryItem?> GetStickerForOwnerAsync(int stickerId, int ownerUserId, CancellationToken cancellationToken);
   Task<List<StickerInventoryItem>> GetInventoryByOwnerAsync(int ownerUserId, CancellationToken cancellationToken);
+  Task<int> CountGeneratedStickersAsync(int ownerUserId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken);
   Task AddStickerAsync(StickerInventoryItem sticker, CancellationToken cancellationToken);
 
   Task<StickerGiftTransaction?> GetGiftByIdAsync(int giftId, CancellationToken cancellationToken);

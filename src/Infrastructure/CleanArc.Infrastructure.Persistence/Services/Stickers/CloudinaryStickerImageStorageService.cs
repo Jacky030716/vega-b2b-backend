@@ -21,7 +21,7 @@ public class CloudinaryStickerImageStorageService : IStickerImageStorageService
     _options = options.Value;
   }
 
-  public async Task<OperationResult<StickerUploadResult>> UploadPngAsync(byte[] imageBytes, string fileName, CancellationToken cancellationToken)
+  public async Task<OperationResult<StickerUploadResult>> UploadAsync(byte[] imageBytes, string fileName, CancellationToken cancellationToken)
   {
     if (imageBytes is null || imageBytes.Length == 0)
       return OperationResult<StickerUploadResult>.FailureResult("Sticker upload received an empty image payload.");
@@ -37,10 +37,11 @@ public class CloudinaryStickerImageStorageService : IStickerImageStorageService
     var signature = ComputeSignature(_options.Folder, publicId, timestamp, _options.ApiSecret);
 
     using var content = new MultipartFormDataContent();
+    var imageFormat = ResolveImageFormat(imageBytes);
     var fileContent = new ByteArrayContent(imageBytes);
-    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(imageFormat.ContentType);
 
-    content.Add(fileContent, "file", $"{safeFileName}.png");
+    content.Add(fileContent, "file", $"{safeFileName}.{imageFormat.Extension}");
     content.Add(new StringContent(_options.ApiKey), "api_key");
     content.Add(new StringContent(timestamp.ToString()), "timestamp");
     content.Add(new StringContent(_options.Folder), "folder");
@@ -62,7 +63,18 @@ public class CloudinaryStickerImageStorageService : IStickerImageStorageService
       return OperationResult<StickerUploadResult>.FailureResult("Sticker upload response was missing required fields.");
 
     return OperationResult<StickerUploadResult>.SuccessResult(
-      new StickerUploadResult(publicIdNode.GetString() ?? string.Empty, secureUrlNode.GetString() ?? string.Empty));
+      new StickerUploadResult(secureUrlNode.GetString() ?? publicIdNode.GetString() ?? string.Empty));
+  }
+
+  private static (string ContentType, string Extension) ResolveImageFormat(byte[] imageBytes)
+  {
+    if (imageBytes.Length >= 3
+      && imageBytes[0] == 0xFF
+      && imageBytes[1] == 0xD8
+      && imageBytes[2] == 0xFF)
+      return ("image/jpeg", "jpg");
+
+    return ("image/png", "png");
   }
 
   private static string ComputeSignature(string folder, string publicId, long timestamp, string secret)

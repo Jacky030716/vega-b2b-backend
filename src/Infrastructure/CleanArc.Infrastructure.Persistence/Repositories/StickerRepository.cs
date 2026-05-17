@@ -35,6 +35,18 @@ internal class StickerRepository(ApplicationDbContext dbContext) : IStickerRepos
       .ToListAsync(cancellationToken);
   }
 
+  public Task<int> CountGeneratedStickersAsync(int ownerUserId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+  {
+    return dbContext.StickerInventoryItems
+      .AsNoTracking()
+      .CountAsync(
+        s => s.OwnerUserId == ownerUserId
+          && s.OwnershipSource == StickerOwnershipSource.Generated
+          && s.GeneratedAtUtc >= fromUtc
+          && s.GeneratedAtUtc < toUtc,
+        cancellationToken);
+  }
+
   public async Task AddStickerAsync(StickerInventoryItem sticker, CancellationToken cancellationToken)
   {
     await dbContext.StickerInventoryItems.AddAsync(sticker, cancellationToken);

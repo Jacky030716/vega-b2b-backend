@@ -101,8 +101,7 @@ public sealed class GoogleClassroomThumbnailImageGenerationService(
     if (string.IsNullOrWhiteSpace(value))
       return true;
 
-    return value.Equals("PASTE_YOUR_KEY_HERE", StringComparison.OrdinalIgnoreCase)
-      || value.Equals("API_KEY_HERE", StringComparison.OrdinalIgnoreCase);
+    return false;
   }
 
   private static string BuildFailureMessage(HttpStatusCode statusCode, string body)

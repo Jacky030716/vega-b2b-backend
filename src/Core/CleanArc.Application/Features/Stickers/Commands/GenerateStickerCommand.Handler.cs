@@ -5,11 +5,14 @@ using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Sticker;
 using Mediator;
+using Microsoft.Extensions.Logging;
 
 namespace CleanArc.Application.Features.Stickers.Commands;
 
 internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCommand, OperationResult<GeneratedStickerDto>>
 {
+  private const int DailyStudentGenerationLimit = 3;
+
   private readonly IUnitOfWork _unitOfWork;
   private readonly IStickerImageGenerationService _imageGenerationService;
   private readonly IStickerImageStorageService _imageStorageService;
@@ -17,6 +20,7 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
   private readonly IAiPromptRegistry _promptRegistry;
   private readonly IAiUsageService _aiUsageService;
   private readonly IAiRateLimitService _aiRateLimitService;
+  private readonly ILogger<GenerateStickerCommandHandler> _logger;
 
   public GenerateStickerCommandHandler(
     IUnitOfWork unitOfWork,
@@ -25,7 +29,8 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
     IAiAuditService aiAuditService,
     IAiPromptRegistry promptRegistry,
     IAiUsageService aiUsageService,
-    IAiRateLimitService aiRateLimitService)
+    IAiRateLimitService aiRateLimitService,
+    ILogger<GenerateStickerCommandHandler> logger)
   {
     _unitOfWork = unitOfWork;
     _imageGenerationService = imageGenerationService;
@@ -34,34 +39,51 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
     _promptRegistry = promptRegistry;
     _aiUsageService = aiUsageService;
     _aiRateLimitService = aiRateLimitService;
+    _logger = logger;
   }
 
   public async ValueTask<OperationResult<GeneratedStickerDto>> Handle(GenerateStickerCommand request, CancellationToken cancellationToken)
   {
     var user = await _unitOfWork.StickerRepository.GetUserByIdAsync(request.UserId, cancellationToken);
     if (user is null)
+    {
+      _logger.LogWarning("Sticker generation rejected for missing user {UserId}.", request.UserId);
       return OperationResult<GeneratedStickerDto>.FailureResult("User not found.");
+    }
 
     if (user.DreamTokensCount <= 0)
+    {
+      _logger.LogInformation("Sticker generation rejected for user {UserId}: no Dream Tokens.", request.UserId);
       return OperationResult<GeneratedStickerDto>.FailureResult("You need at least 1 Dream Token to generate a sticker.");
+    }
 
     var rateLimit = await _aiRateLimitService.TryAcquireAsync(request.UserId, AiFeatureTypes.StickerGeneration, cancellationToken);
     if (!rateLimit.Allowed)
+    {
+      _logger.LogInformation("Sticker generation rejected for user {UserId}: AI rate limit.", request.UserId);
       return OperationResult<GeneratedStickerDto>.FailureResult("Too many AI requests. Please try again later.");
+    }
 
     var quota = await _aiUsageService.GetRemainingQuotaAsync(request.UserId, AiFeatureTypes.StickerGeneration, cancellationToken);
     if (quota.Remaining <= 0)
+    {
+      _logger.LogInformation("Sticker generation rejected for user {UserId}: monthly AI quota exhausted.", request.UserId);
       return OperationResult<GeneratedStickerDto>.FailureResult("Your AI quota is exhausted for this month.");
+    }
 
     var now = DateTime.UtcNow;
-    if (user.LastStickerGeneratedAtUtc.HasValue)
+    var todayStartUtc = now.Date;
+    var tomorrowStartUtc = todayStartUtc.AddDays(1);
+    var generatedToday = await _unitOfWork.StickerRepository.CountGeneratedStickersAsync(
+      request.UserId,
+      todayStartUtc,
+      tomorrowStartUtc,
+      cancellationToken);
+
+    if (generatedToday >= DailyStudentGenerationLimit)
     {
-      var nextAllowed = user.LastStickerGeneratedAtUtc.Value.AddHours(24);
-      if (nextAllowed > now)
-      {
-        var remaining = nextAllowed - now;
-        return OperationResult<GeneratedStickerDto>.FailureResult($"Sticker generation is on cooldown. Try again in {remaining.Hours}h {remaining.Minutes}m.");
-      }
+      _logger.LogInformation("Sticker generation rejected for user {UserId}: daily limit {Limit} reached.", request.UserId, DailyStudentGenerationLimit);
+      return OperationResult<GeneratedStickerDto>.FailureResult("You have used all 3 Dream Lab generations for today. Come back tomorrow or save your Dream Tokens for later.");
     }
 
     var prompt = _promptRegistry.Get(AiUseCases.StickerGeneration);
@@ -86,6 +108,11 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
 
     if (!generation.IsSuccess)
     {
+      _logger.LogWarning(
+        "Sticker image generation failed for user {UserId}: {ErrorMessage}",
+        request.UserId,
+        generation.ErrorMessage ?? "Sticker generation failed.");
+
       await _aiAuditService.FailAsync(
         auditLogId,
         null,
@@ -94,7 +121,7 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
       return OperationResult<GeneratedStickerDto>.FailureResult(generation.ErrorMessage ?? "Sticker generation failed.");
     }
 
-    var upload = await _imageStorageService.UploadPngAsync(
+    var upload = await _imageStorageService.UploadAsync(
       generation.Result.ImageBytes,
       $"{request.Subject}-{request.Style}-{request.Mood}",
       cancellationToken);
@@ -122,7 +149,7 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
         OwnerUserId = request.UserId,
         CreatorUserId = request.UserId,
         SourceStickerId = null,
-        ImageUrl = upload.Result.SecureUrl,
+        ImageUrl = upload.Result.ImageRef,
         OwnershipSource = StickerOwnershipSource.Generated,
         PromptChoicesJson = JsonSerializer.Serialize(new
         {

@@ -233,11 +233,13 @@ Services/
  RosterPdfGenerator.cs
  Stickers/
   CloudinaryStickerImageStorageService.cs
+  FirebaseStickerImageStorageService.cs
   HuggingFaceStickerImageGenerationService.cs
   StickerPromptCatalogService.cs
  StudentImportService.cs
 Settings/
  CloudinaryStickerOptions.cs
+ FirebaseStorageOptions.cs
  GoogleAiOptions.cs
  GoogleImageAiOptions.cs
  HuggingFaceStickerOptions.cs

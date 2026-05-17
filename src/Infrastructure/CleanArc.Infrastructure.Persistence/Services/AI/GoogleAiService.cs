@@ -20,8 +20,7 @@ public sealed class GoogleAiService(
     ChallengeGenerationRequest request,
     CancellationToken cancellationToken)
   {
-    if (string.IsNullOrWhiteSpace(_options.ApiKey)
-        || _options.ApiKey.Equals("PASTE_YOUR_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+    if (string.IsNullOrWhiteSpace(_options.ApiKey))
     {
       return OperationResult<ChallengeGenerationResult>.FailureResult(
         "Google AI API key is not configured.");

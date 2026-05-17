@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
 
         services.Configure<HuggingFaceStickerOptions>(configuration.GetSection(HuggingFaceStickerOptions.SectionName));
         services.Configure<CloudinaryStickerOptions>(configuration.GetSection(CloudinaryStickerOptions.SectionName));
+        services.Configure<FirebaseStorageOptions>(configuration.GetSection(FirebaseStorageOptions.SectionName));
         services.Configure<OllamaChallengeOptions>(configuration.GetSection(OllamaChallengeOptions.SectionName));
         services.Configure<GoogleAiOptions>(configuration.GetSection(GoogleAiOptions.SectionName));
         services.Configure<GoogleImageAiOptions>(configuration.GetSection(GoogleImageAiOptions.SectionName));
@@ -99,7 +100,7 @@ public static class ServiceCollectionExtensions
         {
             var options = serviceProvider.GetRequiredService<IOptions<HuggingFaceStickerOptions>>().Value;
             client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
-            client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds > 0 ? options.RequestTimeoutSeconds : 60);
+            client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds > 0 ? options.RequestTimeoutSeconds : 120);
         });
 
         services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageGenerationService, GoogleClassroomThumbnailImageGenerationService>((serviceProvider, client) =>
@@ -109,7 +110,7 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds > 0 ? options.TimeoutSeconds : 120);
         });
 
-        services.AddHttpClient<IStickerImageStorageService, CloudinaryStickerImageStorageService>();
+        services.AddHttpClient<IStickerImageStorageService, FirebaseStickerImageStorageService>();
         services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageStorageService, CloudinaryClassroomThumbnailStorageService>();
 
         services.Configure<AiUsageLimitOptions>(configuration.GetSection("AiUsageLimits"));
