@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "api:dev": "doppler run -- dotnet run --project src/API/CleanArc.Web.Api/CleanArc.Web.Api.csproj --launch-profile Web.Api",
     "seed:syllabus": "dotnet build src/API/CleanArc.Web.Api/CleanArc.Web.Api.csproj -m:1 -v minimal && dotnet run --no-build --project src/API/CleanArc.Web.Api/CleanArc.Web.Api.csproj -- --seed-syllabus seeds/syllabus.seed.json"
   },
   "private": true

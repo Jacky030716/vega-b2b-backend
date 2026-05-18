@@ -19,7 +19,6 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
   private readonly IAiAuditService _aiAuditService;
   private readonly IAiPromptRegistry _promptRegistry;
   private readonly IAiUsageService _aiUsageService;
-  private readonly IAiRateLimitService _aiRateLimitService;
   private readonly ILogger<GenerateStickerCommandHandler> _logger;
 
   public GenerateStickerCommandHandler(
@@ -29,7 +28,6 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
     IAiAuditService aiAuditService,
     IAiPromptRegistry promptRegistry,
     IAiUsageService aiUsageService,
-    IAiRateLimitService aiRateLimitService,
     ILogger<GenerateStickerCommandHandler> logger)
   {
     _unitOfWork = unitOfWork;
@@ -38,7 +36,6 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
     _aiAuditService = aiAuditService;
     _promptRegistry = promptRegistry;
     _aiUsageService = aiUsageService;
-    _aiRateLimitService = aiRateLimitService;
     _logger = logger;
   }
 
@@ -55,13 +52,6 @@ internal class GenerateStickerCommandHandler : IRequestHandler<GenerateStickerCo
     {
       _logger.LogInformation("Sticker generation rejected for user {UserId}: no Dream Tokens.", request.UserId);
       return OperationResult<GeneratedStickerDto>.FailureResult("You need at least 1 Dream Token to generate a sticker.");
-    }
-
-    var rateLimit = await _aiRateLimitService.TryAcquireAsync(request.UserId, AiFeatureTypes.StickerGeneration, cancellationToken);
-    if (!rateLimit.Allowed)
-    {
-      _logger.LogInformation("Sticker generation rejected for user {UserId}: AI rate limit.", request.UserId);
-      return OperationResult<GeneratedStickerDto>.FailureResult("Too many AI requests. Please try again later.");
     }
 
     var quota = await _aiUsageService.GetRemainingQuotaAsync(request.UserId, AiFeatureTypes.StickerGeneration, cancellationToken);

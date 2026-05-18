@@ -10,6 +10,7 @@ using CleanArc.Infrastructure.Identity.Identity.Dtos;
 using CleanArc.Infrastructure.Identity.Jwt;
 using CleanArc.Infrastructure.Identity.ServiceConfiguration;
 using CleanArc.Infrastructure.Persistence.ServiceConfiguration;
+using CleanArc.Web.Api.Configuration;
 using CleanArc.SharedKernel.Extensions;
 using CleanArc.Web.Api.Controllers.V1.UserManagement;
 using CleanArc.Web.Plugins.Grpc;
@@ -24,6 +25,8 @@ using Serilog;
 
 IdentityModelEventSource.ShowPII = true;
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddDopplerSecretMappings();
 
 builder.Host.UseSerilog(LoggingConfiguration.ConfigureLogger);
 

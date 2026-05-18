@@ -10,5 +10,5 @@ public class HuggingFaceStickerOptions
   public int RequestTimeoutSeconds { get; set; } = 120;
   public int Width { get; set; } = 512;
   public int Height { get; set; } = 512;
-  public string NegativePrompt { get; set; } = "text, watermark, blurry, low quality";
+  public string NegativePrompt { get; set; } = "text, watermark, blurry, low quality, cropped, truncated, cut off, out of frame";
 }

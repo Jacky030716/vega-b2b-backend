@@ -70,7 +70,7 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
         var auditLogId = await aiAuditService.StartAsync(
           new AiAuditStartRequest(
             AiUseCases.ClassroomThumbnailGeneration,
-            "GOOGLE",
+            "HUGGING_FACE",
             null,
             "v1",
             JsonSerializer.Serialize(request),
@@ -113,7 +113,7 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
           userId,
           AiFeatureTypes.ClassroomThumbnailGeneration,
           "POST /api/v1.1/ai/classroom-thumbnails/generate",
-          "GOOGLE",
+          "HUGGING_FACE",
           generation.Result.ModelName,
           1,
           true,
@@ -155,7 +155,7 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
     var description = string.IsNullOrWhiteSpace(request.Description) ? string.Empty : $" The classroom description is: {request.Description.Trim()}";
 
     return
-      $"Create a child-safe square 1:1 classroom thumbnail for a Malaysian primary school learning app. Teacher request: {request.ThumbnailPrompt.Trim()}. Classroom: {request.ClassroomName.Trim()}, Year {request.YearLevel}, subjects: {subjectText}.{description} Use a playful Duolingo-inspired educational illustration style with books, learning icons, friendly colors, and no text overlay.";
+      $"Create a child-safe classroom thumbnail for a Malaysian primary school learning app. Teacher request: {request.ThumbnailPrompt.Trim()}. Classroom: {request.ClassroomName.Trim()}, Year {request.YearLevel}, subjects: {subjectText}.{description} Use a playful educational illustration style with books, learning icons, friendly colors, a 1:1 square composition, a transparent background, centered and fully visible subjects, no cropping, no truncation, no cut off edges, and no text overlay.";
   }
 }
 

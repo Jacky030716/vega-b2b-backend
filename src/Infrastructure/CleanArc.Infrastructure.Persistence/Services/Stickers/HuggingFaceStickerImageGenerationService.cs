@@ -27,7 +27,7 @@ public class HuggingFaceStickerImageGenerationService : IStickerImageGenerationS
 
   public async Task<OperationResult<StickerGenerationResult>> GenerateAsync(StickerGenerationRequest request, CancellationToken cancellationToken)
   {
-    var apiToken = ResolveApiToken(_options);
+    var apiToken = _options.ApiToken;
 
     if (string.IsNullOrWhiteSpace(apiToken) || string.IsNullOrWhiteSpace(_options.ModelId))
       return OperationResult<StickerGenerationResult>.FailureResult("Hugging Face sticker generation is not configured yet.");
@@ -84,19 +84,7 @@ public class HuggingFaceStickerImageGenerationService : IStickerImageGenerationS
     var style = request.Style.Trim();
     var mood = request.Mood.Trim();
 
-    return $"cute {subject} sticker, {style} style, {mood} expression, die-cut white outline, transparent background, centered, clean, high quality, no text, no watermark";
+    return $"cute {subject} sticker, {style} style, {mood} expression, 1:1 square composition, transparent background, die-cut white outline, centered, fully visible subject, no cropping, no truncation, no cut off edges, clean, high quality, no text, no watermark";
   }
 
-  private static string ResolveApiToken(HuggingFaceStickerOptions options)
-  {
-    var candidates = new[]
-    {
-      options.ApiToken,
-      Environment.GetEnvironmentVariable("HUGGINGFACE_STICKER_API_TOKEN"),
-      Environment.GetEnvironmentVariable("HUGGING_FACE_API_TOKEN"),
-      Environment.GetEnvironmentVariable("HF_TOKEN")
-    };
-
-    return candidates.FirstOrDefault(token => !string.IsNullOrWhiteSpace(token)) ?? string.Empty;
-  }
 }

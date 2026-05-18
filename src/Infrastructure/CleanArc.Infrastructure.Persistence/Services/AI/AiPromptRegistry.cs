@@ -95,7 +95,9 @@ OUTPUT: Provider-specific image bytes and storage metadata are audited by the ba
 RULES:
 1. Use only the provided subject, style, and mood.
 2. Keep artwork suitable for learners.
-3. Do not include text unless explicitly requested by the structured prompt.
+3. Generate the sticker on a 1:1 square canvas with a transparent background.
+4. Keep the subject fully visible and centered with no truncation, cropping, or cut-off edges.
+5. Do not include text unless explicitly requested by the structured prompt.
 """,
         "sticker_generation_request"),
       _ => throw new InvalidOperationException($"No AI prompt registered for use case '{useCase}'.")

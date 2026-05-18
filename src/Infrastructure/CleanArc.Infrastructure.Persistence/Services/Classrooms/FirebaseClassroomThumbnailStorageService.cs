@@ -1,57 +1,58 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Google.Apis.Auth.OAuth2;
-using Google.Cloud.Storage.V1;
-using CleanArc.Application.Contracts.Infrastructure.Stickers;
+using CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails;
 using CleanArc.Application.Models.Common;
 using CleanArc.Infrastructure.Persistence.Settings;
+using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace CleanArc.Infrastructure.Persistence.Services.Stickers;
+namespace CleanArc.Infrastructure.Persistence.Services.Classrooms;
 
-public sealed class FirebaseStickerImageStorageService : IStickerImageStorageService
+public sealed class FirebaseClassroomThumbnailStorageService : IClassroomThumbnailImageStorageService
 {
   private const string IdentityToolkitSignUpEndpoint = "https://identitytoolkit.googleapis.com/v1/accounts:signUp";
+  private const string DefaultFolder = "classrooms/thumbnails";
 
   private readonly HttpClient _httpClient;
-  private readonly ILogger<FirebaseStickerImageStorageService> _logger;
   private readonly FirebaseStorageOptions _options;
+  private readonly ILogger<FirebaseClassroomThumbnailStorageService> _logger;
   private static readonly SemaphoreSlim TokenLock = new(1, 1);
   private static string s_idToken = string.Empty;
   private static DateTimeOffset s_idTokenExpiresAtUtc;
 
-  public FirebaseStickerImageStorageService(
+  public FirebaseClassroomThumbnailStorageService(
     HttpClient httpClient,
     IOptions<FirebaseStorageOptions> options,
-    ILogger<FirebaseStickerImageStorageService> logger)
+    ILogger<FirebaseClassroomThumbnailStorageService> logger)
   {
     _httpClient = httpClient;
     _options = options.Value;
     _logger = logger;
   }
 
-  public async Task<OperationResult<StickerUploadResult>> UploadAsync(
+  public async Task<OperationResult<ClassroomThumbnailUploadResult>> UploadAsync(
     byte[] imageBytes,
     string fileName,
+    string contentType,
     CancellationToken cancellationToken)
   {
     if (imageBytes is null || imageBytes.Length == 0)
-      return OperationResult<StickerUploadResult>.FailureResult("Sticker upload received an empty image payload.");
+      return OperationResult<ClassroomThumbnailUploadResult>.FailureResult("Classroom thumbnail upload received an empty image payload.");
 
     var bucketName = _options.BucketName;
     var webApiKey = _options.WebApiKey;
     var saJson = _options.ServiceAccountJson;
     if (string.IsNullOrWhiteSpace(bucketName))
-      return OperationResult<StickerUploadResult>.FailureResult("Firebase sticker storage bucket is not configured.");
+      return OperationResult<ClassroomThumbnailUploadResult>.FailureResult("Classroom thumbnail storage bucket is not configured.");
 
     try
     {
-      var imageFormat = ResolveImageFormat(imageBytes);
+      var imageFormat = ResolveImageFormat(imageBytes, contentType);
       var imageRef = CreateImageRef(fileName, imageFormat.Extension);
 
-      // If a service-account JSON was provided (e.g. via Doppler), use Google Storage client for server-side upload.
       if (!string.IsNullOrWhiteSpace(saJson))
       {
         try
@@ -60,19 +61,22 @@ public sealed class FirebaseStickerImageStorageService : IStickerImageStorageSer
           var storage = StorageClient.Create(credential);
 
           using var ms = new MemoryStream(imageBytes);
-          var obj = await storage.UploadObjectAsync(bucketName, imageRef, imageFormat.ContentType, ms, cancellationToken: cancellationToken);
-          return OperationResult<StickerUploadResult>.SuccessResult(new StickerUploadResult(imageRef));
+          await storage.UploadObjectAsync(bucketName, imageRef, imageFormat.ContentType, ms, cancellationToken: cancellationToken);
+
+          var publicUrl = BuildFirebasePublicUrl(bucketName, imageRef);
+          return OperationResult<ClassroomThumbnailUploadResult>.SuccessResult(
+            new ClassroomThumbnailUploadResult(imageRef, publicUrl));
         }
         catch (Exception ex)
         {
-          _logger.LogWarning(ex, "Service-account upload failed, falling back to anonymous upload.");
-          // fall through to anonymous attempt below
+          _logger.LogWarning(ex, "Service-account classroom thumbnail upload failed, falling back to anonymous upload.");
         }
       }
 
-      // Fallback: anonymous REST upload (existing behavior)
-      var idToken = await GetFirebaseIdTokenAsync(webApiKey, cancellationToken);
+      if (string.IsNullOrWhiteSpace(webApiKey))
+        return OperationResult<ClassroomThumbnailUploadResult>.FailureResult("Classroom thumbnail storage is not configured.");
 
+      var idToken = await GetFirebaseIdTokenAsync(webApiKey, cancellationToken);
       var uploadEndpoint =
         $"https://firebasestorage.googleapis.com/v0/b/{Uri.EscapeDataString(bucketName)}/o?name={Uri.EscapeDataString(imageRef)}";
 
@@ -87,19 +91,20 @@ public sealed class FirebaseStickerImageStorageService : IStickerImageStorageSer
       if (!response.IsSuccessStatusCode)
       {
         _logger.LogWarning(
-          "Firebase sticker upload failed with status {StatusCode} for path {ImageRef}: {ResponseBody}",
+          "Firebase classroom thumbnail upload failed with status {StatusCode} for path {ImageRef}: {ResponseBody}",
           (int)response.StatusCode,
           imageRef,
           body);
-        return OperationResult<StickerUploadResult>.FailureResult("Sticker upload failed. Please try again.");
+        return OperationResult<ClassroomThumbnailUploadResult>.FailureResult("Classroom thumbnail upload failed. Please try again.");
       }
 
-      return OperationResult<StickerUploadResult>.SuccessResult(new StickerUploadResult(imageRef));
+      var url = BuildFirebasePublicUrl(bucketName, imageRef);
+      return OperationResult<ClassroomThumbnailUploadResult>.SuccessResult(new ClassroomThumbnailUploadResult(imageRef, url));
     }
     catch (Exception ex)
     {
-      _logger.LogWarning(ex, "Firebase sticker upload failed before the sticker could be stored.");
-      return OperationResult<StickerUploadResult>.FailureResult("Sticker upload failed. Please try again.");
+      _logger.LogWarning(ex, "Firebase classroom thumbnail upload failed before the thumbnail could be stored.");
+      return OperationResult<ClassroomThumbnailUploadResult>.FailureResult("Classroom thumbnail upload failed. Please try again.");
     }
   }
 
@@ -157,18 +162,27 @@ public sealed class FirebaseStickerImageStorageService : IStickerImageStorageSer
     }
   }
 
-  private string CreateImageRef(string fileName, string extension)
+  private static string BuildFirebasePublicUrl(string bucketName, string imageRef)
   {
-    var folder = string.IsNullOrWhiteSpace(_options.StickerFolder)
-      ? "stickers/generated"
-      : _options.StickerFolder.Trim('/');
-    var safeFileName = SanitizeFileName(fileName);
-
-    return $"{folder}/{safeFileName}-{Guid.NewGuid():N}.{extension}";
+    var encodedPath = Uri.EscapeDataString(imageRef);
+    return $"https://firebasestorage.googleapis.com/v0/b/{bucketName}/o/{encodedPath}?alt=media";
   }
 
-  private static (string ContentType, string Extension) ResolveImageFormat(byte[] imageBytes)
+  private static (string ContentType, string Extension) ResolveImageFormat(byte[] imageBytes, string contentType)
   {
+    if (!string.IsNullOrWhiteSpace(contentType))
+    {
+      var normalized = contentType.ToLowerInvariant();
+      if (normalized.Contains("jpeg") || normalized.Contains("jpg"))
+        return (contentType, "jpg");
+      if (normalized.Contains("webp"))
+        return (contentType, "webp");
+      if (normalized.Contains("png"))
+        return (contentType, "png");
+
+      return (contentType, "png");
+    }
+
     if (imageBytes.Length >= 3
       && imageBytes[0] == 0xFF
       && imageBytes[1] == 0xD8
@@ -189,10 +203,16 @@ public sealed class FirebaseStickerImageStorageService : IStickerImageStorageSer
     return ("image/png", "png");
   }
 
+  private string CreateImageRef(string fileName, string extension)
+  {
+    var safeFileName = SanitizeFileName(fileName);
+    return $"{DefaultFolder}/{safeFileName}-{Guid.NewGuid():N}.{extension}";
+  }
+
   private static string SanitizeFileName(string input)
   {
     if (string.IsNullOrWhiteSpace(input))
-      return "sticker";
+      return "classroom-thumbnail";
 
     var cleaned = new string(input
       .Trim()
@@ -205,5 +225,4 @@ public sealed class FirebaseStickerImageStorageService : IStickerImageStorageSer
 
     return cleaned.Trim('-');
   }
-
 }

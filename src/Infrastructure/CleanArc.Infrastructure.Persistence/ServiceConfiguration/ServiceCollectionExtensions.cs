@@ -69,11 +69,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomSetupWizardService, ClassroomSetupWizardService>();
 
         services.Configure<HuggingFaceStickerOptions>(configuration.GetSection(HuggingFaceStickerOptions.SectionName));
-        services.Configure<CloudinaryStickerOptions>(configuration.GetSection(CloudinaryStickerOptions.SectionName));
         services.Configure<FirebaseStorageOptions>(configuration.GetSection(FirebaseStorageOptions.SectionName));
         services.Configure<OllamaChallengeOptions>(configuration.GetSection(OllamaChallengeOptions.SectionName));
         services.Configure<GoogleAiOptions>(configuration.GetSection(GoogleAiOptions.SectionName));
-        services.Configure<GoogleImageAiOptions>(configuration.GetSection(GoogleImageAiOptions.SectionName));
         services.Configure<RagVectorStoreOptions>(configuration.GetSection(RagVectorStoreOptions.SectionName));
 
         services.AddHttpClient<IAiGenerationService, GoogleAiService>((serviceProvider, client) =>
@@ -103,15 +101,15 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds > 0 ? options.RequestTimeoutSeconds : 120);
         });
 
-        services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageGenerationService, GoogleClassroomThumbnailImageGenerationService>((serviceProvider, client) =>
+        services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageGenerationService, HuggingFaceClassroomThumbnailImageGenerationService>((serviceProvider, client) =>
         {
-            var options = serviceProvider.GetRequiredService<IOptions<GoogleImageAiOptions>>().Value;
-            client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds > 0 ? options.TimeoutSeconds : 120);
+            var options = serviceProvider.GetRequiredService<IOptions<HuggingFaceStickerOptions>>().Value;
+            client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds > 0 ? options.RequestTimeoutSeconds : 120);
         });
 
         services.AddHttpClient<IStickerImageStorageService, FirebaseStickerImageStorageService>();
-        services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageStorageService, CloudinaryClassroomThumbnailStorageService>();
+        services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageStorageService, FirebaseClassroomThumbnailStorageService>();
 
         services.Configure<AiUsageLimitOptions>(configuration.GetSection("AiUsageLimits"));
         services.Configure<AiRateLimitOptions>(configuration.GetSection("AiRateLimits"));
