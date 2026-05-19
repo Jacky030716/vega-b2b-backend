@@ -23,6 +23,15 @@ public class AdaptiveTeacherEndpoints : ICarterModule
       .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
     app.MapEndpoint(builder => builder.MapGet(
+      $"{RoutePrefix}classes/{{classId:int}}/modules/{{moduleId:int}}/weakness-overview",
+      async (int classId, int moduleId, ISender sender, CancellationToken cancellationToken) =>
+      {
+        var result = await sender.Send(new GetModuleWeaknessOverviewQuery(classId, moduleId), cancellationToken);
+        return Results.Ok(result);
+      }), Version, "GetTeacherModuleWeaknessOverview", Tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapGet(
       $"{RoutePrefix}classes/{{classId:int}}/module-progress",
       async (int classId, ISender sender, CancellationToken cancellationToken) =>
       {

@@ -39,6 +39,15 @@ internal sealed class GetClassWeaknessOverviewQueryHandler(IAdaptiveAnalyticsSer
         => await adaptiveAnalyticsService.GetClassWeaknessOverviewAsync(request.ClassId, cancellationToken);
 }
 
+internal sealed class GetModuleWeaknessOverviewQueryHandler(IAdaptiveAnalyticsService adaptiveAnalyticsService)
+    : IRequestHandler<GetModuleWeaknessOverviewQuery, ModuleWeaknessOverviewDto>
+{
+    public async ValueTask<ModuleWeaknessOverviewDto> Handle(
+        GetModuleWeaknessOverviewQuery request,
+        CancellationToken cancellationToken)
+        => await adaptiveAnalyticsService.GetModuleWeaknessOverviewAsync(request.ClassId, request.ModuleId, cancellationToken);
+}
+
 internal sealed class GetClassModuleProgressQueryHandler(IAdaptiveAnalyticsService adaptiveAnalyticsService)
     : IRequestHandler<GetClassModuleProgressQuery, IReadOnlyList<ModuleProgressSummaryDto>>
 {

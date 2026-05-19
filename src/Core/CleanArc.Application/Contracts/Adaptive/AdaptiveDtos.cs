@@ -347,6 +347,13 @@ public record ClassWeaknessOverviewDto(
     int OverdueReviewCount,
     IReadOnlyList<StudentWordMasteryDto> WeakWords);
 
+public record ModuleWeaknessOverviewDto(
+    int ClassId,
+    int ModuleId,
+    int WeakWordCount,
+    int OverdueReviewCount,
+    IReadOnlyList<StudentWordMasteryDto> WeakWords);
+
 public record ModuleProgressDto(
     int ClassId,
     int ModuleId,
@@ -442,6 +449,7 @@ public record ModuleSummaryDto(
     string Subject,
     int YearLevel,
     int VocabularyCount,
+    int PracticedWordCount,
     int GeneratedChallengeCount,
     int ActiveChallengeCount,
     int ProgressPercent,

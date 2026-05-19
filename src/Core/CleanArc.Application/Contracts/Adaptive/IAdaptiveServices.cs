@@ -50,6 +50,7 @@ public interface IAdaptiveAnalyticsService
     Task<WeaknessSummaryDto> GetWeaknessSummaryAsync(int studentId, CancellationToken cancellationToken);
     Task<IReadOnlyList<AdaptiveRecommendationDto>> GetRecommendedNextChallengesAsync(int studentId, CancellationToken cancellationToken);
     Task<ClassWeaknessOverviewDto> GetClassWeaknessOverviewAsync(int classId, CancellationToken cancellationToken);
+    Task<ModuleWeaknessOverviewDto> GetModuleWeaknessOverviewAsync(int classId, int moduleId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ModuleProgressDto>> GetModuleProgressAsync(int classId, CancellationToken cancellationToken);
     Task<StudentPerformanceDto> GetStudentPerformanceAsync(int studentId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ModuleProgressSummaryDto>> GetModuleProgressSummaryAsync(int classId, CancellationToken cancellationToken);

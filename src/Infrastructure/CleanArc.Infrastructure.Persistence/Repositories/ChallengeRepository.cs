@@ -49,6 +49,15 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
         => await DbContext.Challenges.AsNoTracking()
             .CountAsync(c => c.CreatedById == teacherId);
 
+    public async Task<int> CountActiveModuleChallengesAsync(int classroomId, int moduleId)
+        => await DbContext.Challenges.AsNoTracking()
+            .Where(c => c.ClassroomId == classroomId
+                        && c.ModuleId == moduleId
+                        && (c.SourceType == null || c.SourceType != RecoverySourceType)
+                        && c.LifecycleState != ChallengeLifecycleState.Archived
+                        && c.Status != "archived")
+            .CountAsync();
+
     public async Task<Challenge> CreateChallengeAsync(Challenge challenge)
     {
         DbContext.Challenges.Add(challenge);

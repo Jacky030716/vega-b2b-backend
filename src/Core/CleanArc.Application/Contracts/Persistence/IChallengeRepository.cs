@@ -13,6 +13,7 @@ public interface IChallengeRepository
   Task<int> GetNextOrderIndexForGameAsync(int gameId);
   Task<Challenge?> GetChallengeByIdAsync(int challengeId);
   Task<int> CountChallengesCreatedByTeacherAsync(int teacherId);
+  Task<int> CountActiveModuleChallengesAsync(int classroomId, int moduleId);
   Task<Challenge> CreateChallengeAsync(Challenge challenge);
   Task UpdateChallengeAsync(Challenge challenge);
 

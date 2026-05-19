@@ -1,0 +1,359 @@
+{
+  "sourceType": "PREDEFINED_OFFICIAL_SEED",
+  "yearLevel": 1,
+  "subjects": [
+    {
+      "subject": "Bahasa Melayu",
+      "language": "ms",
+      "modules": [
+        {
+          "moduleCode": "BM-1-KELUARGA",
+          "unitNumber": 1,
+          "unitTitle": "Family Words",
+          "language": {
+            "primary": "ms",
+            "translations": ["zh", "en"]
+          },
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": { "ms": "ibu", "zh": "妈妈", "en": "mother" },
+              "syllables": ["i", "bu"],
+              "syllableText": "i/bu",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": { "ms": "bapa", "zh": "爸爸", "en": "father" },
+              "syllables": ["ba", "pa"],
+              "syllableText": "ba/pa",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": { "ms": "adik", "zh": "弟弟/妹妹", "en": "younger sibling" },
+              "syllables": ["a", "dik"],
+              "syllableText": "a/dik",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": { "ms": "abang", "zh": "哥哥", "en": "older brother" },
+              "syllables": ["a", "bang"],
+              "syllableText": "a/bang",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": { "ms": "kakak", "zh": "姐姐", "en": "older sister" },
+              "syllables": ["ka", "kak"],
+              "syllableText": "ka/kak",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": { "ms": "nenek", "zh": "奶奶/外婆", "en": "grandmother" },
+              "syllables": ["ne", "nek"],
+              "syllableText": "ne/nek",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": { "ms": "datuk", "zh": "爷爷/外公", "en": "grandfather" },
+              "syllables": ["da", "tuk"],
+              "syllableText": "da/tuk",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": { "ms": "keluarga", "zh": "家庭", "en": "family" },
+              "syllables": ["ke", "lu", "ar", "ga"],
+              "syllableText": "ke/lu/ar/ga",
+              "itemType": "WORD"
+            }
+          ]
+        },
+        {
+          "moduleCode": "BM-1-SEKOLAH",
+          "unitNumber": 2,
+          "unitTitle": "School Objects",
+          "language": {
+            "primary": "ms",
+            "translations": ["zh", "en"]
+          },
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": { "ms": "buku", "zh": "书", "en": "book" },
+              "syllables": ["bu", "ku"],
+              "syllableText": "bu/ku",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": { "ms": "pensel", "zh": "铅笔", "en": "pencil" },
+              "syllables": ["pen", "sel"],
+              "syllableText": "pen/sel",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": { "ms": "pemadam", "zh": "橡皮擦", "en": "eraser" },
+              "syllables": ["pe", "ma", "dam"],
+              "syllableText": "pe/ma/dam",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": { "ms": "beg", "zh": "书包", "en": "bag" },
+              "syllables": ["beg"],
+              "syllableText": "beg",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": { "ms": "meja", "zh": "桌子", "en": "table" },
+              "syllables": ["me", "ja"],
+              "syllableText": "me/ja",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": { "ms": "kerusi", "zh": "椅子", "en": "chair" },
+              "syllables": ["ke", "ru", "si"],
+              "syllableText": "ke/ru/si",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": { "ms": "papan", "zh": "板", "en": "board" },
+              "syllables": ["pa", "pan"],
+              "syllableText": "pa/pan",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": { "ms": "kelas", "zh": "班级", "en": "class" },
+              "syllables": ["ke", "las"],
+              "syllableText": "ke/las",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "English",
+      "language": "en",
+      "modules": [
+        {
+          "moduleCode": "EN-1-CLASSROOM-ACTIONS",
+          "unitNumber": 1,
+          "unitTitle": "Classroom Actions",
+          "language": {
+            "primary": "en",
+            "translations": ["ms", "zh"]
+          },
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": { "ms": "baca", "zh": "读", "en": "read" },
+              "syllables": ["read"],
+              "syllableText": "read",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": { "ms": "tulis", "zh": "写", "en": "write" },
+              "syllables": ["write"],
+              "syllableText": "write",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": { "ms": "dengar", "zh": "听", "en": "listen" },
+              "syllables": ["lis", "ten"],
+              "syllableText": "lis/ten",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": { "ms": "cakap", "zh": "说", "en": "speak" },
+              "syllables": ["speak"],
+              "syllableText": "speak",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": { "ms": "lihat", "zh": "看", "en": "look" },
+              "syllables": ["look"],
+              "syllableText": "look",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": { "ms": "buka", "zh": "打开", "en": "open" },
+              "syllables": ["o", "pen"],
+              "syllableText": "o/pen",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": { "ms": "tutup", "zh": "关上", "en": "close" },
+              "syllables": ["close"],
+              "syllableText": "close",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": { "ms": "warna", "zh": "涂色", "en": "colour" },
+              "syllables": ["col", "our"],
+              "syllableText": "col/our",
+              "itemType": "WORD"
+            }
+          ]
+        },
+        {
+          "moduleCode": "EN-1-ANIMALS",
+          "unitNumber": 2,
+          "unitTitle": "Animal Friends",
+          "language": {
+            "primary": "en",
+            "translations": ["ms", "zh"]
+          },
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": { "ms": "kucing", "zh": "猫", "en": "cat" },
+              "syllables": ["cat"],
+              "syllableText": "cat",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": { "ms": "anjing", "zh": "狗", "en": "dog" },
+              "syllables": ["dog"],
+              "syllableText": "dog",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": { "ms": "burung", "zh": "鸟", "en": "bird" },
+              "syllables": ["bird"],
+              "syllableText": "bird",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": { "ms": "ikan", "zh": "鱼", "en": "fish" },
+              "syllables": ["fish"],
+              "syllableText": "fish",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": { "ms": "itik", "zh": "鸭", "en": "duck" },
+              "syllables": ["duck"],
+              "syllableText": "duck",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": { "ms": "katak", "zh": "青蛙", "en": "frog" },
+              "syllables": ["frog"],
+              "syllableText": "frog",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": { "ms": "lembu", "zh": "牛", "en": "cow" },
+              "syllables": ["cow"],
+              "syllableText": "cow",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 8,
+              "text": { "ms": "kuda", "zh": "马", "en": "horse" },
+              "syllables": ["horse"],
+              "syllableText": "horse",
+              "itemType": "WORD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Mandarin",
+      "language": "zh",
+      "modules": [
+        {
+          "moduleCode": "ZH-1-NUMBERS-GREETINGS",
+          "unitNumber": 1,
+          "unitTitle": "Numbers and Greetings",
+          "language": {
+            "primary": "zh",
+            "translations": ["ms", "en"]
+          },
+          "items": [
+            {
+              "displayOrder": 1,
+              "text": { "ms": "satu", "zh": "一", "en": "one" },
+              "syllables": ["yi"],
+              "syllableText": "yi",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 2,
+              "text": { "ms": "dua", "zh": "二", "en": "two" },
+              "syllables": ["er"],
+              "syllableText": "er",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 3,
+              "text": { "ms": "tiga", "zh": "三", "en": "three" },
+              "syllables": ["san"],
+              "syllableText": "san",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 4,
+              "text": { "ms": "empat", "zh": "四", "en": "four" },
+              "syllables": ["si"],
+              "syllableText": "si",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 5,
+              "text": { "ms": "lima", "zh": "五", "en": "five" },
+              "syllables": ["wu"],
+              "syllableText": "wu",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 6,
+              "text": { "ms": "halo", "zh": "你好", "en": "hello" },
+              "syllables": ["ni", "hao"],
+              "syllableText": "ni/hao",
+              "itemType": "WORD"
+            },
+            {
+              "displayOrder": 7,
+              "text": { "ms": "terima kasih", "zh": "谢谢", "en": "thank you" },
+              "syllables": ["xie", "xie"],
+              "syllableText": "xie/xie",
+              "itemType": "PHRASE"
+            },
+            {
+              "displayOrder": 8,
+              "text": { "ms": "selamat tinggal", "zh": "再见", "en": "goodbye" },
+              "syllables": ["zai", "jian"],
+              "syllableText": "zai/jian",
+              "itemType": "PHRASE"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

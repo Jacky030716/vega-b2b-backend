@@ -51,6 +51,12 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork, IAiA
         moduleId.Value);
       if (!isAttached)
         return OperationResult<CreateChallengeDto>.FailureResult("Module is not attached to this classroom");
+
+      var existingCount = await unitOfWork.ChallengeRepository.CountActiveModuleChallengesAsync(
+        request.ClassroomId.Value,
+        moduleId.Value);
+      if (existingCount >= 3)
+        return OperationResult<CreateChallengeDto>.FailureResult("Each module can have up to 3 game challenges");
     }
 
     var challenge = await unitOfWork.ChallengeRepository.CreateChallengeAsync(new Challenge

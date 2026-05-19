@@ -19,6 +19,11 @@ public sealed record GetClassWeaknessOverviewQuery(
     int ClassId)
     : IRequest<ClassWeaknessOverviewDto>;
 
+public sealed record GetModuleWeaknessOverviewQuery(
+    int ClassId,
+    int ModuleId)
+    : IRequest<ModuleWeaknessOverviewDto>;
+
 public sealed record GetClassModuleProgressQuery(
     int ClassId)
     : IRequest<IReadOnlyList<ModuleProgressSummaryDto>>;

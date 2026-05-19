@@ -81,6 +81,38 @@ public class AdaptiveAnalyticsService(
         return new ClassWeaknessOverviewDto(classId, weak.Count, overdue, weak);
     }
 
+    public async Task<ModuleWeaknessOverviewDto> GetModuleWeaknessOverviewAsync(
+        int classId,
+        int moduleId,
+        CancellationToken cancellationToken)
+    {
+        var studentIds = await dbContext.ClassroomStudents.AsNoTracking()
+            .Where(cs => cs.ClassroomId == classId)
+            .Select(cs => cs.UserId)
+            .ToListAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
+        var weakRows = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Include(m => m.VocabularyItem)
+            .Where(m => studentIds.Contains(m.StudentId)
+                        && m.ModuleId == moduleId
+                        && m.MasteryScore < 65)
+            .OrderBy(m => m.MasteryScore)
+            .ThenBy(m => m.VocabularyItem.Word)
+            .Take(50)
+            .ToListAsync(cancellationToken);
+        var weak = weakRows.Select(m => MasteryEngine.ToDto(m, m.VocabularyItem.Word)).ToList();
+
+        var overdue = await dbContext.StudentWordMasteries.AsNoTracking()
+            .CountAsync(m => studentIds.Contains(m.StudentId)
+                             && m.ModuleId == moduleId
+                             && m.NextReviewAt != null
+                             && m.NextReviewAt <= now,
+                cancellationToken);
+
+        return new ModuleWeaknessOverviewDto(classId, moduleId, weak.Count, overdue, weak);
+    }
+
     public async Task<IReadOnlyList<ModuleProgressDto>> GetModuleProgressAsync(int classId, CancellationToken cancellationToken)
         => (await GetModuleProgressSummaryAsync(classId, cancellationToken))
             .Select(summary => new ModuleProgressDto(

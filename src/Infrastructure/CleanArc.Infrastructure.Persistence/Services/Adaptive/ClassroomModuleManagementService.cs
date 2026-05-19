@@ -24,6 +24,7 @@ public class ClassroomModuleManagementService(
         ChallengeLifecycleState.Scheduled
     };
     private const string RecoverySourceType = "RECOVERY_MISSION";
+    private const int MaxGameChallengesPerModule = 3;
 
     public async Task<ClassroomModuleOverviewDto> GetModuleOverviewAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
     {
@@ -102,11 +103,36 @@ public class ClassroomModuleManagementService(
             })
             .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
 
+        var practicedFromMastery = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => m.ModuleId != null && moduleIds.Contains(m.ModuleId.Value) && studentIds.Contains(m.StudentId))
+            .Select(m => new { ModuleId = m.ModuleId!.Value, m.VocabularyItemId })
+            .ToListAsync(cancellationToken);
+
+        var practicedFromItemAttempts = await dbContext.StudentChallengeItemAttempts.AsNoTracking()
+            .Where(item => item.VocabularyItemId != null
+                           && studentIds.Contains(item.StudentChallengeAttempt.StudentId)
+                           && item.VocabularyItem != null
+                           && moduleIds.Contains(item.VocabularyItem.ModuleId))
+            .Select(item => new
+            {
+                ModuleId = item.VocabularyItem!.ModuleId,
+                VocabularyItemId = item.VocabularyItemId!.Value
+            })
+            .ToListAsync(cancellationToken);
+
+        var practicedVocabularyCounts = practicedFromMastery
+            .Concat(practicedFromItemAttempts)
+            .GroupBy(item => item.ModuleId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(item => item.VocabularyItemId).Distinct().Count());
+
         var moduleDtos = modules.Select(module =>
         {
             challengeCounts.TryGetValue(module.Id, out var challengeCount);
             progress.TryGetValue(module.Id, out var moduleProgress);
             masteryStats.TryGetValue(module.Id, out var mastery);
+            var vocabularyCount = vocabularyCounts.GetValueOrDefault(module.Id);
             var generated = challengeCount?.Generated ?? 0;
             var progressPercent = moduleProgress?.Progress ?? 0;
             var weakWordCount = mastery?.Weak ?? 0;
@@ -116,7 +142,8 @@ public class ClassroomModuleManagementService(
                 module.UnitNumber,
                 module.Subject,
                 module.YearLevel,
-                vocabularyCounts.GetValueOrDefault(module.Id),
+                vocabularyCount,
+                practicedVocabularyCounts.GetValueOrDefault(module.Id),
                 generated,
                 challengeCount?.Active ?? 0,
                 progressPercent,
@@ -126,7 +153,9 @@ public class ClassroomModuleManagementService(
                 mastery?.AverageScore ?? 0,
                 challengeCount?.LastActivityAt,
                 ResolveModuleProgressStatus(generated, progressPercent, weakWordCount));
-        }).ToList();
+        })
+            .Where(module => module.VocabularyCount > 0)
+            .ToList();
 
         var subjectGroups = moduleDtos
             .GroupBy(m => m.Subject)
@@ -198,12 +227,16 @@ public class ClassroomModuleManagementService(
 
         await EnsureClassroomModuleLinksAsync(classroom, teacherId, cancellationToken);
         await EnsureModuleAttachedAsync(classroom.Id, moduleId, cancellationToken);
+        await EnsureModuleChallengeCapacityAsync(classroom.Id, module.Id, cancellationToken);
 
         var vocabulary = await dbContext.VocabularyItems.AsNoTracking()
             .Where(v => v.ModuleId == module.Id && v.IsActive)
             .OrderBy(v => v.DisplayOrder)
             .ThenBy(v => v.Word)
             .ToListAsync(cancellationToken);
+
+        if (vocabulary.Count == 0)
+            throw new InvalidOperationException("Module has no active vocabulary items.");
 
         var weakness = await GetModuleWeaknessAsync(classroom.Id, module.Id, cancellationToken);
         var moduleTitle = string.IsNullOrWhiteSpace(module.UnitTitle) ? module.Title : module.UnitTitle;
@@ -361,6 +394,8 @@ public class ClassroomModuleManagementService(
         if (words.Count == 0)
             throw new InvalidOperationException("At least one item is required");
 
+        await EnsureModuleChallengeCapacityAsync(GetCustomModuleClassroomId(customModule), customModule.Id, cancellationToken);
+
         var preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
             "class", null, GetCustomModuleClassroomId(customModule), "CUSTOM_MODULE", "manual_input", customModule.Id,
             request.GameType, "custom module", words, null, null), cancellationToken);
@@ -491,6 +526,20 @@ public class ClassroomModuleManagementService(
         }
     }
 
+    private async Task EnsureModuleChallengeCapacityAsync(int classroomId, int moduleId, CancellationToken cancellationToken)
+    {
+        var count = await dbContext.Challenges.AsNoTracking()
+            .Where(c => c.ClassroomId == classroomId
+                        && c.ModuleId == moduleId
+                        && (c.SourceType == null || c.SourceType != RecoverySourceType)
+                        && c.LifecycleState != ChallengeLifecycleState.Archived
+                        && c.Status != "archived")
+            .CountAsync(cancellationToken);
+
+        if (count >= MaxGameChallengesPerModule)
+            throw new InvalidOperationException("Each module can have up to 3 game challenges");
+    }
+
     private async Task<SyllabusModule> GetTeacherCustomModuleAsync(int customModuleId, int teacherId, CancellationToken cancellationToken, bool tracking = false)
     {
         var query = tracking ? dbContext.SyllabusModules : dbContext.SyllabusModules.AsNoTracking();
@@ -581,7 +630,8 @@ public class ClassroomModuleManagementService(
             .Where(module => module.IsActive
                              && module.ModuleType == SyllabusModule.PredefinedModuleType
                              && module.YearLevel == classroom.YearLevel
-                             && subjects.Contains(module.Subject))
+                             && subjects.Contains(module.Subject)
+                             && dbContext.VocabularyItems.Any(vocabulary => vocabulary.ModuleId == module.Id && vocabulary.IsActive))
             .Select(module => module.Id)
             .ToListAsync(cancellationToken);
 
