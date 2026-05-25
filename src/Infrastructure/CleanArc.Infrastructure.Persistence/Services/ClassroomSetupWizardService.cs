@@ -1,9 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using BCrypt.Net;
+using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Infrastructure;
 using CleanArc.Application.Models.Common;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.User;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +20,8 @@ public class ClassroomSetupWizardService(
     ApplicationDbContext dbContext,
     UserManager<User> userManager,
     IStudentImportService studentImportService,
-    IRosterPdfGenerator rosterPdfGenerator)
+    IRosterPdfGenerator rosterPdfGenerator,
+    IChallengeOrchestrator challengeOrchestrator)
     : IClassroomSetupWizardService
 {
   private static readonly Regex UnsafeUserNameChars = new("[^a-zA-Z0-9]", RegexOptions.Compiled);
@@ -23,17 +30,12 @@ public class ClassroomSetupWizardService(
       int teacherId,
       string className,
       string subject,
-      int challengeId,
+      string gameKey,
       string csvContent,
+      int yearLevel,
+      IReadOnlyList<string>? subjects,
       CancellationToken cancellationToken)
   {
-    var challenge = await dbContext.Challenges
-        .AsNoTracking()
-        .FirstOrDefaultAsync(c => c.Id == challengeId, cancellationToken);
-
-    if (challenge is null)
-      return OperationResult<SetupClassroomWizardResult>.NotFoundResult("Challenge template not found");
-
     var parsedStudents = studentImportService.ParseStudents(csvContent);
     if (parsedStudents.Count == 0)
       return OperationResult<SetupClassroomWizardResult>.FailureResult("CSV did not contain any valid student names");
@@ -42,11 +44,28 @@ public class ClassroomSetupWizardService(
 
     try
     {
+      var normalizedSubjects = (subjects ?? new List<string>())
+          .Where(s => !string.IsNullOrWhiteSpace(s))
+          .Select(s => s.Trim())
+          .Distinct(StringComparer.OrdinalIgnoreCase)
+          .ToList();
+
+      if (normalizedSubjects.Count == 0 && !string.IsNullOrWhiteSpace(subject))
+      {
+        normalizedSubjects.Add(subject.Trim());
+      }
+
+      if (normalizedSubjects.Count == 0)
+      {
+        normalizedSubjects.Add("General");
+      }
+
       var classroom = new Classroom
       {
         Name = className.Trim(),
         Description = "Created with Classroom Setup Wizard",
-        Subject = subject.Trim(),
+        Subject = normalizedSubjects[0],
+        YearLevel = yearLevel,
         Thumbnail = string.Empty,
         JoinCode = await GenerateUniqueJoinCodeAsync(cancellationToken),
         TeacherId = teacherId,
@@ -54,6 +73,55 @@ public class ClassroomSetupWizardService(
       };
 
       dbContext.Classrooms.Add(classroom);
+      await dbContext.SaveChangesAsync(cancellationToken);
+
+      foreach (var sub in normalizedSubjects)
+      {
+        dbContext.ClassroomSubjects.Add(new ClassroomSubject
+        {
+          ClassroomId = classroom.Id,
+          Subject = sub
+        });
+      }
+      await dbContext.SaveChangesAsync(cancellationToken);
+
+      var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
+          .Where(m => m.IsActive
+                      && m.ModuleType == SyllabusModule.PredefinedModuleType
+                      && m.YearLevel == classroom.YearLevel
+                      && normalizedSubjects.Contains(m.Subject))
+          .Select(m => m.Id)
+          .ToListAsync(cancellationToken);
+
+      foreach (var moduleId in matchingModuleIds)
+      {
+        dbContext.ClassroomModules.Add(new ClassroomModule
+        {
+          ClassroomId = classroom.Id,
+          ModuleId = moduleId
+        });
+      }
+
+      var customModule = new SyllabusModule
+      {
+        ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
+        Subject = classroom.Subject,
+        Language = "ms",
+        YearLevel = classroom.YearLevel,
+        Term = string.Empty,
+        UnitTitle = "Custom Module",
+        Title = "Custom Module",
+        Description = "Teacher-created learning module.",
+        ModuleType = SyllabusModule.CustomModuleType,
+        SourceType = "teacher_created",
+        CreatedByTeacherId = teacherId
+      };
+      dbContext.SyllabusModules.Add(customModule);
+      dbContext.ClassroomModules.Add(new ClassroomModule
+      {
+        ClassroomId = classroom.Id,
+        Module = customModule
+      });
       await dbContext.SaveChangesAsync(cancellationToken);
 
       var existingLoginCodeList = await dbContext.StudentCredentials
@@ -89,14 +157,60 @@ public class ClassroomSetupWizardService(
 
         rosterPreview.Add(new StudentCredentialPreview(student.StudentName, loginCode, student.VisualPassword));
       }
+      await dbContext.SaveChangesAsync(cancellationToken);
 
-      var trackedChallenge = await dbContext.Challenges.FirstOrDefaultAsync(c => c.Id == challengeId, cancellationToken);
-      if (trackedChallenge is not null)
+      var targetModuleId = matchingModuleIds.Count > 0 ? matchingModuleIds[0] : customModule.Id;
+
+      var vocabularyItems = await dbContext.VocabularyItems.AsNoTracking()
+          .Where(v => v.ModuleId == targetModuleId && v.IsActive)
+          .ToListAsync(cancellationToken);
+
+      var fallbackWords = new List<string> { "buku", "mata", "sekolah", "makan" };
+      if (classroom.Subject.ToLower().Contains("english"))
       {
-        trackedChallenge.ClassroomId = classroom.Id;
+        fallbackWords = new List<string> { "school", "pencil", "friend", "apple" };
       }
 
-      await dbContext.SaveChangesAsync(cancellationToken);
+      GeneratedAdaptiveChallengePreviewDto preview;
+      if (vocabularyItems.Count > 0)
+      {
+        preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
+            "class",
+            null,
+            classroom.Id,
+            "practice_words",
+            "PREDEFINED_MODULE",
+            targetModuleId,
+            gameKey,
+            "practice words",
+            null,
+            null,
+            null), cancellationToken);
+      }
+      else
+      {
+        preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
+            "class",
+            null,
+            classroom.Id,
+            "custom_challenge",
+            "manual_input",
+            targetModuleId,
+            gameKey,
+            "practice words",
+            fallbackWords,
+            null,
+            null), cancellationToken);
+      }
+
+      var assigned = await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
+          teacherId,
+          null,
+          classroom.Id,
+          null,
+          preview with { SourceType = "PREDEFINED_MODULE", ModuleId = targetModuleId },
+          classroom.Subject,
+          null), cancellationToken);
 
       var pdfBytes = await rosterPdfGenerator.GenerateRosterPdfAsync(classroom.Name, rosterPreview, cancellationToken);
       await transaction.CommitAsync(cancellationToken);
@@ -105,7 +219,7 @@ public class ClassroomSetupWizardService(
           classroom.Id,
           classroom.Name,
           classroom.JoinCode,
-          challengeId.ToString(),
+          assigned.ChallengeId.ToString(),
           $"{classroom.Name.Replace(' ', '_')}_login_badges.pdf",
           Convert.ToBase64String(pdfBytes),
           rosterPreview);

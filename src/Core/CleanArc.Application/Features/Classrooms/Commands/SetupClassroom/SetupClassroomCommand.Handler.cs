@@ -16,8 +16,10 @@ internal class SetupClassroomCommandHandler(
         request.TeacherId,
         request.ClassName,
         request.Subject,
-        request.ChallengeId,
+        request.GameKey,
         request.CsvContent,
+        request.YearLevel,
+        request.Subjects,
         cancellationToken);
   }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CleanArc.Application.Models.Common;
 
 namespace CleanArc.Application.Contracts.Infrastructure;
@@ -8,7 +9,9 @@ public interface IClassroomSetupWizardService
       int teacherId,
       string className,
       string subject,
-      int challengeId,
+      string gameKey,
       string csvContent,
+      int yearLevel,
+      IReadOnlyList<string>? subjects,
       CancellationToken cancellationToken);
 }

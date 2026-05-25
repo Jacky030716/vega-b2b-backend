@@ -1,3 +1,5 @@
+using System.IO;
+using System.Collections.Generic;
 using System.Security.Claims;
 using Carter;
 using CleanArc.Application.Features.Classrooms.Commands.SetupClassroom;
@@ -23,12 +25,26 @@ public class ClassroomSetupWizardEndpoints : ICarterModule
         CancellationToken cancellationToken) =>
     {
       var teacherId = int.Parse(user.Identity.GetUserId());
+
+      var csv = request.CsvContent;
+      if (request.CsvFile is not null && request.CsvFile.Length > 0)
+      {
+        using var reader = new StreamReader(request.CsvFile.OpenReadStream());
+        csv = await reader.ReadToEndAsync(cancellationToken);
+      }
+
+      var gameKey = request.GameKey ?? "spell_catcher";
+      var yearLevel = request.YearLevel ?? 1;
+      var subjects = request.Subjects ?? new List<string> { request.Subject };
+
       var result = await sender.Send(new SetupClassroomCommand(
           teacherId,
           request.ClassName,
           request.Subject,
-          request.ChallengeId,
-          request.CsvContent), cancellationToken);
+          gameKey,
+          csv,
+          yearLevel,
+          subjects), cancellationToken);
 
       return result.ToEndpointResult();
     }).DisableAntiforgery(), _version, "SetupClassroomWizard", _tag).RequireAuthorization();
