@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CleanArc.Web.Api.Controllers.V1.Admin;
 
 [ApiVersion("1")]
+[ApiVersion("1.1")]
 [ApiController]
 [Route("api/v{version:apiVersion}/admin/users")]
 [Authorize(Roles = "InstitutionAdmin,institutionadmin,Admin,admin")]

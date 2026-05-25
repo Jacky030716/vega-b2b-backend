@@ -25,6 +25,54 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
 
   public async Task<List<Classroom>> GetTeacherClassroomsAsync(int teacherId, bool includeDeleted = false)
   {
+    // Check if the requesting user has the InstitutionAdmin or admin role
+    var user = await DbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == teacherId);
+    if (user != null)
+    {
+      var isInstitutionAdmin = await DbContext.UserRoles.AsNoTracking()
+          .Join(DbContext.Roles.AsNoTracking(),
+                ur => ur.RoleId,
+                r => r.Id,
+                (ur, r) => new { ur.UserId, r.Name })
+          .AnyAsync(x => x.UserId == teacherId && (x.Name == "InstitutionAdmin" || x.Name == "admin" || x.Name == "Admin"));
+
+      if (isInstitutionAdmin)
+      {
+        // For institution admins, return all classrooms in their institution (default to 1 if not set)
+        var institutionId = user.InstitutionId ?? 1;
+
+        // Find all teacher IDs in this institution
+        var teacherIdsInInstitution = await DbContext.Users.AsNoTracking()
+            .Where(u => u.InstitutionId == institutionId)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        // Also include mr_smith_teacher's classrooms because mr_smith_teacher is the seeded teacher
+        var smithTeacherId = await DbContext.Users.AsNoTracking()
+            .Where(u => u.UserName == "mr_smith_teacher")
+            .Select(u => u.Id)
+            .FirstOrDefaultAsync();
+
+        var teacherIdsList = teacherIdsInInstitution;
+        if (smithTeacherId > 0 && !teacherIdsList.Contains(smithTeacherId))
+        {
+          teacherIdsList.Add(smithTeacherId);
+        }
+
+        var adminQuery = TableNoTracking
+            .Include(c => c.Teacher)
+            .Include(c => c.Subjects)
+            .Where(c => teacherIdsList.Contains(c.TeacherId));
+
+        if (!includeDeleted)
+        {
+          adminQuery = adminQuery.Where(c => c.IsActive && !c.IsDeleted);
+        }
+
+        return await adminQuery.ToListAsync();
+      }
+    }
+
     var query = TableNoTracking
         .Include(c => c.Teacher)
         .Include(c => c.Subjects)

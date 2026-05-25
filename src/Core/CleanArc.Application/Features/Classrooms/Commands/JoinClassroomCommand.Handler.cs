@@ -1,3 +1,4 @@
+using CleanArc.Application.Contracts.Identity;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Classroom;
@@ -8,10 +9,12 @@ namespace CleanArc.Application.Features.Classrooms.Commands;
 internal class JoinClassroomCommandHandler : IRequestHandler<JoinClassroomCommand, OperationResult<int>>
 {
   private readonly IUnitOfWork _unitOfWork;
+  private readonly IAppUserManager _userManager;
 
-  public JoinClassroomCommandHandler(IUnitOfWork unitOfWork)
+  public JoinClassroomCommandHandler(IUnitOfWork unitOfWork, IAppUserManager userManager)
   {
     _unitOfWork = unitOfWork;
+    _userManager = userManager;
   }
 
   public async ValueTask<OperationResult<int>> Handle(JoinClassroomCommand request, CancellationToken cancellationToken)
@@ -31,6 +34,25 @@ internal class JoinClassroomCommandHandler : IRequestHandler<JoinClassroomComman
       UserId = request.UserId,
       JoinedDate = DateTime.UtcNow
     });
+
+    // Automatically link student to teacher's institution
+    var teacher = await _userManager.GetUserByIdAsync(classroom.TeacherId);
+    if (teacher is not null && teacher.InstitutionId.HasValue)
+    {
+        var studentUser = await _userManager.GetUserByIdAsync(request.UserId);
+        if (studentUser is not null)
+        {
+            studentUser.InstitutionId = teacher.InstitutionId;
+            await _userManager.UpdateUserAsync(studentUser);
+        }
+
+        await _unitOfWork.InstitutionRepository.AssignUserToInstitutionAsync(
+            teacher.InstitutionId.Value,
+            request.UserId,
+            "Student access",
+            isPrimary: true,
+            cancellationToken);
+    }
 
     return OperationResult<int>.SuccessResult(classroom.Id);
   }

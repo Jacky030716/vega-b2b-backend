@@ -1,4 +1,4 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using CleanArc.Application.Features.Admin.Commands.AddAdminCommand;
 using CleanArc.Application.Features.Admin.Queries.GetToken;
 using CleanArc.WebFramework.BaseController;
@@ -22,7 +22,7 @@ namespace CleanArc.Web.Api.Controllers.V1.Admin
             return base.OperationResult(query);
         }
 
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "InstitutionAdmin")]
         [HttpPost("NewAdmin")]
         public async Task<IActionResult> AddNewAdmin(AddAdminCommand model)
         {

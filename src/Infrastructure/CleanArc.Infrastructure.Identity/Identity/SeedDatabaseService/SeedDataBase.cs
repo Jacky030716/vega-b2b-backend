@@ -76,52 +76,6 @@ public class SeedDataBase : ISeedDataBase
             };
             await _roleManager.CreateAsync(role);
         }
-
-        // Seed admin user
-        if (!_userManager.Users.AsNoTracking().Any(u => u.UserName.Equals("admin")))
-        {
-            var user = new User
-            {
-                UserName = "admin",
-                Email = "admin@site.com",
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true
-            };
-
-            await _userManager.CreateAsync(user, "qw123321");
-            await _userManager.AddToRoleAsync(user, "admin");
-        }
-
-        // Seed test teacher user
-        if (!_userManager.Users.AsNoTracking().Any(u => u.UserName.Equals("teacher_test")))
-        {
-            var user = new User
-            {
-                UserName = "teacher_test",
-                Email = "teacher@test.com",
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true
-            };
-
-            await _userManager.CreateAsync(user, "Teacher@123");
-            await _userManager.AddToRoleAsync(user, "teacher");
-        }
-
-        // Seed institution admin user
-        if (!_userManager.Users.AsNoTracking().Any(u => u.UserName.Equals("inst_admin")))
-        {
-            var user = new User
-            {
-                UserName = "inst_admin",
-                Email = "inst_admin@site.com",
-                EmailConfirmed = true,
-                PhoneNumberConfirmed = true
-            };
-
-            await _userManager.CreateAsync(user, "Admin@123");
-            await _userManager.AddToRoleAsync(user, "InstitutionAdmin");
-        }
-
         await SeedVegaAdminAsync();
 
     }
@@ -133,7 +87,85 @@ public class SeedDataBase : ISeedDataBase
             .FirstOrDefaultAsync();
 
         if (existingInstitution is null)
-            return;
+        {
+            existingInstitution = new Institution
+            {
+                Name = "Vega Academy",
+                MaxSeats = 1000,
+                SeatsUsed = 0,
+                RenewalDate = DateTime.UtcNow.AddYears(1),
+                SubscriptionTier = "premium",
+                StripeCustomerId = string.Empty
+            };
+            _dbContext.Institutions.Add(existingInstitution);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        // Link existing default users (admin, teacher_test, inst_admin) to this institution if they exist
+        var adminUser = await _userManager.Users.FirstOrDefaultAsync(u => u.UserName == "admin");
+        if (adminUser is not null && (!adminUser.InstitutionId.HasValue || adminUser.InstitutionId != existingInstitution.Id))
+        {
+            adminUser.InstitutionId = existingInstitution.Id;
+            await _userManager.UpdateAsync(adminUser);
+
+            var exists = await _dbContext.InstitutionUsers.AnyAsync(x => x.UserId == adminUser.Id && x.InstitutionId == existingInstitution.Id);
+            if (!exists)
+            {
+                _dbContext.InstitutionUsers.Add(new InstitutionUser
+                {
+                    InstitutionId = existingInstitution.Id,
+                    UserId = adminUser.Id,
+                    AccessScope = "Admin access",
+                    IsPrimary = true,
+                    IsActive = true,
+                    JoinedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        var teacherTestUser = await _userManager.Users.FirstOrDefaultAsync(u => u.UserName == "teacher_test");
+        if (teacherTestUser is not null && (!teacherTestUser.InstitutionId.HasValue || teacherTestUser.InstitutionId != existingInstitution.Id))
+        {
+            teacherTestUser.InstitutionId = existingInstitution.Id;
+            await _userManager.UpdateAsync(teacherTestUser);
+
+            var exists = await _dbContext.InstitutionUsers.AnyAsync(x => x.UserId == teacherTestUser.Id && x.InstitutionId == existingInstitution.Id);
+            if (!exists)
+            {
+                _dbContext.InstitutionUsers.Add(new InstitutionUser
+                {
+                    InstitutionId = existingInstitution.Id,
+                    UserId = teacherTestUser.Id,
+                    AccessScope = "Teacher access",
+                    IsPrimary = true,
+                    IsActive = true,
+                    JoinedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        var instAdminUser = await _userManager.Users.FirstOrDefaultAsync(u => u.UserName == "inst_admin");
+        if (instAdminUser is not null && (!instAdminUser.InstitutionId.HasValue || instAdminUser.InstitutionId != existingInstitution.Id))
+        {
+            instAdminUser.InstitutionId = existingInstitution.Id;
+            await _userManager.UpdateAsync(instAdminUser);
+
+            var exists = await _dbContext.InstitutionUsers.AnyAsync(x => x.UserId == instAdminUser.Id && x.InstitutionId == existingInstitution.Id);
+            if (!exists)
+            {
+                _dbContext.InstitutionUsers.Add(new InstitutionUser
+                {
+                    InstitutionId = existingInstitution.Id,
+                    UserId = instAdminUser.Id,
+                    AccessScope = "Admin access",
+                    IsPrimary = true,
+                    IsActive = true,
+                    JoinedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
 
         var user = await _userManager.Users
             .FirstOrDefaultAsync(u => u.UserName == "VegaAdmin");
@@ -186,6 +218,41 @@ public class SeedDataBase : ISeedDataBase
         {
             membership.IsActive = true;
             membership.LeftAt = null;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        // Link existing students in classrooms to their teacher's institution
+        var classroomStudents = await _dbContext.ClassroomStudents
+            .Include(cs => cs.Classroom)
+            .ToListAsync();
+
+        foreach (var cs in classroomStudents)
+        {
+            var teacher = await _userManager.FindByIdAsync(cs.Classroom.TeacherId.ToString());
+            if (teacher is not null && teacher.InstitutionId.HasValue)
+            {
+                var studentUser = await _userManager.FindByIdAsync(cs.UserId.ToString());
+                if (studentUser is not null && (!studentUser.InstitutionId.HasValue || studentUser.InstitutionId != teacher.InstitutionId))
+                {
+                    studentUser.InstitutionId = teacher.InstitutionId;
+                    await _userManager.UpdateAsync(studentUser);
+                }
+
+                var exists = await _dbContext.InstitutionUsers.AnyAsync(x => x.UserId == cs.UserId && x.InstitutionId == teacher.InstitutionId.Value);
+                if (!exists)
+                {
+                    _dbContext.InstitutionUsers.Add(new InstitutionUser
+                    {
+                        InstitutionId = teacher.InstitutionId.Value,
+                        UserId = cs.UserId,
+                        AccessScope = "Student access",
+                        IsPrimary = true,
+                        IsActive = true,
+                        JoinedAt = DateTime.UtcNow
+                    });
+                }
+            }
         }
 
         await _dbContext.SaveChangesAsync();

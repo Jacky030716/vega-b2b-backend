@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Identity.Identity.Manager;
 using Microsoft.AspNetCore.Identity;
@@ -21,6 +21,11 @@ public class AppUserClaimsPrincipleFactory:UserClaimsPrincipalFactory<User,Role>
         //claimsIdentity.AddClaim(new Claim(ClaimTypes.Email,user?.Email));
         // claimsIdentity.AddClaim(new Claim(ClaimTypes.MobilePhone,user.PhoneNumber));
         claimsIdentity.AddClaim(new Claim(ClaimTypes.UserData,user.GeneratedCode));
+
+        if (user.InstitutionId.HasValue)
+        {
+            claimsIdentity.AddClaim(new Claim("InstitutionId", user.InstitutionId.Value.ToString()));
+        }
 
         foreach (var roles in userRoles)
         {

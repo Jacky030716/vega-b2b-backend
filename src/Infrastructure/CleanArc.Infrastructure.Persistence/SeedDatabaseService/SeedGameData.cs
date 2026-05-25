@@ -386,7 +386,8 @@ public class SeedGameData : ISeedGameData
                 Experience = 5000,
                 Diamonds = 100,
                 AvatarId = "0",
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                InstitutionId = 1
             };
 
             // Note: Normally users are seeded via SeedDefaultUsersAsync, but if they don't exist, add the teacher
@@ -395,10 +396,71 @@ public class SeedGameData : ISeedGameData
             {
                 _dbContext.Users.Add(testTeacher);
                 await _dbContext.SaveChangesAsync();
+
+                var teacherRole = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == "teacher");
+                if (teacherRole != null)
+                {
+                    _dbContext.UserRoles.Add(new UserRole
+                    {
+                        UserId = testTeacher.Id,
+                        RoleId = teacherRole.Id
+                    });
+                }
+
+                _dbContext.InstitutionUsers.Add(new CleanArc.Domain.Entities.Institution.InstitutionUser
+                {
+                    InstitutionId = 1,
+                    UserId = testTeacher.Id,
+                    AccessScope = "Teacher access",
+                    IsPrimary = false,
+                    IsActive = true,
+                    JoinedAt = DateTime.UtcNow
+                });
+
+                await _dbContext.SaveChangesAsync();
             }
             else
             {
                 testTeacher = existingTeacher;
+
+                var updated = false;
+                if (!testTeacher.InstitutionId.HasValue || testTeacher.InstitutionId != 1)
+                {
+                    testTeacher.InstitutionId = 1;
+                    _dbContext.Users.Update(testTeacher);
+                    updated = true;
+                }
+
+                var teacherRole = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == "teacher");
+                if (teacherRole != null && !await _dbContext.UserRoles.AnyAsync(ur => ur.UserId == testTeacher.Id && ur.RoleId == teacherRole.Id))
+                {
+                    _dbContext.UserRoles.Add(new UserRole
+                    {
+                        UserId = testTeacher.Id,
+                        RoleId = teacherRole.Id
+                    });
+                    updated = true;
+                }
+
+                var existsMembership = await _dbContext.InstitutionUsers.AnyAsync(iu => iu.UserId == testTeacher.Id && iu.InstitutionId == 1);
+                if (!existsMembership)
+                {
+                    _dbContext.InstitutionUsers.Add(new CleanArc.Domain.Entities.Institution.InstitutionUser
+                    {
+                        InstitutionId = 1,
+                        UserId = testTeacher.Id,
+                        AccessScope = "Teacher access",
+                        IsPrimary = false,
+                        IsActive = true,
+                        JoinedAt = DateTime.UtcNow
+                    });
+                    updated = true;
+                }
+
+                if (updated)
+                {
+                    await _dbContext.SaveChangesAsync();
+                }
             }
 
             // Create classrooms with join codes
