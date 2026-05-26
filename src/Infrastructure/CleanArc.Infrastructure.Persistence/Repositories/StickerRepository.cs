@@ -69,6 +69,15 @@ internal class StickerRepository(ApplicationDbContext dbContext) : IStickerRepos
       .ToListAsync(cancellationToken);
   }
 
+  public Task<List<StickerGiftTransaction>> GetGiftTransactionsByRecipientAsync(int recipientUserId, CancellationToken cancellationToken)
+  {
+    return dbContext.StickerGiftTransactions
+      .AsNoTracking()
+      .Include(g => g.SenderUser)
+      .Where(g => g.RecipientUserId == recipientUserId)
+      .ToListAsync(cancellationToken);
+  }
+
   public async Task AddGiftAsync(StickerGiftTransaction gift, CancellationToken cancellationToken)
   {
     await dbContext.StickerGiftTransactions.AddAsync(gift, cancellationToken);

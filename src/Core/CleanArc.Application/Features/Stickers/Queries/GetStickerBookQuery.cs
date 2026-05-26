@@ -15,4 +15,5 @@ public record StickerBookItemDto(
   string OwnershipSource,
   int? SourceStickerId,
   string? GenerationModel,
-  DateTime CreatedAtUtc);
+  DateTime CreatedAtUtc,
+  string? GifterName = null);

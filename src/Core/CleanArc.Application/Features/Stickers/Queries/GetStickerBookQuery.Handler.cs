@@ -17,9 +17,36 @@ internal class GetStickerBookQueryHandler : IRequestHandler<GetStickerBookQuery,
   public async ValueTask<OperationResult<StickerBookResult>> Handle(GetStickerBookQuery request, CancellationToken cancellationToken)
   {
     var stickers = await _unitOfWork.StickerRepository.GetInventoryByOwnerAsync(request.UserId, cancellationToken);
+    var giftTransactions = await _unitOfWork.StickerRepository.GetGiftTransactionsByRecipientAsync(request.UserId, cancellationToken);
+
+    var pendingStickerIds = giftTransactions
+      .Where(g => g.Status == StickerGiftStatus.PendingClaim)
+      .Select(g => g.RecipientStickerId)
+      .ToHashSet();
+
+    var claimedGiftsLookup = giftTransactions
+      .Where(g => g.Status == StickerGiftStatus.Claimed)
+      .ToDictionary(g => g.RecipientStickerId, g => g.SenderUser);
 
     var mapped = stickers
-      .Select(MapToDto)
+      .Where(s => !pendingStickerIds.Contains(s.Id))
+      .Select(s => {
+        string? gifterName = null;
+        if (claimedGiftsLookup.TryGetValue(s.Id, out var senderUser) && senderUser != null)
+        {
+          gifterName = string.IsNullOrEmpty(senderUser.FamilyName) 
+            ? senderUser.Name 
+            : $"{senderUser.Name} {senderUser.FamilyName}".Trim();
+        }
+        return new StickerBookItemDto(
+          s.Id,
+          s.ImageUrl,
+          s.OwnershipSource.ToString(),
+          s.SourceStickerId,
+          s.GenerationModel,
+          s.CreatedTime,
+          gifterName);
+      })
       .ToList();
 
     var myCreations = mapped
@@ -31,16 +58,5 @@ internal class GetStickerBookQueryHandler : IRequestHandler<GetStickerBookQuery,
       .ToList();
 
     return OperationResult<StickerBookResult>.SuccessResult(new StickerBookResult(myCreations, giftedByFriends));
-  }
-
-  private static StickerBookItemDto MapToDto(StickerInventoryItem sticker)
-  {
-    return new StickerBookItemDto(
-      sticker.Id,
-      sticker.ImageUrl,
-      sticker.OwnershipSource.ToString(),
-      sticker.SourceStickerId,
-      sticker.GenerationModel,
-      sticker.CreatedTime);
   }
 }

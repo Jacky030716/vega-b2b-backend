@@ -17,5 +17,6 @@ public interface IStickerRepository
 
   Task<StickerGiftTransaction?> GetGiftByIdAsync(int giftId, CancellationToken cancellationToken);
   Task<List<StickerGiftTransaction>> GetUnclaimedGiftsByRecipientAsync(int recipientUserId, CancellationToken cancellationToken);
+  Task<List<StickerGiftTransaction>> GetGiftTransactionsByRecipientAsync(int recipientUserId, CancellationToken cancellationToken);
   Task AddGiftAsync(StickerGiftTransaction gift, CancellationToken cancellationToken);
 }
