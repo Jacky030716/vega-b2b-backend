@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Stop Backend",
+			"type": "shell",
+			"command": "Get-Process dotnet -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host 'Backend stopped'",
+			"group": "build"
+		}
+	]
+}

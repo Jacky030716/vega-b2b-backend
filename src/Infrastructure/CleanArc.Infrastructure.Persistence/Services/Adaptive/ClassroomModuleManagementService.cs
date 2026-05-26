@@ -26,9 +26,9 @@ public class ClassroomModuleManagementService(
     private const string RecoverySourceType = "RECOVERY_MISSION";
     private const int MaxGameChallengesPerModule = 3;
 
-    public async Task<ClassroomModuleOverviewDto> GetModuleOverviewAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
+    public async Task<ClassroomModuleOverviewDto> GetModuleOverviewAsync(int classroomId, int teacherId, CancellationToken cancellationToken, bool isAdmin = false)
     {
-        var classroom = await GetTeacherClassroomAsync(classroomId, teacherId, cancellationToken);
+        var classroom = await GetTeacherClassroomAsync(classroomId, teacherId, cancellationToken, isAdmin);
         await EnsureClassroomModuleLinksAsync(classroom, teacherId, cancellationToken);
         var customModule = await EnsureCustomModuleAsync(classroom, teacherId, cancellationToken);
         var studentCount = await dbContext.ClassroomStudents.CountAsync(s => s.ClassroomId == classroomId, cancellationToken);
@@ -449,11 +449,11 @@ public class ClassroomModuleManagementService(
         return true;
     }
 
-    private async Task<Classroom> GetTeacherClassroomAsync(int classroomId, int teacherId, CancellationToken cancellationToken)
+    private async Task<Classroom> GetTeacherClassroomAsync(int classroomId, int teacherId, CancellationToken cancellationToken, bool isAdmin = false)
     {
         var classroom = await dbContext.Classrooms.FirstOrDefaultAsync(c => c.Id == classroomId && c.IsActive && !c.IsDeleted, cancellationToken)
             ?? throw new InvalidOperationException("Classroom not found");
-        if (classroom.TeacherId != teacherId)
+        if (!isAdmin && classroom.TeacherId != teacherId)
             throw new UnauthorizedAccessException("You do not manage this classroom");
         return classroom;
     }

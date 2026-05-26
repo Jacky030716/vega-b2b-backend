@@ -201,7 +201,8 @@ public class ClassroomEndpoints : ICarterModule
       try
       {
         var teacherId = int.Parse(user.Identity.GetUserId());
-        var result = await service.GetModuleOverviewAsync(classroomId, teacherId, cancellationToken);
+        var isAdmin = user.IsInRole("admin") || user.IsInRole("Admin") || user.IsInRole("InstitutionAdmin");
+        var result = await service.GetModuleOverviewAsync(classroomId, teacherId, cancellationToken, isAdmin);
         return Results.Ok(result);
       }
       catch (UnauthorizedAccessException ex)
@@ -213,7 +214,7 @@ public class ClassroomEndpoints : ICarterModule
         return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
       }
     }), _version, "GetClassroomModuleOverview", _tag)
-    .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+    .RequireAuthorization();
 
     app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId:int}}/progress/consistency", async (
         int classroomId,
