@@ -40,9 +40,7 @@ public sealed class BillingEndpoints : ICarterModule
                     userId,
                     request.SuccessUrl,
                     request.CancelUrl,
-                    request.Amount ?? 299m,
-                    request.Currency ?? "MYR",
-                    request.PlanId ?? "standard-demo"), ct);
+                    request.PlanId ?? SubscriptionPlanCatalog.DefaultPlanId), ct);
                 return result.ToEndpointResult();
             }), Version, "CreateAdminBillingCheckoutSession", Tag)
             .RequireAuthorization(b => b.RequireRole(AdminRoles.Split(',')));
@@ -59,8 +57,7 @@ public sealed class BillingEndpoints : ICarterModule
                 var result = await sender.Send(new CreateMockWalletPaymentCommand(
                     userId,
                     request.PaymentMethod,
-                    request.Amount ?? 299m,
-                    request.Currency ?? "MYR"), ct);
+                    request.PlanId ?? SubscriptionPlanCatalog.DefaultPlanId), ct);
                 return result.ToEndpointResult();
             }), Version, "CreateAdminMockWalletPayment", Tag)
             .RequireAuthorization(b => b.RequireRole(AdminRoles.Split(',')));
@@ -83,12 +80,9 @@ public sealed class BillingEndpoints : ICarterModule
     public sealed record CreateCheckoutSessionRequest(
         string SuccessUrl,
         string CancelUrl,
-        decimal? Amount,
-        string? Currency,
         string? PlanId);
 
     public sealed record MockWalletPaymentRequest(
         string PaymentMethod,
-        decimal? Amount,
-        string? Currency);
+        string? PlanId);
 }

@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 
 using CleanArc.Application.Contracts.Infrastructure.Billing;
 using CleanArc.Application.Features.Admin.Billing;
@@ -22,9 +22,7 @@ internal sealed class StripeBillingPaymentService(
         int userId,
         string successUrl,
         string cancelUrl,
-        decimal amount,
-        string currency,
-        string planId,
+        SubscriptionPlanDto plan,
         CancellationToken cancellationToken = default)
     {
         var secretKey = configuration["STRIPE_SECRET_KEY"];
@@ -47,7 +45,8 @@ internal sealed class StripeBillingPaymentService(
             account = new BillingAccount
             {
                 InstitutionId = institution.Id,
-                PlanId = planId,
+                PlanId = plan.Id,
+                ActivePlanId = SubscriptionPlanCatalog.ForExistingSubscription(null, institution.SubscriptionTier).Id,
                 Status = BillingStatus.None,
             };
             dbContext.BillingAccounts.Add(account);
@@ -72,18 +71,12 @@ internal sealed class StripeBillingPaymentService(
             institution.StripeCustomerId = customerId;
         }
 
-        var normalizedCurrency = string.IsNullOrWhiteSpace(currency)
-            ? "MYR"
-            : currency.Trim().ToLowerInvariant();
-        var normalizedAmount = amount <= 0 ? 299m : amount;
-        var unitAmount = decimal.ToInt64(decimal.Round(normalizedAmount * 100m, 0));
-
         var session = await new SessionService().CreateAsync(
             new SessionCreateOptions
             {
                 Mode = "payment",
                 Customer = customerId,
-                PaymentMethodTypes = ["card"],
+                PaymentMethodTypes = ["card", "fpx", "grabpay"],
                 SuccessUrl = successUrl,
                 CancelUrl = cancelUrl,
                 LineItems =
@@ -93,11 +86,11 @@ internal sealed class StripeBillingPaymentService(
                         Quantity = 1,
                         PriceData = new SessionLineItemPriceDataOptions
                         {
-                            Currency = normalizedCurrency,
-                            UnitAmount = unitAmount,
+                            Currency = plan.Currency.ToLowerInvariant(),
+                            UnitAmount = decimal.ToInt64(plan.Amount),
                             ProductData = new SessionLineItemPriceDataProductDataOptions
                             {
-                                Name = $"Vega {institution.SubscriptionTier ?? "Standard"} demo subscription",
+                                Name = $"Vega {plan.Name} subscription ({plan.BillingInterval})",
                             },
                         },
                     },
@@ -105,7 +98,7 @@ internal sealed class StripeBillingPaymentService(
                 Metadata = new Dictionary<string, string>
                 {
                     ["institutionId"] = institution.Id.ToString(),
-                    ["planId"] = planId,
+                    ["planId"] = plan.Id,
                     ["isDemo"] = "true",
                 },
             },
@@ -116,14 +109,15 @@ internal sealed class StripeBillingPaymentService(
             InstitutionId = institution.Id,
             Provider = Provider,
             PaymentMethod = "card",
-            Amount = normalizedAmount,
-            Currency = normalizedCurrency.ToUpperInvariant(),
+            PlanId = plan.Id,
+            Amount = plan.Amount,
+            Currency = plan.Currency,
             Status = BillingStatus.Pending,
             StripeCheckoutSessionId = session.Id,
             IsDemo = false,
         };
 
-        account.PlanId = planId;
+        account.PlanId = plan.Id;
         account.Status = BillingStatus.Pending;
         dbContext.PaymentTransactions.Add(transaction);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -243,7 +237,14 @@ internal sealed class StripeBillingPaymentService(
         var account = await dbContext.BillingAccounts
             .FirstOrDefaultAsync(x => x.InstitutionId == transaction.InstitutionId, cancellationToken);
         if (account is not null)
+        {
             account.Status = status;
+            if (status == BillingStatus.Succeeded)
+            {
+                account.ActivePlanId = transaction.PlanId;
+                await ApplySuccessfulPlanAsync(transaction.InstitutionId, transaction.PlanId, cancellationToken);
+            }
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -266,8 +267,35 @@ internal sealed class StripeBillingPaymentService(
         var account = await dbContext.BillingAccounts
             .FirstOrDefaultAsync(x => x.InstitutionId == transaction.InstitutionId, cancellationToken);
         if (account is not null)
+        {
             account.Status = status;
+            if (status == BillingStatus.Succeeded)
+            {
+                account.ActivePlanId = transaction.PlanId;
+                await ApplySuccessfulPlanAsync(transaction.InstitutionId, transaction.PlanId, cancellationToken);
+            }
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task ApplySuccessfulPlanAsync(
+        int institutionId,
+        string planId,
+        CancellationToken cancellationToken)
+    {
+        var plan = SubscriptionPlanCatalog.Find(planId);
+        if (plan is null)
+            return;
+
+        var institution = await dbContext.Institutions
+            .FirstOrDefaultAsync(x => x.Id == institutionId, cancellationToken);
+        if (institution is null)
+            return;
+
+        institution.SubscriptionTier = plan.Name;
+        institution.RenewalDate = plan.BillingInterval == "annual"
+            ? DateTime.UtcNow.AddYears(1)
+            : DateTime.UtcNow.AddMonths(1);
     }
 }

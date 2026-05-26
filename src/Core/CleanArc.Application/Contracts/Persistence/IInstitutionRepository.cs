@@ -14,4 +14,9 @@ public interface IInstitutionRepository
         bool isPrimary = true,
         CancellationToken cancellationToken = default);
     Task<bool> IsActiveInstitutionUserAsync(int institutionId, int userId, CancellationToken cancellationToken = default);
+    Task UpdateSubscriptionAsync(
+        int institutionId,
+        string subscriptionTier,
+        DateTime renewalDate,
+        CancellationToken cancellationToken = default);
 }

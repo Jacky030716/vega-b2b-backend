@@ -15,6 +15,7 @@ public class PaymentTransactionConfiguration : IEntityTypeConfiguration<PaymentT
         builder.Property(x => x.InstitutionId).HasColumnName("institution_id").IsRequired();
         builder.Property(x => x.Provider).HasColumnName("provider").HasMaxLength(40).IsRequired();
         builder.Property(x => x.PaymentMethod).HasColumnName("payment_method").HasMaxLength(80).IsRequired();
+        builder.Property(x => x.PlanId).HasColumnName("plan_id").HasMaxLength(80).HasDefaultValue("standard-monthly").IsRequired();
         builder.Property(x => x.Amount).HasColumnName("amount").HasPrecision(10, 2).IsRequired();
         builder.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(40).IsRequired();

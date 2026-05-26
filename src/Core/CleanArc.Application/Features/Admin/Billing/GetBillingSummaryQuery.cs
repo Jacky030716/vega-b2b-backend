@@ -41,22 +41,30 @@ internal sealed class GetBillingSummaryQueryHandler(
         var savedPaymentMethod = transactions
             .FirstOrDefault(x => x.Status is BillingStatus.Succeeded or BillingStatus.DemoSucceeded)
             ?.PaymentMethod;
+        var activePlan = SubscriptionPlanCatalog.ForExistingSubscription(
+            billingAccount?.ActivePlanId,
+            institution.SubscriptionTier);
+        var selectedPlan = SubscriptionPlanCatalog.ForExistingSubscription(
+            billingAccount?.PlanId,
+            institution.SubscriptionTier);
 
         var dto = new BillingSummaryDto(
-            CurrentPlan: string.IsNullOrWhiteSpace(institution.SubscriptionTier)
-                ? "Standard"
-                : institution.SubscriptionTier,
-            PlanId: billingAccount?.PlanId ?? "standard-demo",
+            CurrentPlan: activePlan.Name,
+            CurrentPlanId: activePlan.Id,
+            SelectedPlanId: selectedPlan.Id,
+            BillingInterval: activePlan.BillingInterval,
             RenewalDate: institution.RenewalDate,
             PaymentStatus: latestStatus,
             SavedPaymentMethod: savedPaymentMethod,
-            DemoAmount: 299m,
-            Currency: "MYR",
+            Amount: activePlan.Amount,
+            Currency: activePlan.Currency,
+            AvailablePlans: SubscriptionPlanCatalog.Plans,
             PaymentMethods: GetPaymentMethods(),
             Transactions: transactions.Select(x => new PaymentTransactionDto(
                 x.Id,
                 x.Provider,
                 x.PaymentMethod,
+                x.PlanId,
                 x.Amount,
                 x.Currency,
                 x.Status,
@@ -70,7 +78,7 @@ internal sealed class GetBillingSummaryQueryHandler(
     [
         new("card", "Credit / debit card", "credit-card", "Available", "Stripe Test Mode", "Use Stripe test cards for demo checkout."),
         new("wallet", "Apple Pay / Google Pay", "cellphone-nfc", "Demo Mode", "Stripe Wallet", "Wallet visibility depends on Stripe Checkout and device setup."),
-        new("touch-n-go", "Touch 'n Go eWallet", "wallet", "Demo Mode", "Demo Wallet", "Demo e-wallet option for Malaysian payment flow."),
-        new("grabpay", "GrabPay", "wallet-outline", "Demo Mode", "Demo Wallet", "Demo wallet option for presentation checkout."),
+        new("fpx", "FPX Online Banking", "bank", "Available", "Stripe Test Mode", "Malaysian online banking (test mode) to support local payment routing."),
+        new("grabpay", "GrabPay", "wallet-outline", "Available", "Stripe Test Mode", "GrabPay wallet (test mode) to support local mobile e-wallet payments."),
     ];
 }

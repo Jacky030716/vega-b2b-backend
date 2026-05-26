@@ -8,8 +8,7 @@ namespace CleanArc.Application.Features.Admin.Billing;
 public sealed record CreateMockWalletPaymentCommand(
     int UserId,
     string PaymentMethod,
-    decimal Amount = 299m,
-    string Currency = "MYR") : IRequest<OperationResult<PaymentTransactionDto>>;
+    string PlanId = SubscriptionPlanCatalog.DefaultPlanId) : IRequest<OperationResult<PaymentTransactionDto>>;
 
 internal sealed class CreateMockWalletPaymentCommandHandler(
     IUnitOfWork unitOfWork,
@@ -25,6 +24,13 @@ internal sealed class CreateMockWalletPaymentCommandHandler(
         {
             return OperationResult<PaymentTransactionDto>.FailureResult(
                 "Unsupported demo wallet payment method.");
+        }
+
+        var plan = SubscriptionPlanCatalog.Find(request.PlanId);
+        if (plan is null)
+        {
+            return OperationResult<PaymentTransactionDto>.FailureResult(
+                "The selected subscription plan is not available.");
         }
 
         var membership = await unitOfWork.InstitutionRepository.GetPrimaryInstitutionForUserAsync(
@@ -46,13 +52,16 @@ internal sealed class CreateMockWalletPaymentCommandHandler(
             account = new BillingAccount
             {
                 InstitutionId = institution.Id,
-                PlanId = "standard-demo",
+                PlanId = plan.Id,
+                ActivePlanId = plan.Id,
                 Status = BillingStatus.DemoSucceeded,
             };
             await billingRepository.AddBillingAccountAsync(account, cancellationToken);
         }
         else
         {
+            account.PlanId = plan.Id;
+            account.ActivePlanId = plan.Id;
             account.Status = BillingStatus.DemoSucceeded;
         }
 
@@ -61,21 +70,26 @@ internal sealed class CreateMockWalletPaymentCommandHandler(
             InstitutionId = institution.Id,
             Provider = "demo-wallet",
             PaymentMethod = method,
-            Amount = request.Amount <= 0 ? 299m : request.Amount,
-            Currency = string.IsNullOrWhiteSpace(request.Currency)
-                ? "MYR"
-                : request.Currency.Trim().ToUpperInvariant(),
+            PlanId = plan.Id,
+            Amount = plan.Amount,
+            Currency = plan.Currency,
             Status = BillingStatus.DemoSucceeded,
             IsDemo = true,
         };
 
         await billingRepository.AddPaymentTransactionAsync(transaction, cancellationToken);
+        await unitOfWork.InstitutionRepository.UpdateSubscriptionAsync(
+            institution.Id,
+            plan.Name,
+            plan.BillingInterval == "annual" ? DateTime.UtcNow.AddYears(1) : DateTime.UtcNow.AddMonths(1),
+            cancellationToken);
         await unitOfWork.CommitAsync();
 
         return OperationResult<PaymentTransactionDto>.SuccessResult(new PaymentTransactionDto(
             transaction.Id,
             transaction.Provider,
             transaction.PaymentMethod,
+            transaction.PlanId,
             transaction.Amount,
             transaction.Currency,
             transaction.Status,

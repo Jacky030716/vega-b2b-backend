@@ -146,4 +146,20 @@ internal class InstitutionRepository(ApplicationDbContext dbContext) : BaseAsync
                 m => m.InstitutionId == institutionId && m.UserId == userId && m.IsActive,
                 cancellationToken);
     }
+
+    public async Task UpdateSubscriptionAsync(
+        int institutionId,
+        string subscriptionTier,
+        DateTime renewalDate,
+        CancellationToken cancellationToken = default)
+    {
+        var institution = await DbContext.Institutions
+            .FirstOrDefaultAsync(x => x.Id == institutionId, cancellationToken);
+        if (institution is null)
+            return;
+
+        institution.SubscriptionTier = subscriptionTier;
+        institution.RenewalDate = renewalDate;
+        await DbContext.SaveChangesAsync(cancellationToken);
+    }
 }

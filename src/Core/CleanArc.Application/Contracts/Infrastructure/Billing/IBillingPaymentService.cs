@@ -9,9 +9,7 @@ public interface IBillingPaymentService
         int userId,
         string successUrl,
         string cancelUrl,
-        decimal amount,
-        string currency,
-        string planId,
+        SubscriptionPlanDto plan,
         CancellationToken cancellationToken = default);
 
     Task<OperationResult<bool>> ProcessStripeWebhookAsync(

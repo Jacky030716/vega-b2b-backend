@@ -14,7 +14,8 @@ public class BillingAccountConfiguration : IEntityTypeConfiguration<BillingAccou
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.InstitutionId).HasColumnName("institution_id").IsRequired();
         builder.Property(x => x.StripeCustomerId).HasColumnName("stripe_customer_id").HasMaxLength(160);
-        builder.Property(x => x.PlanId).HasColumnName("plan_id").HasMaxLength(80).HasDefaultValue("standard-demo");
+        builder.Property(x => x.PlanId).HasColumnName("plan_id").HasMaxLength(80).HasDefaultValue("standard-monthly");
+        builder.Property(x => x.ActivePlanId).HasColumnName("active_plan_id").HasMaxLength(80).HasDefaultValue("standard-monthly");
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(40).HasDefaultValue("NONE");
         builder.Property(x => x.CreatedTime).HasColumnName("created_at");
         builder.Property(x => x.ModifiedDate).HasColumnName("updated_at");

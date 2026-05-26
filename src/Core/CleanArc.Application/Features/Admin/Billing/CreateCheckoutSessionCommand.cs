@@ -8,9 +8,7 @@ public sealed record CreateCheckoutSessionCommand(
     int UserId,
     string SuccessUrl,
     string CancelUrl,
-    decimal Amount = 299m,
-    string Currency = "MYR",
-    string PlanId = "standard-demo") : IRequest<OperationResult<CheckoutSessionDto>>;
+    string PlanId = SubscriptionPlanCatalog.DefaultPlanId) : IRequest<OperationResult<CheckoutSessionDto>>;
 
 internal sealed class CreateCheckoutSessionCommandHandler(IBillingPaymentService billingPaymentService)
     : IRequestHandler<CreateCheckoutSessionCommand, OperationResult<CheckoutSessionDto>>
@@ -25,14 +23,19 @@ internal sealed class CreateCheckoutSessionCommandHandler(IBillingPaymentService
                 OperationResult<CheckoutSessionDto>.FailureResult("Checkout return URLs are required."));
         }
 
+        var plan = SubscriptionPlanCatalog.Find(request.PlanId);
+        if (plan is null)
+        {
+            return ValueTask.FromResult(
+                OperationResult<CheckoutSessionDto>.FailureResult("The selected subscription plan is not available."));
+        }
+
         return new ValueTask<OperationResult<CheckoutSessionDto>>(
             billingPaymentService.CreateCheckoutSessionAsync(
                 request.UserId,
                 request.SuccessUrl.Trim(),
                 request.CancelUrl.Trim(),
-                request.Amount <= 0 ? 299m : request.Amount,
-                string.IsNullOrWhiteSpace(request.Currency) ? "MYR" : request.Currency.Trim().ToUpperInvariant(),
-                string.IsNullOrWhiteSpace(request.PlanId) ? "standard-demo" : request.PlanId.Trim(),
+                plan,
                 cancellationToken));
     }
 }
