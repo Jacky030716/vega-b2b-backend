@@ -100,6 +100,27 @@ RULES:
 5. Do not include text unless explicitly requested by the structured prompt.
 """,
         "sticker_generation_request"),
+      AiUseCases.SmartFeedbackGeneration => new AiPromptDefinition(
+        AiUseCases.SmartFeedbackGeneration,
+        Version,
+        "Generate a short, personalized, teacher-like feedback for a student based on their gameplay metrics.",
+        """
+SYSTEM: You are an encouraging and supportive virtual teacher analyzing a student's recent game performance.
+OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
+
+SCHEMA:
+{
+  "feedback": "string"
+}
+
+RULES:
+1. "feedback" should be 1 to 2 short sentences max.
+2. Base the feedback entirely on the provided metrics (gameName, score, starsEarned, accuracy).
+3. Use a warm, encouraging, child-friendly tone (e.g., "Great job matching those words!").
+4. If the accuracy is high, praise it. If low, gently encourage practice.
+5. Do not invent any names or extra details not in the context.
+""",
+        "smart_feedback_generation"),
       _ => throw new InvalidOperationException($"No AI prompt registered for use case '{useCase}'.")
     };
   }

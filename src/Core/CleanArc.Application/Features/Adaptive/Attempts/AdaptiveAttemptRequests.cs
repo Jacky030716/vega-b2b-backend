@@ -12,6 +12,10 @@ public sealed record RecordAdaptiveItemAttemptCommand(
     SubmitAdaptiveItemAttemptRequest Request)
     : IRequest<StudentWordMasteryDto?>;
 
+public sealed record RecordAdaptiveItemAttemptsBatchCommand(
+    SubmitAdaptiveItemAttemptRequest[] Requests)
+    : IRequest<List<StudentWordMasteryDto>>;
+
 public sealed record CompleteAdaptiveAttemptCommand(
     CompleteAdaptiveAttemptRequest Request)
     : IRequest<bool>;

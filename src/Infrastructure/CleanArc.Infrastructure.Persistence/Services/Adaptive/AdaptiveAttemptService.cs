@@ -97,6 +97,63 @@ public class AdaptiveAttemptService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<List<StudentWordMasteryDto>> RecordBatchAsync(
+        SubmitAdaptiveItemAttemptRequest[] requests,
+        CancellationToken cancellationToken)
+    {
+        if (requests == null || requests.Length == 0)
+        {
+            return new List<StudentWordMasteryDto>();
+        }
+
+        var masteries = new List<StudentWordMasteryDto>();
+        var itemAttempts = new List<StudentChallengeItemAttempt>();
+
+        foreach (var request in requests)
+        {
+            var itemAttempt = new StudentChallengeItemAttempt
+            {
+                StudentChallengeAttemptId = request.StudentChallengeAttemptId,
+                ChallengeItemId = request.ChallengeItemId,
+                VocabularyItemId = request.VocabularyItemId,
+                GameTemplateId = request.GameTemplateId,
+                PresentedAt = request.PresentedAt ?? DateTime.UtcNow,
+                AnsweredAt = request.AnsweredAt ?? DateTime.UtcNow,
+                ResponseTimeMs = request.ResponseTimeMs,
+                WasCorrect = request.WasCorrect,
+                FirstAttemptCorrect = request.FirstAttemptCorrect,
+                RetriesCount = Math.Max(0, request.RetriesCount),
+                HintsUsed = Math.Max(0, request.HintsUsed),
+                AnswerText = request.AnswerText,
+                ExpectedAnswerText = request.ExpectedAnswerText,
+                SpeechConfidence = request.SpeechConfidence,
+                ErrorType = request.ErrorType,
+                RawTelemetryJson = string.IsNullOrWhiteSpace(request.RawTelemetryJson) ? "{}" : request.RawTelemetryJson
+            };
+
+            itemAttempts.Add(itemAttempt);
+        }
+
+        dbContext.StudentChallengeItemAttempts.AddRange(itemAttempts);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        for (int i = 0; i < requests.Length; i++)
+        {
+            var request = requests[i];
+            var itemAttempt = itemAttempts[i];
+
+            var mastery = await masteryEngine.ApplyItemAttemptAsync(request, cancellationToken);
+            if (mastery != null)
+            {
+                masteries.Add(mastery);
+            }
+
+            await LogErrorPatternAsync(request, itemAttempt.Id, cancellationToken);
+        }
+
+        return masteries;
+    }
+
     private async Task LogErrorPatternAsync(
         SubmitAdaptiveItemAttemptRequest request,
         int itemAttemptId,

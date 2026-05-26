@@ -31,6 +31,7 @@ public static class AiUseCases
   public const string AdminAuditor = "ADMIN_AUDITOR";
   public const string StickerGeneration = "STICKER_GENERATION";
   public const string ClassroomThumbnailGeneration = "CLASSROOM_THUMBNAIL_GENERATION";
+  public const string SmartFeedbackGeneration = "SMART_FEEDBACK_GENERATION";
 }
 
 public static class AiGenerationStatuses

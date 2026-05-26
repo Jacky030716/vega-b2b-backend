@@ -10,6 +10,7 @@ public static class AiFeatureTypes
   public const string RecoveryMissionPreview = "RECOVERY_MISSION_PREVIEW";
   public const string AdminAuditor = "ADMIN_AUDITOR";
   public const string StickerGeneration = "STICKER_GENERATION";
+  public const string SmartFeedbackGeneration = "SMART_FEEDBACK_GENERATION";
 }
 
 public record AiQuotaResult(int MonthlyLimit, int Used, int Remaining);

@@ -24,6 +24,15 @@ internal sealed class RecordAdaptiveItemAttemptCommandHandler(IAdaptiveAttemptSe
         => await adaptiveAttemptService.RecordItemAsync(request.Request, cancellationToken);
 }
 
+internal sealed class RecordAdaptiveItemAttemptsBatchCommandHandler(IAdaptiveAttemptService adaptiveAttemptService)
+    : IRequestHandler<RecordAdaptiveItemAttemptsBatchCommand, List<StudentWordMasteryDto>>
+{
+    public async ValueTask<List<StudentWordMasteryDto>> Handle(
+        RecordAdaptiveItemAttemptsBatchCommand request,
+        CancellationToken cancellationToken)
+        => await adaptiveAttemptService.RecordBatchAsync(request.Requests, cancellationToken);
+}
+
 internal sealed class CompleteAdaptiveAttemptCommandHandler(IAdaptiveAttemptService adaptiveAttemptService)
     : IRequestHandler<CompleteAdaptiveAttemptCommand, bool>
 {

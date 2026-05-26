@@ -43,6 +43,14 @@ public class AttemptTrackingEndpoints : ICarterModule
       }), Version, "RecordAdaptiveItemAttempt", Tag).RequireAuthorization();
 
     app.MapEndpoint(builder => builder.MapPost(
+      $"{RoutePrefix}attempts/batch",
+      async ([FromBody] SubmitAdaptiveItemAttemptRequest[] requests, ISender sender, CancellationToken cancellationToken) =>
+      {
+        var result = await sender.Send(new RecordAdaptiveItemAttemptsBatchCommand(requests), cancellationToken);
+        return Results.Ok(result);
+      }), Version, "RecordAdaptiveItemAttemptsBatch", Tag).RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapPost(
       $"{RoutePrefix}attempts/complete",
       async ([FromBody] CompleteAdaptiveAttemptRequest request, ISender sender, CancellationToken cancellationToken) =>
       {

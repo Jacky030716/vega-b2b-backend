@@ -41,6 +41,7 @@ public interface IAdaptiveAttemptService
 {
     Task<StartAdaptiveAttemptDto> StartAsync(StartAdaptiveAttemptRequest request, int authenticatedStudentId, CancellationToken cancellationToken);
     Task<StudentWordMasteryDto?> RecordItemAsync(SubmitAdaptiveItemAttemptRequest request, CancellationToken cancellationToken);
+    Task<List<StudentWordMasteryDto>> RecordBatchAsync(SubmitAdaptiveItemAttemptRequest[] requests, CancellationToken cancellationToken);
     Task CompleteAsync(CompleteAdaptiveAttemptRequest request, CancellationToken cancellationToken);
 }
 
