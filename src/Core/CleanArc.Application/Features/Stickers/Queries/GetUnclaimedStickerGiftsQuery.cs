@@ -8,6 +8,7 @@ public record GetUnclaimedStickerGiftsQuery(int UserId) : IRequest<OperationResu
 public record UnclaimedStickerGiftDto(
   int GiftId,
   int SenderUserId,
+  string SenderName,
   int SourceStickerId,
   int RecipientStickerId,
   string StickerImageUrl,

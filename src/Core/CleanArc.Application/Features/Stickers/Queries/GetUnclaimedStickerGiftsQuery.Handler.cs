@@ -20,13 +20,22 @@ internal class GetUnclaimedStickerGiftsQueryHandler : IRequestHandler<GetUnclaim
     var gifts = await _unitOfWork.StickerRepository.GetUnclaimedGiftsByRecipientAsync(request.UserId, cancellationToken);
 
     var result = gifts
-      .Select(g => new UnclaimedStickerGiftDto(
-        g.Id,
-        g.SenderUserId,
-        g.SourceStickerId,
-        g.RecipientStickerId,
-        g.SourceSticker.ImageUrl,
-        g.CreatedTime))
+      .Select(g => {
+        var senderName = g.SenderUser == null 
+          ? "Friend" 
+          : (string.IsNullOrEmpty(g.SenderUser.FamilyName) 
+            ? g.SenderUser.Name 
+            : $"{g.SenderUser.Name} {g.SenderUser.FamilyName}".Trim());
+
+        return new UnclaimedStickerGiftDto(
+          g.Id,
+          g.SenderUserId,
+          senderName,
+          g.SourceStickerId,
+          g.RecipientStickerId,
+          g.SourceSticker.ImageUrl,
+          g.CreatedTime);
+      })
       .ToList();
 
     return OperationResult<List<UnclaimedStickerGiftDto>>.SuccessResult(result);

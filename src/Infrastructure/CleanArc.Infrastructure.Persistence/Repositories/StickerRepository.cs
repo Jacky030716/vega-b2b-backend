@@ -64,6 +64,7 @@ internal class StickerRepository(ApplicationDbContext dbContext) : IStickerRepos
     return dbContext.StickerGiftTransactions
       .AsNoTracking()
       .Include(g => g.SourceSticker)
+      .Include(g => g.SenderUser)
       .Where(g => g.RecipientUserId == recipientUserId && g.Status == StickerGiftStatus.PendingClaim)
       .OrderByDescending(g => g.CreatedTime)
       .ToListAsync(cancellationToken);
