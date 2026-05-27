@@ -4,17 +4,20 @@ using System.Text.Json;
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Models.Common;
 using CleanArc.Infrastructure.Persistence.Settings;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace CleanArc.Infrastructure.Persistence.Services.AI;
 
 public sealed class GoogleAiService(
   HttpClient httpClient,
-  IOptions<GoogleAiOptions> options)
+  IOptions<GoogleAiOptions> options,
+  ILogger<GoogleAiService> logger)
   : IAiGenerationService
 {
   private readonly HttpClient _httpClient = httpClient;
   private readonly GoogleAiOptions _options = options.Value;
+  private readonly ILogger<GoogleAiService> _logger = logger;
 
   public async Task<OperationResult<ChallengeGenerationResult>> GenerateJsonAsync(
     ChallengeGenerationRequest request,
@@ -36,8 +39,21 @@ public sealed class GoogleAiService(
         "Google AI model id is not configured.");
     }
 
-    var endpoint =
-      $"models/{Uri.EscapeDataString(modelId)}:generateContent?key={Uri.EscapeDataString(_options.ApiKey)}";
+    var result = await TryGenerateWithModelAsync(modelId, request);
+    if (!result.IsSuccess)
+    {
+      _logger.LogWarning("Google AI generation with model {ModelId} failed. Retrying with fallback model gemini-3.5-flash. Error: {Error}", modelId, result.ErrorMessage);
+      result = await TryGenerateWithModelAsync("gemini-3.5-flash", request);
+    }
+
+    return result;
+  }
+
+  private async Task<OperationResult<ChallengeGenerationResult>> TryGenerateWithModelAsync(
+    string modelId,
+    ChallengeGenerationRequest request)
+  {
+    var endpoint = $"models/{Uri.EscapeDataString(modelId)}:generateContent";
 
     var payload = new
     {
@@ -66,7 +82,13 @@ public sealed class GoogleAiService(
       // which would abort the in-flight Google AI call. AI generation can take 30-60s.
       using var aiTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(120));
 
-      using var response = await _httpClient.PostAsJsonAsync(endpoint, payload, aiTimeout.Token);
+      using var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+      {
+        Content = JsonContent.Create(payload)
+      };
+      requestMessage.Headers.Add("x-goog-api-key", _options.ApiKey);
+
+      using var response = await _httpClient.SendAsync(requestMessage, aiTimeout.Token);
       var body = await response.Content.ReadAsStringAsync(aiTimeout.Token);
 
       if (!response.IsSuccessStatusCode)

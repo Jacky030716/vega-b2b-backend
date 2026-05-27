@@ -13,9 +13,13 @@ internal static class DopplerConfigurationExtensions
     AddIfPresent(overrides, "FIREBASE_STORAGE_BUCKET", "FirebaseStorageOptions:BucketName");
     AddIfPresent(overrides, "FIREBASE_SERVICE_ACCOUNT_JSON", "FirebaseStorageOptions:ServiceAccountJson");
 
+    AddIfPresent(overrides, "POSTGRES_CONNECTION_STRING", "ConnectionStrings:PostgreSQL");
+    AddIfPresent(overrides, "IDENTITY_SECRET_KEY", "IdentitySettings:SecretKey");
+    AddIfPresent(overrides, "IDENTITY_ENCRYPT_KEY", "IdentitySettings:Encryptkey");
+
+    AddIfPresent(overrides, "GOOGLE_AI_API_KEY", "GoogleAiOptions:ApiKey");
     AddIfPresent(overrides, "GEMINI_API_KEY", "GoogleAiOptions:ApiKey");
     AddIfPresent(overrides, "GEMINI_API_KEY", "GoogleImageAiOptions:ApiKey");
-    AddIfPresent(overrides, "GOOGLE_AI_API_KEY", "GoogleAiOptions:ApiKey");
 
     AddIfPresent(overrides, "HUGGING_FACE_API_KEY", "HuggingFaceStickerOptions:ApiToken");
     AddIfPresent(overrides, "HUGGINGFACE_STICKER_API_TOKEN", "HuggingFaceStickerOptions:ApiToken");

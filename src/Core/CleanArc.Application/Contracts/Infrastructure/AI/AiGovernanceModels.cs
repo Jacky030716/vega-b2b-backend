@@ -11,6 +11,7 @@ public static class AiFeatureTypes
   public const string AdminAuditor = "ADMIN_AUDITOR";
   public const string StickerGeneration = "STICKER_GENERATION";
   public const string SmartFeedbackGeneration = "SMART_FEEDBACK_GENERATION";
+  public const string WeeklyReportGeneration = "WEEKLY_REPORT_GENERATION";
 }
 
 public record AiQuotaResult(int MonthlyLimit, int Used, int Remaining);

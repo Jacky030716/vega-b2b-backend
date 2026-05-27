@@ -143,5 +143,4 @@ public static class ServiceCollectionExtensions
 
         await seedGameData.Seed();
     }
-
 }
