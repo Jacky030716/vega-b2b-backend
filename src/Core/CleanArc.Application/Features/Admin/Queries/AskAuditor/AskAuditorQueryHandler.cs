@@ -28,6 +28,11 @@ internal sealed class AskAuditorQueryHandler(
         if (institution == null)
             return OperationResult<AskAuditorResult>.FailureResult("Institution not found.");
 
+        if (!string.Equals(institution.SubscriptionTier, "Premium", StringComparison.OrdinalIgnoreCase))
+        {
+            return OperationResult<AskAuditorResult>.FailureResult("AI Diagnostic Auditing is only available to institutions on the Premium plan. Please upgrade your subscription to unlock this feature.");
+        }
+
         var users = await institutionUserReportRepository.GetUsersAsync(
             new InstitutionUserReportFilter(
                 InstitutionId: request.InstitutionId,

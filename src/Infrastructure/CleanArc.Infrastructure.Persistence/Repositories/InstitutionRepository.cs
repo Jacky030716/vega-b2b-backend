@@ -160,6 +160,7 @@ internal class InstitutionRepository(ApplicationDbContext dbContext) : BaseAsync
 
         institution.SubscriptionTier = subscriptionTier;
         institution.RenewalDate = renewalDate;
+        institution.MaxSeats = string.Equals(subscriptionTier, "Premium", StringComparison.OrdinalIgnoreCase) ? 1000 : 250;
         await DbContext.SaveChangesAsync(cancellationToken);
     }
 }

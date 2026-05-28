@@ -11,6 +11,19 @@ namespace CleanArc.Infrastructure.Persistence.Repositories;
 
 internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRepository<Classroom>(dbContext), IClassroomRepository
 {
+  public async Task<int> GetInstitutionClassroomsCountAsync(int institutionId, CancellationToken cancellationToken = default)
+  {
+    return await DbContext.Classrooms
+        .AsNoTracking()
+        .Where(c => !c.IsDeleted && c.IsActive)
+        .Join(DbContext.Users,
+            c => c.TeacherId,
+            u => u.Id,
+            (c, u) => new { Classroom = c, User = u })
+        .Where(x => x.User.InstitutionId == institutionId)
+        .CountAsync(cancellationToken);
+  }
+
   public async Task<List<Classroom>> GetStudentClassroomsAsync(int userId)
   {
     return await DbContext.ClassroomStudents.AsNoTracking()

@@ -194,6 +194,66 @@ internal sealed class StripeBillingPaymentService(
         return OperationResult<bool>.SuccessResult(true);
     }
 
+    public async Task<OperationResult<bool>> SyncPendingTransactionsAsync(
+        int institutionId,
+        CancellationToken cancellationToken = default)
+    {
+        var secretKey = configuration["STRIPE_SECRET_KEY"];
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            return OperationResult<bool>.SuccessResult(false);
+        }
+
+        StripeConfiguration.ApiKey = secretKey;
+
+        var pendingTransactions = await dbContext.PaymentTransactions
+            .Where(x => x.InstitutionId == institutionId 
+                        && x.Status == BillingStatus.Pending 
+                        && x.Provider == Provider
+                        && !string.IsNullOrEmpty(x.StripeCheckoutSessionId))
+            .ToListAsync(cancellationToken);
+
+        if (pendingTransactions.Count == 0)
+        {
+            return OperationResult<bool>.SuccessResult(true);
+        }
+
+        var sessionService = new SessionService();
+        var changesMade = false;
+
+        foreach (var transaction in pendingTransactions)
+        {
+            try
+            {
+                var session = await sessionService.GetAsync(transaction.StripeCheckoutSessionId, cancellationToken: cancellationToken);
+                if (session.Status == "complete" || session.PaymentStatus == "paid")
+                {
+                    await UpdateSessionAsync(
+                        session.Id,
+                        session.PaymentIntentId,
+                        BillingStatus.Succeeded,
+                        cancellationToken);
+                    changesMade = true;
+                }
+                else if (session.Status == "expired")
+                {
+                    await UpdateSessionAsync(
+                        session.Id,
+                        session.PaymentIntentId,
+                        BillingStatus.Failed,
+                        cancellationToken);
+                    changesMade = true;
+                }
+            }
+            catch (System.Exception)
+            {
+                // Continue to other transactions if one fails
+            }
+        }
+
+        return OperationResult<bool>.SuccessResult(changesMade);
+    }
+
     private async Task<CleanArc.Domain.Entities.Institution.Institution?> ResolveInstitutionAsync(
         int userId,
         CancellationToken cancellationToken)
@@ -297,5 +357,6 @@ internal sealed class StripeBillingPaymentService(
         institution.RenewalDate = plan.BillingInterval == "annual"
             ? DateTime.UtcNow.AddYears(1)
             : DateTime.UtcNow.AddMonths(1);
+        institution.MaxSeats = string.Equals(plan.Name, "Premium", StringComparison.OrdinalIgnoreCase) ? 1000 : 250;
     }
 }

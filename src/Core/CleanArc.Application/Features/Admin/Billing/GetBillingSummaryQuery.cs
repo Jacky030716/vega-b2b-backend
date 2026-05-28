@@ -1,4 +1,5 @@
 using CleanArc.Application.Contracts.Persistence;
+using CleanArc.Application.Contracts.Infrastructure.Billing;
 using CleanArc.Application.Models.Common;
 using Mediator;
 
@@ -8,7 +9,8 @@ public sealed record GetBillingSummaryQuery(int UserId) : IRequest<OperationResu
 
 internal sealed class GetBillingSummaryQueryHandler(
     IUnitOfWork unitOfWork,
-    IBillingRepository billingRepository)
+    IBillingRepository billingRepository,
+    IBillingPaymentService billingPaymentService)
     : IRequestHandler<GetBillingSummaryQuery, OperationResult<BillingSummaryDto>>
 {
     public async ValueTask<OperationResult<BillingSummaryDto>> Handle(
@@ -25,6 +27,16 @@ internal sealed class GetBillingSummaryQueryHandler(
 
         if (institution is null)
             return OperationResult<BillingSummaryDto>.NotFoundResult("Institution not found.");
+
+        // Sync pending transactions from Stripe before retrieving summary
+        try
+        {
+            await billingPaymentService.SyncPendingTransactionsAsync(institution.Id, cancellationToken);
+        }
+        catch (System.Exception)
+        {
+            // Fail-safe to ensure query still succeeds if Stripe API is down
+        }
 
         var billingAccount = await billingRepository.GetBillingAccountAsync(
             institution.Id,

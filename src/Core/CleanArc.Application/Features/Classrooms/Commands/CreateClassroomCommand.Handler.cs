@@ -21,6 +21,27 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
       return OperationResult<int>.FailureResult("Classroom name is required");
     }
 
+    var membership = await _unitOfWork.InstitutionRepository.GetPrimaryInstitutionForUserAsync(request.TeacherId, cancellationToken);
+    if (membership is null)
+    {
+      return OperationResult<int>.FailureResult("Teacher does not belong to any active institution.");
+    }
+
+    var institution = membership.Institution;
+    if (institution is null)
+    {
+      institution = await _unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(membership.InstitutionId);
+    }
+
+    if (institution is not null && !string.Equals(institution.SubscriptionTier, "Premium", StringComparison.OrdinalIgnoreCase))
+    {
+      var currentClassroomsCount = await _unitOfWork.ClassroomRepository.GetInstitutionClassroomsCountAsync(institution.Id, cancellationToken);
+      if (currentClassroomsCount >= 10)
+      {
+        return OperationResult<int>.FailureResult("Your institution has reached the maximum limit of 10 classrooms allowed on the Standard plan. Please upgrade your subscription to create more.");
+      }
+    }
+
     if (request.YearLevel is < 1 or > 6)
     {
       return OperationResult<int>.FailureResult("Year level must be between 1 and 6");

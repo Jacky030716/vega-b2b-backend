@@ -101,6 +101,37 @@ public class SeedDataBase : ISeedDataBase
             await _dbContext.SaveChangesAsync();
         }
 
+        var billingAccount = await _dbContext.BillingAccounts
+            .FirstOrDefaultAsync(x => x.InstitutionId == existingInstitution.Id);
+
+        if (billingAccount is null)
+        {
+            billingAccount = new CleanArc.Domain.Entities.Billing.BillingAccount
+            {
+                InstitutionId = existingInstitution.Id,
+                PlanId = "premium-annual",
+                ActivePlanId = "premium-annual",
+                Status = "DEMO_SUCCEEDED",
+                StripeCustomerId = string.Empty
+            };
+            _dbContext.BillingAccounts.Add(billingAccount);
+
+            var transaction = new CleanArc.Domain.Entities.Billing.PaymentTransaction
+            {
+                InstitutionId = existingInstitution.Id,
+                Provider = "demo-wallet",
+                PaymentMethod = "touch-n-go",
+                PlanId = "premium-annual",
+                Amount = 29900m,
+                Currency = "MYR",
+                Status = "DEMO_SUCCEEDED",
+                IsDemo = true,
+                CreatedTime = DateTime.UtcNow.AddDays(-37)
+            };
+            _dbContext.PaymentTransactions.Add(transaction);
+            await _dbContext.SaveChangesAsync();
+        }
+
         // Link existing default users (admin, teacher_test, inst_admin) to this institution if they exist
         var adminUser = await _userManager.Users.FirstOrDefaultAsync(u => u.UserName == "admin");
         if (adminUser is not null && (!adminUser.InstitutionId.HasValue || adminUser.InstitutionId != existingInstitution.Id))

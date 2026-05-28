@@ -20,6 +20,7 @@ public interface IClassroomRepository
   Task ArchiveClassroomAsync(Classroom classroom, int deletedBy);
   Task DeleteClassroomAsync(int classroomId);
   Task<bool> HasModulesOrChallengesAsync(int classroomId);
+  Task<int> GetInstitutionClassroomsCountAsync(int institutionId, CancellationToken cancellationToken = default);
 
 
   // Students
