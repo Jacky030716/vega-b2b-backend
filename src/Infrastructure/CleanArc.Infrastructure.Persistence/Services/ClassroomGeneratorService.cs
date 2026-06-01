@@ -71,17 +71,19 @@ public class ClassroomGeneratorService : IClassroomGeneratorService
                 });
 
                 var loginCode = random.Next(1000, 9999).ToString();
+                var visualPassword = CleanArc.Application.Common.VisualPasswordHelper.GenerateVisualPassword();
+                var visualPasswordHash = CleanArc.Application.Common.VisualPasswordHelper.HashPassword(visualPassword, loginCode);
 
                 _dbContext.StudentCredentials.Add(new StudentCredential
                 {
                     UserId = user.Id,
                     ClassroomId = classroom.Id,
                     StudentLoginCode = loginCode,
-                    VisualPasswordHash = "DEFAULT" // required by existing DB constraints
+                    VisualPasswordHash = visualPasswordHash
                 });
 
                 var qrCodeBase64 = GenerateQRCode(loginCode);
-                credentials.Add(new StudentCredentialRecord(studentName, loginCode, qrCodeBase64));
+                credentials.Add(new StudentCredentialRecord(studentName, loginCode, visualPassword, qrCodeBase64));
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -146,6 +148,7 @@ public class ClassroomGeneratorService : IClassroomGeneratorService
                                 {
                                     col.Item().Text(student.Name).Bold().FontSize(14).AlignCenter();
                                     col.Item().Text($"Code: {student.Code}").FontSize(12).AlignCenter();
+                                    col.Item().Text($"Visual: {student.VisualPassword}").FontSize(10).AlignCenter();
 
                                     var imageBytes = Convert.FromBase64String(student.QrBase64);
                                     col.Item().Height(100).Image(imageBytes).FitArea();
@@ -158,4 +161,4 @@ public class ClassroomGeneratorService : IClassroomGeneratorService
     }
 }
 
-public record StudentCredentialRecord(string Name, string Code, string QrBase64);
+public record StudentCredentialRecord(string Name, string Code, string VisualPassword, string QrBase64);

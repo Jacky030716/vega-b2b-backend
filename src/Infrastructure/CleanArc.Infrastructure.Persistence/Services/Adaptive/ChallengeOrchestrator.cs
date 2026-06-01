@@ -99,7 +99,8 @@ public class ChallengeOrchestrator(
                 item.SyllablePoolJson,
                 item.DistractorsJson,
                 item.CorrectOrderJson,
-                item.SpellCatcherSpecJson
+                item.SpellCatcherSpecJson,
+                item.Language
             }, ChallengeGenerator.JsonOptions)
         }).ToList();
 
@@ -188,7 +189,8 @@ public class ChallengeOrchestrator(
                 ReadSetting(i.SettingsJson, "syllablePoolJson"),
                 ReadSetting(i.SettingsJson, "distractorsJson"),
                 ReadSetting(i.SettingsJson, "correctOrderJson"),
-                ReadSetting(i.SettingsJson, "spellCatcherSpecJson")))
+                ReadSetting(i.SettingsJson, "spellCatcherSpecJson"),
+                i.VocabularyItem != null ? i.VocabularyItem.Language : ReadSetting(i.SettingsJson, "language")))
             .ToList();
 
         var code = challenge.GameTemplate?.Code ?? challenge.Game?.Key ?? string.Empty;

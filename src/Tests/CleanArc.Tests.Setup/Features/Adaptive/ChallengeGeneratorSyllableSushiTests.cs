@@ -195,6 +195,122 @@ public class ChallengeGeneratorSyllableSushiTests
         Assert.Equal(first.SyllableSushiSpec.SyllablePool, second.SyllableSushiSpec.SyllablePool);
     }
 
+    [Fact]
+    public async Task GenerateAsync_SyllableSushi_EnglishWord_UsesLetterSegmentation()
+    {
+        await using var context = CreateContext();
+        var module = new SyllabusModule
+        {
+            ModuleCode = $"T-EN-{Guid.NewGuid():N}",
+            Subject = "English",
+            Language = "en",
+            YearLevel = 1,
+            Term = "T1",
+            Week = 1,
+            Title = "English Test",
+            Description = "English test module",
+            SourceType = "test_seed",
+            IsActive = true
+        };
+        context.SyllabusModules.Add(module);
+        await context.SaveChangesAsync();
+
+        context.VocabularyItems.Add(new VocabularyItem
+        {
+            ModuleId = module.Id,
+            Word = "apple",
+            NormalizedWord = "apple",
+            EnText = "apple",
+            Language = "en",
+            Subject = "English",
+            YearLevel = 1,
+            SyllablesJson = "[\"ap\",\"ple\"]",
+            DifficultyLevel = 1,
+            IsActive = true
+        });
+        await context.SaveChangesAsync();
+
+        var generator = new ChallengeGenerator(context);
+        var preview = await generator.GenerateAsync(
+            new GenerateAdaptiveChallengeRequest(
+                "class",
+                null,
+                10,
+                "practice_weekly_words",
+                "predefined_module",
+                module.Id,
+                "SYLLABLE_SUSHI",
+                null,
+                null,
+                null,
+                null),
+            CancellationToken.None);
+
+        Assert.Equal("SYLLABLE_SUSHI", preview.GameTemplateCode);
+        Assert.NotNull(preview.SyllableSushiSpec);
+        Assert.Equal("apple", preview.SyllableSushiSpec!.TargetWord);
+        Assert.Equal(new[] { "a", "p", "p", "l", "e" }, preview.SyllableSushiSpec.CorrectSyllables);
+        Assert.All(preview.SyllableSushiSpec.Distractors, d => Assert.Single(d));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_SyllableSushi_MandarinWord_UsesCharacterSegmentation()
+    {
+        await using var context = CreateContext();
+        var module = new SyllabusModule
+        {
+            ModuleCode = $"T-ZH-{Guid.NewGuid():N}",
+            Subject = "Mandarin",
+            Language = "zh",
+            YearLevel = 1,
+            Term = "T1",
+            Week = 1,
+            Title = "Mandarin Test",
+            Description = "Mandarin test module",
+            SourceType = "test_seed",
+            IsActive = true
+        };
+        context.SyllabusModules.Add(module);
+        await context.SaveChangesAsync();
+
+        context.VocabularyItems.Add(new VocabularyItem
+        {
+            ModuleId = module.Id,
+            Word = "熊猫",
+            NormalizedWord = "熊猫",
+            ZhText = "熊猫",
+            Language = "zh",
+            Subject = "Mandarin",
+            YearLevel = 1,
+            SyllablesJson = "[]",
+            DifficultyLevel = 1,
+            IsActive = true
+        });
+        await context.SaveChangesAsync();
+
+        var generator = new ChallengeGenerator(context);
+        var preview = await generator.GenerateAsync(
+            new GenerateAdaptiveChallengeRequest(
+                "class",
+                null,
+                10,
+                "practice_weekly_words",
+                "predefined_module",
+                module.Id,
+                "SYLLABLE_SUSHI",
+                null,
+                null,
+                null,
+                null),
+            CancellationToken.None);
+
+        Assert.Equal("SYLLABLE_SUSHI", preview.GameTemplateCode);
+        Assert.NotNull(preview.SyllableSushiSpec);
+        Assert.Equal("熊猫", preview.SyllableSushiSpec!.TargetWord);
+        Assert.Equal(new[] { "熊", "猫" }, preview.SyllableSushiSpec.CorrectSyllables);
+        Assert.All(preview.SyllableSushiSpec.Distractors, d => Assert.Single(d));
+    }
+
     private static async Task<SyllabusModule> SeedModuleWithWordAsync(
         ApplicationDbContext context,
         string bmWord,

@@ -37,25 +37,31 @@ internal class StudentVisualLoginQueryHandler : IRequestHandler<StudentVisualLog
       return OperationResult<AccessToken>.UnauthorizedResult("Invalid credentials");
     }
 
-    // Handle uninitialized accounts that have a placeholder hash
     bool isValidSequence;
     if (credential.VisualPasswordHash == "DEFAULT")
     {
-      // Account hasn't had a picture password set yet — allow any sequence
-      isValidSequence = !string.IsNullOrWhiteSpace(request.VisualSequence);
-      _logger.LogInformation("Student {UserId} has DEFAULT password hash; allowing any sequence.", credential.UserId);
+      if (string.IsNullOrWhiteSpace(request.VisualSequence))
+      {
+        isValidSequence = false;
+      }
+      else
+      {
+        credential.VisualPasswordHash = CleanArc.Application.Common.VisualPasswordHelper.HashPassword(
+            request.VisualSequence,
+            credential.StudentLoginCode
+        );
+        await _unitOfWork.StudentCredentialRepository.UpdateAsync(credential);
+        isValidSequence = true;
+        _logger.LogInformation("Student {UserId} had DEFAULT password hash. Automatically initialized and saved the password sequence.", credential.UserId);
+      }
     }
     else
     {
-      try
-      {
-        isValidSequence = BCrypt.Net.BCrypt.Verify(request.VisualSequence, credential.VisualPasswordHash);
-      }
-      catch (BCrypt.Net.SaltParseException ex)
-      {
-        _logger.LogError(ex, "Failed to parse BCrypt salt for userId {UserId}", credential.UserId);
-        return OperationResult<AccessToken>.UnauthorizedResult("Invalid credentials");
-      }
+      isValidSequence = CleanArc.Application.Common.VisualPasswordHelper.VerifyPassword(
+          request.VisualSequence,
+          credential.StudentLoginCode,
+          credential.VisualPasswordHash
+      );
     }
 
     if (!isValidSequence)

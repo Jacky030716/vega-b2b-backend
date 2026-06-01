@@ -150,7 +150,7 @@ public class ClassroomSetupWizardService(
           UserId = user.Id,
           ClassroomId = classroom.Id,
           StudentLoginCode = loginCode,
-          VisualPasswordHash = BCrypt.Net.BCrypt.HashPassword(student.VisualPassword),
+          VisualPasswordHash = CleanArc.Application.Common.VisualPasswordHelper.HashPassword(student.VisualPassword, loginCode),
           IsActive = true,
           FailedAttempts = 0
         });

@@ -461,6 +461,33 @@ public class ClassroomEndpoints : ICarterModule
       return result.ToEndpointResult();
     }), _version, "JoinClassroom", _tag).RequireAuthorization();
 
+    // Get classroom Join QR code (base64)
+    app.MapEndpoint(builder => builder.MapGet(_routePrefix + "{classroomId:int}/join-qr", async (
+        int classroomId,
+        ClaimsPrincipal user,
+        IUnitOfWork unitOfWork,
+        CancellationToken cancellationToken) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var classroom = await unitOfWork.ClassroomRepository.GetClassroomByIdAsync(classroomId, includeDeleted: false);
+      if (classroom is null)
+      {
+        return Results.NotFound(new { message = "Classroom not found" });
+      }
+
+      if (classroom.TeacherId != userId && !user.IsInRole("admin"))
+      {
+        return Results.Json(new { message = "You do not manage this classroom" }, statusCode: StatusCodes.Status403Forbidden);
+      }
+
+      using var qrGenerator = new QRCoder.QRCodeGenerator();
+      using var qrCodeData = qrGenerator.CreateQrCode(classroom.JoinCode, QRCoder.QRCodeGenerator.ECCLevel.Q);
+      using var qrCode = new QRCoder.PngByteQRCode(qrCodeData);
+      var qrCodeImage = qrCode.GetGraphic(10);
+      var base64 = Convert.ToBase64String(qrCodeImage);
+
+      return Results.Ok(new { joinCode = classroom.JoinCode, qrCodeBase64 = base64 });
+    }), _version, "GetClassroomJoinQr", _tag).RequireAuthorization();
   }
 
   private static ClassroomThumbnailRequest? ParseThumbnail(JsonElement? thumbnail)

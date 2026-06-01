@@ -41,7 +41,8 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
             null,
             null,
             null,
-            null)).ToList();
+            null,
+            m.VocabularyItem.Language)).ToList();
 
         if (items.Count == 0 && context?.ModuleId is int moduleId)
         {
@@ -50,7 +51,7 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
                 .OrderBy(v => v.DisplayOrder)
                 .ThenBy(v => v.Word)
                 .Take(12)
-                .Select(v => new AdaptiveChallengeItemDto(null, v.Id, v.Word, v.NormalizedWord, v.PhoneticHint ?? v.MeaningText, v.MeaningText, v.ExampleSentence, v.SyllablesJson, v.DifficultyLevel, v.BmText, v.ZhText, v.EnText, v.SyllableText, v.ItemType, v.DisplayOrder, null, null, null, null))
+                .Select(v => new AdaptiveChallengeItemDto(null, v.Id, v.Word, v.NormalizedWord, v.PhoneticHint ?? v.MeaningText, v.MeaningText, v.ExampleSentence, v.SyllablesJson, v.DifficultyLevel, v.BmText, v.ZhText, v.EnText, v.SyllableText, v.ItemType, v.DisplayOrder, null, null, null, null, v.Language))
                 .ToListAsync(cancellationToken);
         }
 

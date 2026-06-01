@@ -26,28 +26,37 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
 
         List<AdaptiveChallengeItemDto> items = new();
         SyllabusModule? module = null;
-        var sourceType = request.SourceType?.Trim().ToLowerInvariant() ?? "predefined_module";
-
-        if (sourceType == "manual_input")
-        {
-            items = CreateAdHocItems(request.ManualWords ?? Array.Empty<string>());
-        }
-        else if (sourceType == "upload")
-        {
-            items = CreateAdHocItems(ExtractLearningTerms(request.SourceText));
-        }
-        else if (sourceType == "ai_prompt")
-        {
-            items = CreateAdHocItems(ExtractLearningTerms(request.AiPrompt));
-        }
-
-        if (items.Count == 0 && request.ModuleId is int moduleId)
+        if (request.ModuleId is int moduleId)
         {
             module = await dbContext.SyllabusModules.AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == moduleId, cancellationToken);
+        }
+        var sourceType = request.SourceType?.Trim().ToLowerInvariant() ?? "predefined_module";
+        var defaultLanguage = module?.Language;
+
+        if (sourceType == "manual_input")
+        {
+            items = CreateAdHocItems(request.ManualWords ?? Array.Empty<string>(), defaultLanguage);
+        }
+        else if (sourceType == "upload")
+        {
+            items = CreateAdHocItems(ExtractLearningTerms(request.SourceText), defaultLanguage);
+        }
+        else if (sourceType == "ai_prompt")
+        {
+            items = CreateAdHocItems(ExtractLearningTerms(request.AiPrompt), defaultLanguage);
+        }
+
+        if (items.Count == 0 && request.ModuleId is int moduleId2)
+        {
+            if (module == null || module.Id != moduleId2)
+            {
+                module = await dbContext.SyllabusModules.AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.Id == moduleId2, cancellationToken);
+            }
 
             items = await dbContext.VocabularyItems.AsNoTracking()
-                .Where(v => v.ModuleId == moduleId && v.IsActive)
+                .Where(v => v.ModuleId == moduleId2 && v.IsActive)
                 .OrderBy(v => v.DisplayOrder)
                 .ThenBy(v => v.Word)
                 .Take(12)
@@ -70,13 +79,14 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
                     null,
                     null,
                     null,
-                    null))
+                    null,
+                    v.Language))
                 .ToListAsync(cancellationToken);
         }
 
         if (items.Count == 0 && request.ManualWords?.Count > 0)
         {
-            items = CreateAdHocItems(request.ManualWords);
+            items = CreateAdHocItems(request.ManualWords, defaultLanguage);
         }
 
         if (items.Count == 0)
@@ -236,11 +246,12 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
                 null,
                 null,
                 null,
-                null))
+                null,
+                m.VocabularyItem.Language))
             .ToListAsync(cancellationToken);
     }
 
-    private static List<AdaptiveChallengeItemDto> CreateAdHocItems(IEnumerable<string> words) =>
+    private static List<AdaptiveChallengeItemDto> CreateAdHocItems(IEnumerable<string> words, string? defaultLanguage = null) =>
         words
             .Select(word => word.Trim())
             .Where(word => word.Length > 0)
@@ -265,7 +276,8 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
                     null,
                     null,
                     null,
-                    null))
+                    null,
+                    DetectLanguage(word, defaultLanguage)))
             .ToList();
 
     private async Task<Dictionary<int, SpellCatcherWeakness>> BuildSpellCatcherWeaknessMapAsync(
@@ -306,7 +318,7 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
 
     internal static SpellCatcherSpecDto BuildSpellCatcherSpec(AdaptiveChallengeItemDto item, SpellCatcherWeakness weakness)
     {
-        var targetWord = (item.BmText ?? item.Word).Trim().ToLowerInvariant();
+        var targetWord = (string.IsNullOrWhiteSpace(item.BmText) ? item.Word : item.BmText).Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(targetWord))
             throw new InvalidOperationException("Spell Catcher requires a valid target word.");
 
@@ -330,7 +342,8 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             letterPool.Concat(distractors).ToList(),
             $"{targetWord}|spell|{difficulty}");
 
-        var syllables = ParseCorrectSyllables(item, targetWord);
+        var language = DetectLanguage(item);
+        var syllables = ParseCorrectSyllables(item, targetWord, language);
         var meaning = new SpellCatcherMeaningDto(item.EnText ?? item.MeaningText ?? string.Empty, item.ZhText ?? string.Empty);
         var showMeaning = difficulty < 3 || weakness.NeedsMeaningSupport;
         var showFirstLetter = difficulty == 1;
@@ -454,13 +467,54 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             throw new InvalidOperationException("Spell Catcher recall phase must require attempts.");
     }
 
+    private static bool ContainsChineseCharacters(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] >= 0x4e00 && text[i] <= 0x9fff)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static string DetectLanguage(AdaptiveChallengeItemDto item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.Language))
+        {
+            return item.Language.Trim().ToLowerInvariant();
+        }
+        return DetectLanguage(item.Word, null);
+    }
+
+    public static string DetectLanguage(string word, string? defaultLanguage)
+    {
+        if (ContainsChineseCharacters(word))
+        {
+            return "zh";
+        }
+        if (!string.IsNullOrWhiteSpace(defaultLanguage))
+        {
+            var norm = defaultLanguage.Trim().ToLowerInvariant();
+            if (norm == "ms" || norm == "en" || norm == "zh")
+            {
+                return norm;
+            }
+        }
+        return "ms";
+    }
+
     internal static SyllableSushiSpecDto BuildSyllableSushiSpec(AdaptiveChallengeItemDto item)
     {
-        var targetWord = (item.BmText ?? item.Word).Trim().ToLowerInvariant();
+        var targetWord = (string.IsNullOrWhiteSpace(item.BmText) ? item.Word : item.BmText).Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(targetWord))
             throw new InvalidOperationException("Syllable Sushi requires a valid target word.");
 
-        var correctSyllables = ParseCorrectSyllables(item, targetWord);
+        var language = DetectLanguage(item);
+
+        var correctSyllables = ParseCorrectSyllables(item, targetWord, language);
         if (correctSyllables.Count == 0)
             throw new InvalidOperationException($"Syllable Sushi requires syllables for word '{targetWord}'.");
 
@@ -472,7 +526,7 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             _ => 5
         };
 
-        var distractors = GenerateDistractors(correctSyllables, targetWord, distractorTarget);
+        var distractors = GenerateDistractors(correctSyllables, targetWord, distractorTarget, language);
         if (distractors.Count == 0)
             throw new InvalidOperationException($"Syllable Sushi distractor generation failed for word '{targetWord}'.");
 
@@ -500,8 +554,23 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
                 SyllableHints));
     }
 
-    private static List<string> ParseCorrectSyllables(AdaptiveChallengeItemDto item, string targetWord)
+    private static List<string> ParseCorrectSyllables(AdaptiveChallengeItemDto item, string targetWord, string language)
     {
+        if (language == "zh")
+        {
+            return targetWord
+                .Where(ch => !char.IsWhiteSpace(ch))
+                .Select(ch => ch.ToString())
+                .ToList();
+        }
+        if (language == "en")
+        {
+            return targetWord
+                .Where(char.IsLetter)
+                .Select(ch => ch.ToString())
+                .ToList();
+        }
+
         var parsed = ParseJsonArray(item.SyllablesJson);
         if (parsed.Count == 0 && !string.IsNullOrWhiteSpace(item.SyllableText))
         {
@@ -552,11 +621,43 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         }
     }
 
+    private static readonly string[] CommonChineseCharacters = new[]
+    {
+        "熊", "猫", "狗", "猫", "鱼", "鸟", "花", "草", "树", "木", "水", "火", "山", "石", "田", "土",
+        "天", "地", "人", "父", "母", "兄", "弟", "姐", "妹", "大", "小", "多", "少", "长", "短", "高",
+        "矮", "胖", "瘦", "新", "旧", "好", "坏", "对", "错", "真", "假", "有", "无", "出", "入", "上",
+        "下", "左", "右", "前", "后", "东", "西", "南", "北", "春", "夏", "秋", "冬", "风", "雨", "雷",
+        "电", "云", "雾", "冰", "雪", "日", "月", "星", "光", "阴", "晴", "暖", "冷", "热", "风", "沙"
+    };
+
     private static List<string> GenerateDistractors(
         IReadOnlyList<string> correctSyllables,
         string targetWord,
-        int targetCount)
+        int targetCount,
+        string language)
     {
+        if (language == "zh")
+        {
+            var correctSet = new HashSet<string>(correctSyllables, StringComparer.OrdinalIgnoreCase);
+            var candidates = CommonChineseCharacters
+                .Where(ch => !correctSet.Contains(ch))
+                .ToList();
+            return DeterministicShuffle(candidates, $"{targetWord}|fallback_zh")
+                .Take(targetCount)
+                .ToList();
+        }
+        if (language == "en")
+        {
+            var correctSet = new HashSet<string>(correctSyllables, StringComparer.OrdinalIgnoreCase);
+            var letters = "abcdefghijklmnopqrstuvwxyz"
+                .Select(ch => ch.ToString())
+                .Where(l => !correctSet.Contains(l))
+                .ToList();
+            return DeterministicShuffle(letters, $"{targetWord}|fallback_en")
+                .Take(targetCount)
+                .ToList();
+        }
+
         var generated = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < correctSyllables.Count; index++)
         {

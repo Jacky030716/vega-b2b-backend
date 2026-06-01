@@ -91,7 +91,8 @@ public record AdaptiveChallengeItemDto(
     string? SyllablePoolJson = null,
     string? DistractorsJson = null,
     string? CorrectOrderJson = null,
-    string? SpellCatcherSpecJson = null);
+    string? SpellCatcherSpecJson = null,
+    string? Language = null);
 
 public record SpellCatcherMeaningDto(
     string En,
