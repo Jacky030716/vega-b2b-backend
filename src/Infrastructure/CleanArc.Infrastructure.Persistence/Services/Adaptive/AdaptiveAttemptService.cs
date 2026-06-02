@@ -78,6 +78,8 @@ public class AdaptiveAttemptService(
             .FirstOrDefaultAsync(a => a.Id == request.StudentChallengeAttemptId, cancellationToken)
             ?? throw new InvalidOperationException("Adaptive attempt not found");
 
+        var wasAlreadyCompleted = string.Equals(attempt.CompletionStatus, "completed", StringComparison.OrdinalIgnoreCase);
+
         attempt.TotalScore = request.TotalScore;
         attempt.CompletionStatus = string.IsNullOrWhiteSpace(request.CompletionStatus)
             ? "completed"
@@ -95,6 +97,126 @@ public class AdaptiveAttemptService(
             : null;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (!wasAlreadyCompleted && string.Equals(attempt.CompletionStatus, "completed", StringComparison.OrdinalIgnoreCase))
+        {
+            await UpdateWordProgressAfterCompletionAsync(attempt, cancellationToken);
+        }
+    }
+
+    private async Task UpdateWordProgressAfterCompletionAsync(StudentChallengeAttempt attempt, CancellationToken cancellationToken)
+    {
+        var itemAttempts = attempt.ItemAttempts
+            .Where(i => i.VocabularyItemId.HasValue)
+            .ToList();
+
+        if (itemAttempts.Count == 0) return;
+
+        var vocabularyItemIds = itemAttempts.Select(i => i.VocabularyItemId!.Value).Distinct().ToList();
+
+        var existingProgresses = await dbContext.WordProgresses
+            .Where(wp => wp.StudentId == attempt.StudentId && vocabularyItemIds.Contains(wp.WordId))
+            .ToListAsync(cancellationToken);
+
+        var progressMap = existingProgresses.ToDictionary(wp => wp.WordId);
+
+        foreach (var wordId in vocabularyItemIds)
+        {
+            var wordAttempts = itemAttempts.Where(i => i.VocabularyItemId == wordId).ToList();
+            if (wordAttempts.Count == 0) continue;
+
+            if (!progressMap.TryGetValue(wordId, out var wp))
+            {
+                wp = new WordProgress
+                {
+                    StudentId = attempt.StudentId,
+                    WordId = wordId,
+                    TotalAttempts = 0,
+                    TotalCorrect = 0,
+                    MasteryScore = 0,
+                    LastPracticedAt = null,
+                    NextReviewDate = null
+                };
+                dbContext.WordProgresses.Add(wp);
+                progressMap[wordId] = wp;
+            }
+
+            wp.TotalAttempts += wordAttempts.Count;
+            wp.TotalCorrect += wordAttempts.Count(i => i.WasCorrect);
+            wp.LastPracticedAt = DateTime.UtcNow;
+
+            // Fetch the last 10 attempts to calculate consistency (including the ones from the current challenge, which are already committed/saved)
+            var recentAttempts = await dbContext.StudentChallengeItemAttempts
+                .Where(i => i.StudentChallengeAttempt.StudentId == attempt.StudentId && i.VocabularyItemId == wordId)
+                .OrderByDescending(i => i.AnsweredAt)
+                .Take(10)
+                .Select(i => i.WasCorrect)
+                .ToListAsync(cancellationToken);
+            recentAttempts.Reverse();
+
+            // Calculate Mastery Score based on new formula
+            double accuracy = CalculateAccuracy(wp.TotalCorrect, wp.TotalAttempts);
+            double consistency = CalculateConsistency(wp.TotalCorrect, wp.TotalAttempts, recentAttempts);
+            double retention = 100.0; // Reset to 100% immediately after practice completion
+
+            wp.MasteryScore = CalculateMasteryScore(accuracy, consistency, retention);
+
+            // Determine if the last attempt in this challenge was correct
+            var lastAttempt = wordAttempts.OrderByDescending(i => i.AnsweredAt).First();
+            wp.NextReviewDate = CalculateNextReviewDate(wp.MasteryScore, lastAttempt.WasCorrect);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static double CalculateAccuracy(int totalCorrect, int totalAttempts)
+    {
+        if (totalAttempts <= 0) return 0;
+        return Math.Min(100.0, Math.Max(0.0, ((double)totalCorrect / totalAttempts) * 100.0));
+    }
+
+    private static double CalculateConsistency(int totalCorrect, int totalAttempts, List<bool>? recentAttempts)
+    {
+        if (totalAttempts <= 0) return 0;
+
+        double baseAccuracy = CalculateAccuracy(totalCorrect, totalAttempts);
+
+        if (recentAttempts != null && recentAttempts.Count > 0)
+        {
+            int currentStreak = 0;
+            int maxStreak = 0;
+            foreach (var wasCorrect in recentAttempts)
+            {
+                if (wasCorrect)
+                {
+                    currentStreak++;
+                    if (currentStreak > maxStreak) maxStreak = currentStreak;
+                }
+                else
+                {
+                    currentStreak = 0;
+                }
+            }
+            double streakConsistency = ((double)maxStreak / Math.Max(1, recentAttempts.Count)) * 100.0;
+            return Math.Min(100.0, Math.Max(0.0, (baseAccuracy * 0.6) + (streakConsistency * 0.4)));
+        }
+
+        double volumeFactor = Math.Min(1.0, (double)totalAttempts / 8.0);
+        return baseAccuracy * volumeFactor;
+    }
+
+    private static int CalculateMasteryScore(double accuracy, double consistency, double retention)
+    {
+        double score = (accuracy * 0.5) + (consistency * 0.3) + (retention * 0.2);
+        return Math.Min(100, Math.Max(0, (int)Math.Round(score)));
+    }
+
+    private static DateTime CalculateNextReviewDate(int score, bool wasCorrect)
+    {
+        var now = DateTime.UtcNow;
+        if (!wasCorrect || score < 50) return now.AddDays(1); // Weak / Incorrect
+        if (score < 80) return now.AddDays(3); // Developing
+        return now.AddDays(7); // Mastered
     }
 
     public async Task<List<StudentWordMasteryDto>> RecordBatchAsync(

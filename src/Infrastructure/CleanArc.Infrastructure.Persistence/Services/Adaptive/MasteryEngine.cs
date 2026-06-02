@@ -40,7 +40,8 @@ public class MasteryEngine(ApplicationDbContext dbContext) : IMasteryEngine
             dbContext.StudentWordMasteries.Add(mastery);
         }
 
-        var delta = CalculateDelta(request);
+        var isEarlyPractice = mastery.NextReviewAt.HasValue && DateTime.UtcNow < mastery.NextReviewAt.Value;
+        var delta = CalculateDelta(request, isEarlyPractice);
         mastery.MasteryScore = Math.Clamp(mastery.MasteryScore + delta, 0, 100);
         mastery.MasteryLevel = ToMasteryLevel(mastery.MasteryScore);
         mastery.TotalAttempts += 1;
@@ -59,15 +60,34 @@ public class MasteryEngine(ApplicationDbContext dbContext) : IMasteryEngine
         return ToDto(mastery, vocabulary.Word);
     }
 
-    internal static int CalculateDelta(SubmitAdaptiveItemAttemptRequest request)
+    internal static int CalculateDelta(SubmitAdaptiveItemAttemptRequest request, bool isEarlyPractice)
     {
         var delta = request.WasCorrect ? 8 : -8;
+        if (request.WasCorrect && isEarlyPractice)
+        {
+            return 0;
+        }
+
         if (request.WasCorrect && request.FirstAttemptCorrect) delta += 4;
         if (request.WasCorrect && request.ResponseTimeMs is <= 5000) delta += 2;
-        if (request.WasCorrect && request.ResponseTimeMs is >= 15000) delta += 5;
         delta -= Math.Min(Math.Max(0, request.HintsUsed) * 2, 6);
         delta -= Math.Min(Math.Max(0, request.RetriesCount) * 3, 9);
         return delta;
+    }
+
+    public static int GetDecayedMasteryScore(int baseScore, DateTime? lastPracticedAt)
+    {
+        if (!lastPracticedAt.HasValue) return baseScore;
+
+        var elapsed = DateTime.UtcNow - lastPracticedAt.Value;
+        double days = elapsed.TotalDays;
+
+        int decay = 0;
+        if (days >= 30) decay = 20;
+        else if (days >= 14) decay = 10;
+        else if (days >= 7) decay = 5;
+
+        return Math.Clamp(baseScore - decay, 0, 100);
     }
 
     internal static string ToMasteryLevel(int score) => score switch

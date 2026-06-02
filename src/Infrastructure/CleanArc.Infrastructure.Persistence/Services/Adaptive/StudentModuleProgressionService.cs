@@ -87,16 +87,26 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             .GroupBy(challenge => challenge.ModuleId!.Value)
             .ToDictionary(group => group.Key, group => group.ToList());
 
-        var masteryStats = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Where(mastery => mastery.StudentId == studentId && mastery.ModuleId != null && moduleIds.Contains(mastery.ModuleId.Value))
-            .GroupBy(mastery => mastery.ModuleId!.Value)
-            .Select(group => new
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => wp.StudentId == studentId && moduleIds.Contains(wp.Word.ModuleId))
+            .ToListAsync(cancellationToken);
+
+        var masteryStats = progresses
+            .Select(wp => new
             {
-                ModuleId = group.Key,
-                Weak = group.Count(item => item.MasteryScore < 65),
-                AverageScore = Math.Round(group.Average(item => (decimal)item.MasteryScore), 2)
+                ModuleId = wp.Word.ModuleId,
+                DecayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt)
             })
-            .ToDictionaryAsync(item => item.ModuleId, item => item, cancellationToken);
+            .GroupBy(x => x.ModuleId)
+            .ToDictionary(
+                group => group.Key,
+                group => new
+                {
+                    ModuleId = group.Key,
+                    Weak = group.Count(x => x.DecayedScore < 50),
+                    AverageScore = group.Any() ? Math.Round(group.Average(x => (decimal)x.DecayedScore), 2) : 0m
+                });
 
         return modules.Select(module =>
         {

@@ -92,21 +92,32 @@ public class ClassroomModuleManagementService(
             })
             .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
 
-        var masteryStats = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Where(m => m.ModuleId != null && moduleIds.Contains(m.ModuleId.Value) && studentIds.Contains(m.StudentId))
-            .GroupBy(m => m.ModuleId!.Value)
-            .Select(g => new
-            {
-                ModuleId = g.Key,
-                Weak = g.Count(x => x.MasteryScore < 65),
-                AverageScore = Math.Round(g.Average(x => (decimal)x.MasteryScore), 2)
-            })
-            .ToDictionaryAsync(x => x.ModuleId, x => x, cancellationToken);
-
-        var practicedFromMastery = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Where(m => m.ModuleId != null && moduleIds.Contains(m.ModuleId.Value) && studentIds.Contains(m.StudentId))
-            .Select(m => new { ModuleId = m.ModuleId!.Value, m.VocabularyItemId })
+        var statsProgresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => moduleIds.Contains(wp.Word.ModuleId) && studentIds.Contains(wp.StudentId))
             .ToListAsync(cancellationToken);
+
+        var statsEvaluated = statsProgresses.Select(wp => new
+        {
+            ModuleId = wp.Word.ModuleId,
+            wp.WordId,
+            DecayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt)
+        }).ToList();
+
+        var masteryStats = statsEvaluated
+            .GroupBy(x => x.ModuleId)
+            .ToDictionary(
+                g => g.Key,
+                g => new
+                {
+                    ModuleId = g.Key,
+                    Weak = g.Count(x => x.DecayedScore < 50),
+                    AverageScore = g.Any() ? Math.Round(g.Average(x => (decimal)x.DecayedScore), 2) : 0m
+                });
+
+        var practicedFromMastery = statsEvaluated
+            .Select(x => new { ModuleId = x.ModuleId, VocabularyItemId = x.WordId })
+            .ToList();
 
         var practicedFromItemAttempts = await dbContext.StudentChallengeItemAttempts.AsNoTracking()
             .Where(item => item.VocabularyItemId != null
@@ -688,24 +699,49 @@ public class ClassroomModuleManagementService(
         if (studentIds.Count == 0)
             return new ModuleWeaknessContext(Array.Empty<string>(), null);
 
-        var weakRows = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Include(m => m.VocabularyItem)
-            .Where(m => studentIds.Contains(m.StudentId)
-                        && m.ModuleId == moduleId
-                        && m.MasteryScore < 65)
-            .OrderBy(m => m.MasteryScore)
-            .ThenBy(m => m.VocabularyItem.Word)
-            .Take(12)
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => studentIds.Contains(wp.StudentId)
+                        && wp.Word.ModuleId == moduleId
+                        && wp.Word.IsActive)
             .ToListAsync(cancellationToken);
 
+        var vocabularyIds = progresses.Select(wp => wp.WordId).Distinct().ToList();
+
+        var masteries = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => studentIds.Contains(m.StudentId) && m.ModuleId == moduleId)
+            .ToListAsync(cancellationToken);
+
+        var masteriesMap = masteries.ToDictionary(m => (m.StudentId, m.VocabularyItemId));
+
+        var evaluated = progresses.Select(wp =>
+        {
+            masteriesMap.TryGetValue((wp.StudentId, wp.WordId), out var m);
+            int decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+            
+            return new
+            {
+                Progress = wp,
+                Mastery = m,
+                DecayedScore = decayedScore
+            };
+        }).ToList();
+
+        var weakRows = evaluated
+            .Where(x => x.DecayedScore < 50)
+            .OrderBy(x => x.DecayedScore)
+            .ThenBy(x => x.Progress.Word.Word)
+            .Take(12)
+            .ToList();
+
         var weakWords = weakRows
-            .Select(m => m.VocabularyItem.Word)
+            .Select(x => x.Progress.Word.Word)
             .Where(word => !string.IsNullOrWhiteSpace(word))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var weakSkill = weakRows
-            .SelectMany(m => (m.WeaknessTagsJson ?? string.Empty)
+            .SelectMany(x => (x.Mastery?.WeaknessTagsJson ?? string.Empty)
                 .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             .GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(group => group.Count())

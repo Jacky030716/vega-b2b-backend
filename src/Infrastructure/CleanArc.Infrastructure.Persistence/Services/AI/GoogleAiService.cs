@@ -43,8 +43,18 @@ public sealed class GoogleAiService(
     var result = await TryGenerateWithModelAsync(modelId, request);
     if (!result.IsSuccess)
     {
-      _logger.LogWarning("Google AI generation with model {ModelId} failed. Retrying with fallback model gemini-3.5-flash. Error: {Error}", modelId, result.ErrorMessage);
-      result = await TryGenerateWithModelAsync("gemini-3.5-flash", request);
+      var fallbackModel = string.Equals(modelId, "gemini-3.5-flash", StringComparison.OrdinalIgnoreCase)
+        ? "gemini-3.1-flash"
+        : "gemini-3.5-flash";
+
+      _logger.LogWarning("Google AI generation with model {ModelId} failed. Retrying with fallback model {FallbackModel}. Error: {Error}", modelId, fallbackModel, result.ErrorMessage);
+      result = await TryGenerateWithModelAsync(fallbackModel, request);
+
+      if (!result.IsSuccess && !string.Equals(fallbackModel, "gemini-3.1-flash", StringComparison.OrdinalIgnoreCase))
+      {
+        _logger.LogWarning("Google AI generation with fallback model {FallbackModel} failed. Retrying with ultimate fallback model gemini-3.1-flash. Error: {Error}", fallbackModel, result.ErrorMessage);
+        result = await TryGenerateWithModelAsync("gemini-3.1-flash", request);
+      }
     }
 
     return result;

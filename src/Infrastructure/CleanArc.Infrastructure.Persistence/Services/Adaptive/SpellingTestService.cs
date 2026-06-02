@@ -471,14 +471,23 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
                 .Where(student => student.ClassroomId == classroomId)
                 .Select(student => student.UserId)
                 .ToListAsync(cancellationToken);
-            var weakIds = await dbContext.StudentWordMasteries.AsNoTracking()
-                .Where(mastery => studentIds.Contains(mastery.StudentId)
-                                  && mastery.VocabularyItemId > 0
-                                  && mastery.MasteryScore < 65)
-                .GroupBy(mastery => mastery.VocabularyItemId)
-                .OrderBy(group => group.Average(item => item.MasteryScore))
-                .Select(group => group.Key)
+            var progresses = await dbContext.WordProgresses.AsNoTracking()
+                .Where(wp => studentIds.Contains(wp.StudentId)
+                             && wp.WordId > 0)
                 .ToListAsync(cancellationToken);
+
+            var weakIds = progresses
+                .Select(wp => new
+                {
+                    wp.WordId,
+                    DecayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt)
+                })
+                .Where(x => x.DecayedScore < 80)
+                .GroupBy(x => x.WordId)
+                .OrderBy(group => group.Average(item => item.DecayedScore))
+                .Select(group => group.Key)
+                .ToList();
+
             var weakSet = weakIds.ToHashSet();
             var weakWords = words.Where(word => weakSet.Contains(word.Id)).ToList();
             if (weakWords.Count > 0)

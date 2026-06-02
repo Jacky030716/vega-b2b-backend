@@ -56,6 +56,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<StudentChallengeAttempt> StudentChallengeAttempts { get; set; }
     public DbSet<StudentChallengeItemAttempt> StudentChallengeItemAttempts { get; set; }
     public DbSet<StudentWordMastery> StudentWordMasteries { get; set; }
+    public DbSet<WordProgress> WordProgresses { get; set; }
     public DbSet<StudentSkillProfile> StudentSkillProfiles { get; set; }
     public DbSet<ErrorPatternLog> ErrorPatternLogs { get; set; }
     public DbSet<RecoveryMission> RecoveryMissions { get; set; }
@@ -155,6 +156,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
         modelBuilder.AddRestrictDeleteBehaviorConvention();
         modelBuilder.AddPluralizingTableNameConvention();
         modelBuilder.Entity<StudentWordMastery>().ToTable("student_word_mastery");
+        modelBuilder.Entity<WordProgress>().ToTable("word_progress");
     }
 
     private void ConfigureEntityDates()

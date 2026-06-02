@@ -381,14 +381,50 @@ public class RecoveryMissionService(
             throw new InvalidOperationException("No vocabulary is available for recovery mission generation");
 
         var vocabularyIds = vocabulary.Select(v => v.Id).ToArray();
-        var weakRows = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Include(m => m.VocabularyItem)
-            .Where(m => m.StudentId == studentId && vocabularyIds.Contains(m.VocabularyItemId))
-            .OrderBy(m => m.MasteryScore)
-            .ThenByDescending(m => m.TotalHintsUsed)
-            .ThenByDescending(m => m.TotalRetries)
-            .Take(20)
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => wp.StudentId == studentId && vocabularyIds.Contains(wp.WordId))
             .ToListAsync(cancellationToken);
+
+        var masteries = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => m.StudentId == studentId && vocabularyIds.Contains(m.VocabularyItemId))
+            .ToDictionaryAsync(m => m.VocabularyItemId, cancellationToken);
+
+        var weakRows = progresses.Select(wp =>
+        {
+            masteries.TryGetValue(wp.WordId, out var m);
+            int decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+            
+            return new StudentWordMastery
+            {
+                StudentId = wp.StudentId,
+                VocabularyItemId = wp.WordId,
+                VocabularyItem = wp.Word,
+                ModuleId = wp.Word.ModuleId,
+                MasteryScore = decayedScore,
+                MasteryLevel = decayedScore switch
+                {
+                    < 50 => "Weak",
+                    < 80 => "Developing",
+                    _ => "Mastered"
+                },
+                TotalAttempts = wp.TotalAttempts,
+                CorrectAttempts = wp.TotalCorrect,
+                LastPracticedAt = wp.LastPracticedAt,
+                NextReviewAt = wp.NextReviewDate,
+                WeaknessTagsJson = m?.WeaknessTagsJson ?? "[]",
+                TotalHintsUsed = m?.TotalHintsUsed ?? 0,
+                TotalRetries = m?.TotalRetries ?? 0,
+                FirstTryCorrectCount = m?.FirstTryCorrectCount ?? 0,
+                AverageResponseTimeMs = m?.AverageResponseTimeMs,
+                LastGameTemplateId = m?.LastGameTemplateId
+            };
+        })
+        .OrderBy(m => m.MasteryScore)
+        .ThenByDescending(m => m.TotalHintsUsed)
+        .ThenByDescending(m => m.TotalRetries)
+        .Take(20)
+        .ToList();
 
         var module = moduleId.HasValue
             ? await dbContext.SyllabusModules.AsNoTracking().FirstOrDefaultAsync(m => m.Id == moduleId.Value, cancellationToken)

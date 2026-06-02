@@ -9,16 +9,54 @@ public class AdaptiveAnalyticsService(
     ApplicationDbContext dbContext,
     IRecommendationEngine recommendationEngine) : IAdaptiveAnalyticsService
 {
+    private static StudentWordMasteryDto MapToDto(
+        WordProgress wp,
+        StudentWordMastery? m,
+        string word,
+        string? errorPatternsJson = null)
+    {
+        var now = DateTime.UtcNow;
+        var decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+        var isDue = wp.NextReviewDate.HasValue && now >= wp.NextReviewDate.Value;
+        
+        string level = decayedScore switch
+        {
+            < 50 => "Weak",
+            < 80 => "Developing",
+            _ => "Mastered"
+        };
+
+        return new StudentWordMasteryDto(
+            m?.Id ?? wp.Id,
+            wp.StudentId,
+            wp.WordId,
+            wp.Word.ModuleId,
+            word,
+            decayedScore,
+            level,
+            wp.TotalAttempts,
+            wp.TotalCorrect,
+            wp.LastPracticedAt,
+            wp.NextReviewDate,
+            m?.WeaknessTagsJson ?? "[]",
+            isDue,
+            errorPatternsJson
+        );
+    }
+
     public async Task<IReadOnlyList<StudentWordMasteryDto>> GetMasteryAsync(int studentId, CancellationToken cancellationToken)
     {
-        var rows = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Include(m => m.VocabularyItem)
-            .Where(m => m.StudentId == studentId)
-            .OrderBy(m => m.MasteryScore)
-            .ThenBy(m => m.NextReviewAt)
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => wp.StudentId == studentId)
             .ToListAsync(cancellationToken);
 
-        var vocabularyIds = rows.Select(row => row.VocabularyItemId).ToArray();
+        var vocabularyIds = progresses.Select(wp => wp.WordId).ToArray();
+
+        var masteries = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => m.StudentId == studentId && vocabularyIds.Contains(m.VocabularyItemId))
+            .ToDictionaryAsync(m => m.VocabularyItemId, cancellationToken);
+
         var errorPatterns = await dbContext.ErrorPatternLogs.AsNoTracking()
             .Where(log => log.StudentId == studentId && log.VocabularyItemId.HasValue && vocabularyIds.Contains(log.VocabularyItemId.Value))
             .GroupBy(log => log.VocabularyItemId!.Value)
@@ -33,19 +71,24 @@ public class AdaptiveAnalyticsService(
             })
             .ToDictionaryAsync(item => item.VocabularyItemId, item => item.Patterns, cancellationToken);
 
-        return rows.Select(m =>
+        return progresses.Select(wp =>
         {
-            errorPatterns.TryGetValue(m.VocabularyItemId, out var patterns);
-            var dto = MasteryEngine.ToDto(m, m.VocabularyItem.Word);
-            return dto with { ErrorPatternsJson = patterns is null ? null : JsonSerializer.Serialize(patterns.Distinct(), ChallengeGenerator.JsonOptions) };
-        }).ToList();
+            masteries.TryGetValue(wp.WordId, out var m);
+            errorPatterns.TryGetValue(wp.WordId, out var patterns);
+            
+            var errorPatternsJson = patterns is null ? null : JsonSerializer.Serialize(patterns.Distinct(), ChallengeGenerator.JsonOptions);
+            return MapToDto(wp, m, wp.Word.Word, errorPatternsJson);
+        })
+        .OrderBy(dto => dto.MasteryScore)
+        .ThenBy(dto => dto.NextReviewAt)
+        .ToList();
     }
 
     public async Task<WeaknessSummaryDto> GetWeaknessSummaryAsync(int studentId, CancellationToken cancellationToken)
     {
         var mastery = await GetMasteryAsync(studentId, cancellationToken);
         var now = DateTime.UtcNow;
-        var weak = mastery.Where(m => m.MasteryScore < 65).Take(20).ToList();
+        var weak = mastery.Where(m => m.MasteryScore < 50).Take(20).ToList();
         var overdue = mastery.Count(m => m.NextReviewAt != null && m.NextReviewAt <= now);
         var recommended = await GetRecommendedNextChallengesAsync(studentId, cancellationToken);
         return new WeaknessSummaryDto(
@@ -67,16 +110,43 @@ public class AdaptiveAnalyticsService(
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
-        var weakRows = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Include(m => m.VocabularyItem)
-            .Where(m => studentIds.Contains(m.StudentId) && m.MasteryScore < 65)
-            .OrderBy(m => m.MasteryScore)
-            .Take(50)
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => studentIds.Contains(wp.StudentId) && wp.Word.IsActive)
             .ToListAsync(cancellationToken);
-        var weak = weakRows.Select(m => MasteryEngine.ToDto(m, m.VocabularyItem.Word)).ToList();
 
-        var overdue = await dbContext.StudentWordMasteries.AsNoTracking()
-            .CountAsync(m => studentIds.Contains(m.StudentId) && m.NextReviewAt != null && m.NextReviewAt <= now, cancellationToken);
+        var vocabularyIds = progresses.Select(wp => wp.WordId).Distinct().ToList();
+
+        var masteries = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => studentIds.Contains(m.StudentId) && vocabularyIds.Contains(m.VocabularyItemId))
+            .ToListAsync(cancellationToken);
+        
+        var masteriesMap = masteries.ToDictionary(m => (m.StudentId, m.VocabularyItemId));
+
+        var evaluated = progresses.Select(wp =>
+        {
+            masteriesMap.TryGetValue((wp.StudentId, wp.WordId), out var m);
+            int decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+            bool isOverdue = wp.NextReviewDate.HasValue && now >= wp.NextReviewDate.Value;
+            
+            return new
+            {
+                Progress = wp,
+                Mastery = m,
+                DecayedScore = decayedScore,
+                IsOverdue = isOverdue
+            };
+        }).ToList();
+
+        var weakRows = evaluated
+            .Where(x => x.DecayedScore < 50)
+            .OrderBy(x => x.DecayedScore)
+            .Take(50)
+            .ToList();
+
+        var weak = weakRows.Select(x => MapToDto(x.Progress, x.Mastery, x.Progress.Word.Word)).ToList();
+
+        var overdue = evaluated.Count(x => x.IsOverdue);
 
         return new ClassWeaknessOverviewDto(classId, weak.Count, overdue, weak);
     }
@@ -92,23 +162,46 @@ public class AdaptiveAnalyticsService(
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
-        var weakRows = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Include(m => m.VocabularyItem)
-            .Where(m => studentIds.Contains(m.StudentId)
-                        && m.ModuleId == moduleId
-                        && m.MasteryScore < 65)
-            .OrderBy(m => m.MasteryScore)
-            .ThenBy(m => m.VocabularyItem.Word)
-            .Take(50)
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => studentIds.Contains(wp.StudentId)
+                        && wp.Word.ModuleId == moduleId
+                        && wp.Word.IsActive)
             .ToListAsync(cancellationToken);
-        var weak = weakRows.Select(m => MasteryEngine.ToDto(m, m.VocabularyItem.Word)).ToList();
 
-        var overdue = await dbContext.StudentWordMasteries.AsNoTracking()
-            .CountAsync(m => studentIds.Contains(m.StudentId)
-                             && m.ModuleId == moduleId
-                             && m.NextReviewAt != null
-                             && m.NextReviewAt <= now,
-                cancellationToken);
+        var vocabularyIds = progresses.Select(wp => wp.WordId).Distinct().ToList();
+
+        var masteries = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => studentIds.Contains(m.StudentId) && m.ModuleId == moduleId)
+            .ToListAsync(cancellationToken);
+        
+        var masteriesMap = masteries.ToDictionary(m => (m.StudentId, m.VocabularyItemId));
+
+        var evaluated = progresses.Select(wp =>
+        {
+            masteriesMap.TryGetValue((wp.StudentId, wp.WordId), out var m);
+            int decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+            bool isOverdue = wp.NextReviewDate.HasValue && now >= wp.NextReviewDate.Value;
+            
+            return new
+            {
+                Progress = wp,
+                Mastery = m,
+                DecayedScore = decayedScore,
+                IsOverdue = isOverdue
+            };
+        }).ToList();
+
+        var weakRows = evaluated
+            .Where(x => x.DecayedScore < 50)
+            .OrderBy(x => x.DecayedScore)
+            .ThenBy(x => x.Progress.Word.Word)
+            .Take(50)
+            .ToList();
+
+        var weak = weakRows.Select(x => MapToDto(x.Progress, x.Mastery, x.Progress.Word.Word)).ToList();
+
+        var overdue = evaluated.Count(x => x.IsOverdue);
 
         return new ModuleWeaknessOverviewDto(classId, moduleId, weak.Count, overdue, weak);
     }
@@ -182,14 +275,16 @@ public class AdaptiveAnalyticsService(
                 .Select(v => v.Id)
                 .ToListAsync(cancellationToken);
 
-            var rows = await dbContext.StudentWordMasteries.AsNoTracking()
-                .Where(m => studentIds.Contains(m.StudentId) && vocabularyIds.Contains(m.VocabularyItemId))
+            var rows = await dbContext.WordProgresses.AsNoTracking()
+                .Where(wp => studentIds.Contains(wp.StudentId) && vocabularyIds.Contains(wp.WordId))
                 .ToListAsync(cancellationToken);
+
+            var decayedScores = rows.Select(wp => MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt)).ToList();
+            var weakWordCount = rows.Count(wp => MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt) < 50);
 
             challengeProgress.TryGetValue(module.Id, out var progress);
             challengeStats.TryGetValue(module.Id, out var challengeStat);
             var progressPercent = progress is null || progress.Total == 0 ? 0 : (int)Math.Round((double)progress.Completed / progress.Total * 100);
-            var weakWordCount = rows.Count(row => row.MasteryScore < 65);
             result.Add(new ModuleProgressSummaryDto(
                 classId,
                 module.Id,
@@ -201,7 +296,7 @@ public class AdaptiveAnalyticsService(
                 progress?.Completed ?? 0,
                 progressPercent,
                 weakWordCount,
-                rows.Count == 0 ? 0 : Math.Round((decimal)rows.Average(r => r.MasteryScore), 2),
+                decayedScores.Count == 0 ? 0 : Math.Round((decimal)decayedScores.Average(), 2),
                 challengeStat?.LastActivityAt,
                 ResolveModuleProgressStatus(challengeStat?.ChallengeCount ?? 0, progressPercent, weakWordCount)));
         }

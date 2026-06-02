@@ -14,35 +14,69 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
         CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
-        var weak = await dbContext.StudentWordMasteries.AsNoTracking()
-            .Include(m => m.VocabularyItem)
-            .Where(m => m.StudentId == studentId && (m.MasteryScore < 65 || (m.NextReviewAt != null && m.NextReviewAt <= now)))
-            .OrderBy(m => m.NextReviewAt != null && m.NextReviewAt <= now ? 0 : 1)
-            .ThenBy(m => m.MasteryScore)
-            .Take(12)
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => wp.StudentId == studentId && wp.Word.IsActive)
             .ToListAsync(cancellationToken);
 
-        var items = weak.Select(m => new AdaptiveChallengeItemDto(
-            null,
-            m.VocabularyItemId,
-            m.VocabularyItem.Word,
-            m.VocabularyItem.NormalizedWord,
-            m.VocabularyItem.PhoneticHint ?? m.VocabularyItem.MeaningText,
-            m.VocabularyItem.MeaningText,
-            m.VocabularyItem.ExampleSentence,
-            m.VocabularyItem.SyllablesJson,
-            m.VocabularyItem.DifficultyLevel,
-            m.VocabularyItem.BmText,
-            m.VocabularyItem.ZhText,
-            m.VocabularyItem.EnText,
-            m.VocabularyItem.SyllableText,
-            m.VocabularyItem.ItemType,
-            m.VocabularyItem.DisplayOrder,
-            null,
-            null,
-            null,
-            null,
-            m.VocabularyItem.Language)).ToList();
+        var weak = progresses.Select(wp =>
+        {
+            int decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+            bool isOverdue = wp.NextReviewDate.HasValue && now >= wp.NextReviewDate.Value;
+            int priority = 5; // default Mastered and on-time
+
+            if (isOverdue)
+            {
+                priority = 1; // Overdue review
+            }
+            else if (decayedScore < 50)
+            {
+                priority = 2; // Weak
+            }
+            else if (decayedScore < 80)
+            {
+                priority = 3; // Developing
+            }
+
+            return new { Progress = wp, Priority = priority, DecayedScore = decayedScore, IsOverdue = isOverdue };
+        })
+        .Where(x => x.Priority <= 3)
+        .OrderBy(x => x.Priority)
+        .ThenBy(x => x.DecayedScore)
+        .Take(12)
+        .ToList();
+
+        var selectedProgresses = weak.Select(x => x.Progress).ToList();
+        var vocabularyIds = selectedProgresses.Select(wp => wp.WordId).ToList();
+
+        var masteries = await dbContext.StudentWordMasteries.AsNoTracking()
+            .Where(m => m.StudentId == studentId && vocabularyIds.Contains(m.VocabularyItemId))
+            .ToDictionaryAsync(m => m.VocabularyItemId, cancellationToken);
+
+        var items = weak.Select(x => {
+            var wp = x.Progress;
+            return new AdaptiveChallengeItemDto(
+                null,
+                wp.WordId,
+                wp.Word.Word,
+                wp.Word.NormalizedWord,
+                wp.Word.PhoneticHint ?? wp.Word.MeaningText,
+                wp.Word.MeaningText,
+                wp.Word.ExampleSentence,
+                wp.Word.SyllablesJson,
+                wp.Word.DifficultyLevel,
+                wp.Word.BmText,
+                wp.Word.ZhText,
+                wp.Word.EnText,
+                wp.Word.SyllableText,
+                wp.Word.ItemType,
+                wp.Word.DisplayOrder,
+                null,
+                null,
+                null,
+                null,
+                wp.Word.Language);
+        }).ToList();
 
         if (items.Count == 0 && context?.ModuleId is int moduleId)
         {
@@ -55,8 +89,16 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
                 .ToListAsync(cancellationToken);
         }
 
-        var tags = string.Join(' ', weak.Select(w => w.WeaknessTagsJson)).ToLowerInvariant();
-        var overdue = weak.Any(w => w.NextReviewAt != null && w.NextReviewAt <= now);
+        var tagList = new List<string>();
+        foreach (var x in weak)
+        {
+            if (masteries.TryGetValue(x.Progress.WordId, out var m) && !string.IsNullOrWhiteSpace(m.WeaknessTagsJson))
+            {
+                tagList.Add(m.WeaknessTagsJson);
+            }
+        }
+        var tags = string.Join(' ', tagList).ToLowerInvariant();
+        var overdue = weak.Any(x => x.IsOverdue);
         var code = tags.Contains("syllable")
             ? "SYLLABLE_SUSHI"
             : tags.Contains("pronunciation") || tags.Contains("oral")

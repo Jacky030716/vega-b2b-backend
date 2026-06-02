@@ -55,33 +55,81 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
                     .FirstOrDefaultAsync(m => m.Id == moduleId2, cancellationToken);
             }
 
-            items = await dbContext.VocabularyItems.AsNoTracking()
+            var vocabItems = await dbContext.VocabularyItems.AsNoTracking()
                 .Where(v => v.ModuleId == moduleId2 && v.IsActive)
-                .OrderBy(v => v.DisplayOrder)
-                .ThenBy(v => v.Word)
-                .Take(12)
-                .Select(v => new AdaptiveChallengeItemDto(
-                    null,
-                    v.Id,
-                    v.Word,
-                    v.NormalizedWord,
-                    v.PhoneticHint ?? v.MeaningText,
-                    v.MeaningText,
-                    v.ExampleSentence,
-                    v.SyllablesJson,
-                    v.DifficultyLevel,
-                    v.BmText,
-                    v.ZhText,
-                    v.EnText,
-                    v.SyllableText,
-                    v.ItemType,
-                    v.DisplayOrder,
-                    null,
-                    null,
-                    null,
-                    null,
-                    v.Language))
                 .ToListAsync(cancellationToken);
+
+            var vocabItemIds = vocabItems.Select(v => v.Id).ToList();
+
+            var progresses = new Dictionary<int, WordProgress>();
+            if (request.StudentId.HasValue)
+            {
+                var progressList = await dbContext.WordProgresses.AsNoTracking()
+                    .Where(wp => wp.StudentId == request.StudentId.Value && vocabItemIds.Contains(wp.WordId))
+                    .ToListAsync(cancellationToken);
+                progresses = progressList.ToDictionary(wp => wp.WordId);
+            }
+
+            var now = DateTime.UtcNow;
+            var sortedVocabItems = vocabItems.Select(v =>
+            {
+                int priority = 4; // Default: New (no progress or attempts == 0)
+                int decayedScore = 0;
+                
+                if (progresses.TryGetValue(v.Id, out var wp) && wp.TotalAttempts > 0)
+                {
+                    decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+                    bool isOverdue = wp.NextReviewDate.HasValue && now >= wp.NextReviewDate.Value;
+                    
+                    if (isOverdue)
+                    {
+                        priority = 1; // Overdue review
+                    }
+                    else if (decayedScore < 50)
+                    {
+                        priority = 2; // Weak
+                    }
+                    else if (decayedScore < 80)
+                    {
+                        priority = 3; // Developing
+                    }
+                    else
+                    {
+                        priority = 5; // Mastered and on time
+                    }
+                }
+
+                return new { Item = v, Priority = priority, DecayedScore = decayedScore };
+            })
+            .OrderBy(x => x.Priority)
+            .ThenBy(x => x.Item.DisplayOrder)
+            .ThenBy(x => x.Item.Word)
+            .Take(12)
+            .Select(x => x.Item)
+            .ToList();
+
+            items = sortedVocabItems.Select(v => new AdaptiveChallengeItemDto(
+                null,
+                v.Id,
+                v.Word,
+                v.NormalizedWord,
+                v.PhoneticHint ?? v.MeaningText,
+                v.MeaningText,
+                v.ExampleSentence,
+                v.SyllablesJson,
+                v.DifficultyLevel,
+                v.BmText,
+                v.ZhText,
+                v.EnText,
+                v.SyllableText,
+                v.ItemType,
+                v.DisplayOrder,
+                null,
+                null,
+                null,
+                null,
+                v.Language))
+            .ToList();
         }
 
         if (items.Count == 0 && request.ManualWords?.Count > 0)
@@ -209,46 +257,74 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         if (request.StudentId is null)
             return new List<AdaptiveChallengeItemDto>();
 
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Include(wp => wp.Word)
+            .Where(wp => wp.StudentId == request.StudentId.Value && wp.Word.IsActive)
+            .ToListAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
-        var masteryQuery = dbContext.StudentWordMasteries.AsNoTracking()
-            .Include(m => m.VocabularyItem)
-            .Where(m => m.StudentId == request.StudentId.Value);
+        var prioritized = progresses.Select(wp =>
+        {
+            int decayedScore = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+            bool isOverdue = wp.NextReviewDate.HasValue && now >= wp.NextReviewDate.Value;
+            int priority = 5; // default Mastered and on-time
+
+            if (isOverdue)
+            {
+                priority = 1; // Overdue review
+            }
+            else if (decayedScore < 50)
+            {
+                priority = 2; // Weak
+            }
+            else if (decayedScore < 80)
+            {
+                priority = 3; // Developing
+            }
+
+            return new { Progress = wp, Priority = priority, DecayedScore = decayedScore };
+        });
 
         if (request.Objective.Contains("overdue", StringComparison.OrdinalIgnoreCase))
         {
-            masteryQuery = masteryQuery.Where(m => m.NextReviewAt != null && m.NextReviewAt <= now);
+            prioritized = prioritized.Where(x => x.Priority == 1);
         }
         else
         {
-            masteryQuery = masteryQuery.Where(m => m.MasteryScore < 65);
+            prioritized = prioritized.Where(x => x.Priority <= 3);
         }
 
-        return await masteryQuery
-            .OrderBy(m => m.MasteryScore)
-            .ThenBy(m => m.NextReviewAt)
+        var selected = prioritized
+            .OrderBy(x => x.Priority)
+            .ThenBy(x => x.DecayedScore)
+            .ThenBy(x => x.Progress.Word.DisplayOrder)
+            .ThenBy(x => x.Progress.Word.Word)
             .Take(12)
-            .Select(m => new AdaptiveChallengeItemDto(
-                null,
-                m.VocabularyItemId,
-                m.VocabularyItem.Word,
-                m.VocabularyItem.NormalizedWord,
-                m.VocabularyItem.PhoneticHint ?? m.VocabularyItem.MeaningText,
-                m.VocabularyItem.MeaningText,
-                m.VocabularyItem.ExampleSentence,
-                m.VocabularyItem.SyllablesJson,
-                m.VocabularyItem.DifficultyLevel,
-                m.VocabularyItem.BmText,
-                m.VocabularyItem.ZhText,
-                m.VocabularyItem.EnText,
-                m.VocabularyItem.SyllableText,
-                m.VocabularyItem.ItemType,
-                m.VocabularyItem.DisplayOrder,
-                null,
-                null,
-                null,
-                null,
-                m.VocabularyItem.Language))
-            .ToListAsync(cancellationToken);
+            .Select(x => x.Progress.Word)
+            .ToList();
+
+        return selected.Select(v => new AdaptiveChallengeItemDto(
+            null,
+            v.Id,
+            v.Word,
+            v.NormalizedWord,
+            v.PhoneticHint ?? v.MeaningText,
+            v.MeaningText,
+            v.ExampleSentence,
+            v.SyllablesJson,
+            v.DifficultyLevel,
+            v.BmText,
+            v.ZhText,
+            v.EnText,
+            v.SyllableText,
+            v.ItemType,
+            v.DisplayOrder,
+            null,
+            null,
+            null,
+            null,
+            v.Language))
+        .ToList();
     }
 
     private static List<AdaptiveChallengeItemDto> CreateAdHocItems(IEnumerable<string> words, string? defaultLanguage = null) =>
@@ -294,16 +370,41 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         if (vocabularyIds.Count == 0)
             return new Dictionary<int, SpellCatcherWeakness>();
 
-        var mastery = await dbContext.StudentWordMasteries.AsNoTracking()
+        var masteries = await dbContext.StudentWordMasteries.AsNoTracking()
             .Where(m => m.StudentId == studentId && vocabularyIds.Contains(m.VocabularyItemId))
-            .ToListAsync(cancellationToken);
+            .ToDictionaryAsync(m => m.VocabularyItemId, cancellationToken);
 
-        return mastery.ToDictionary(
-            m => m.VocabularyItemId,
-            m => new SpellCatcherWeakness(
-                m.MasteryScore < 65,
-                (m.WeaknessTagsJson ?? string.Empty).Contains("syllable_assembly", StringComparison.OrdinalIgnoreCase),
-                m.MasteryScore < 50 || m.TotalAttempts < 3));
+        var progresses = await dbContext.WordProgresses.AsNoTracking()
+            .Where(wp => wp.StudentId == studentId && vocabularyIds.Contains(wp.WordId))
+            .ToDictionaryAsync(wp => wp.WordId, cancellationToken);
+
+        var map = new Dictionary<int, SpellCatcherWeakness>();
+        foreach (var id in vocabularyIds)
+        {
+            masteries.TryGetValue(id, out var m);
+            progresses.TryGetValue(id, out var wp);
+
+            int score = wp?.MasteryScore ?? m?.MasteryScore ?? 0;
+            int totalAttempts = wp?.TotalAttempts ?? m?.TotalAttempts ?? 0;
+            
+            if (wp != null)
+            {
+                score = MasteryEngine.GetDecayedMasteryScore(wp.MasteryScore, wp.LastPracticedAt);
+            }
+            else if (m != null)
+            {
+                score = MasteryEngine.GetDecayedMasteryScore(m.MasteryScore, m.LastPracticedAt);
+            }
+
+            string weaknessTags = m?.WeaknessTagsJson ?? string.Empty;
+
+            map[id] = new SpellCatcherWeakness(
+                score < 65,
+                weaknessTags.Contains("syllable_assembly", StringComparison.OrdinalIgnoreCase),
+                score < 50 || totalAttempts < 3);
+        }
+
+        return map;
     }
 
     private static SpellCatcherWeakness ResolveSpellCatcherWeakness(

@@ -265,3 +265,23 @@ public class StudentSpellingTestAttemptConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(x => new { x.StudentId, x.Status });
     }
 }
+
+public class WordProgressConfiguration : IEntityTypeConfiguration<WordProgress>
+{
+    public void Configure(EntityTypeBuilder<WordProgress> builder)
+    {
+        SyllabusModuleConfiguration.ConfigureBase(builder, "word_progress");
+        builder.Property(x => x.StudentId).HasColumnName("student_id");
+        builder.Property(x => x.WordId).HasColumnName("word_id");
+        builder.Property(x => x.TotalAttempts).HasColumnName("total_attempts");
+        builder.Property(x => x.TotalCorrect).HasColumnName("total_correct");
+        builder.Property(x => x.MasteryScore).HasColumnName("mastery_score");
+        builder.Property(x => x.LastPracticedAt).HasColumnName("last_practiced_at");
+        builder.Property(x => x.NextReviewDate).HasColumnName("next_review_date");
+        
+        builder.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId);
+        builder.HasOne(x => x.Word).WithMany().HasForeignKey(x => x.WordId);
+        
+        builder.HasIndex(x => new { x.StudentId, x.WordId }).IsUnique();
+    }
+}
