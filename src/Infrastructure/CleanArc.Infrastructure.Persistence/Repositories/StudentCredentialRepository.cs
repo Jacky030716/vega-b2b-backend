@@ -37,4 +37,11 @@ internal class StudentCredentialRepository(ApplicationDbContext dbContext)
     DbContext.StudentCredentials.Update(credential);
     await DbContext.SaveChangesAsync();
   }
+  
+  public async Task<List<StudentCredential>> GetByUserIdAsync(int userId)
+  {
+    return await Table
+        .Where(sc => sc.UserId == userId)
+        .ToListAsync();
+  }
 }

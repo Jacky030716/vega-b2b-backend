@@ -1,5 +1,6 @@
 using CleanArc.Application.Contracts.Achievements;
 using CleanArc.Application.Contracts.Adaptive;
+using CleanArc.Application.Contracts.Audit;
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Contracts.Infrastructure.Billing;
 using CleanArc.Application.Contracts.Infrastructure.Documents;
@@ -13,6 +14,7 @@ using CleanArc.Infrastructure.Persistence.SeedDatabaseService;
 using CleanArc.Infrastructure.Persistence.Services.AI;
 using CleanArc.Infrastructure.Persistence.Services;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Services.Audit;
 using CleanArc.Infrastructure.Persistence.Services.Billing;
 using CleanArc.Infrastructure.Persistence.Services.Classrooms;
 using CleanArc.Infrastructure.Persistence.Services.RAG;
@@ -59,6 +61,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISpellingTestService, SpellingTestService>();
         services.AddScoped<IAdaptiveAttemptService, AdaptiveAttemptService>();
         services.AddScoped<IAdaptiveAnalyticsService, AdaptiveAnalyticsService>();
+        services.AddScoped<IAuditService, AuditService>();
+        services.AddSingleton<IAuditRouter, AuditRouter>();
+        services.AddScoped<IAuditRouteHandler, AuditRouteHandler>();
+        services.AddScoped<IAuditFindingsSummarizer, AuditFindingsSummarizer>();
         services.AddScoped<IAttemptConsistencyService, AttemptConsistencyService>();
         services.AddScoped<IBillingPaymentService, StripeBillingPaymentService>();
         services.AddScoped<IAiUsageService, AiUsageService>();

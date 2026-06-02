@@ -11,6 +11,8 @@ public class UpdateAdminUserCommand : IRequest<OperationResult<UpdateAdminUserRe
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string? Password { get; set; }
+    public string? PicturePassword { get; set; }
 }
 
 public class UpdateAdminUserResult

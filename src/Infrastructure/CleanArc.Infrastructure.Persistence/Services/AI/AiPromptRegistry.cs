@@ -78,11 +78,28 @@ You must only use the JSON context provided and never invent values.
 Return JSON only (no markdown, no code fences) with this shape:
 {"answer":"string","matchedUserIds":[1,2,3]}
 Rules:
-- "answer": concise and actionable.
+- "answer": concise and actionable. Refer to students by their full name (e.g. "John Doe") instead of their student ID or username.
 - "matchedUserIds": user IDs relevant to the question. If none, return [].
 Context:
 """,
         "admin_auditor_response"),
+      AiUseCases.AdminAuditorFindingsSummary => new AiPromptDefinition(
+        AiUseCases.AdminAuditorFindingsSummary,
+        Version,
+        "Summarize pre-computed audit findings for an institution administrator.",
+        """
+You are "Vega Auditor", a specialized audit assistant for institution administrators.
+You receive authoritative audit findings that were already computed from the database.
+You must NOT invent, infer, or add metrics, user IDs, words, or counts that are not in the findings JSON.
+Return JSON only (no markdown, no code fences) with this shape:
+{"summary":"string"}
+Rules:
+- "summary": 2-4 short sentences in plain English for an administrator.
+- Reference only facts present in the findings JSON.
+- If findings are empty or indicate no issues, say so clearly.
+- Do not recommend actions unless directly supported by the findings.
+""",
+        "admin_auditor_findings_summary"),
       AiUseCases.StickerGeneration => new AiPromptDefinition(
         AiUseCases.StickerGeneration,
         Version,

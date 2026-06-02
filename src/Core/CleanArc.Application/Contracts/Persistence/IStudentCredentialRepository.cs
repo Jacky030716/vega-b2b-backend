@@ -8,4 +8,5 @@ public interface IStudentCredentialRepository
   Task<List<StudentCredential>> GetByClassroomIdAsync(int classroomId);
   Task<StudentCredential> CreateAsync(StudentCredential credential);
   Task UpdateAsync(StudentCredential credential);
+  Task<List<StudentCredential>> GetByUserIdAsync(int userId);
 }

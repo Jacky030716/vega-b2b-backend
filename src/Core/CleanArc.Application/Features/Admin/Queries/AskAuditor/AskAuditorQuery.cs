@@ -14,4 +14,5 @@ public class AskAuditorResult
 {
     public string Answer { get; set; }
     public IReadOnlyList<int> MatchedUserIds { get; set; } = [];
+    public IReadOnlyList<string> MatchedUserNames { get; set; } = [];
 }

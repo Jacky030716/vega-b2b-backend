@@ -29,6 +29,7 @@ public static class AiUseCases
   public const string VoiceBridgeConfig = "VOICE_BRIDGE_CONFIG";
   public const string RecoveryMissionPreview = "RECOVERY_MISSION_PREVIEW";
   public const string AdminAuditor = "ADMIN_AUDITOR";
+  public const string AdminAuditorFindingsSummary = "ADMIN_AUDITOR_FINDINGS_SUMMARY";
   public const string StickerGeneration = "STICKER_GENERATION";
   public const string ClassroomThumbnailGeneration = "CLASSROOM_THUMBNAIL_GENERATION";
   public const string SmartFeedbackGeneration = "SMART_FEEDBACK_GENERATION";

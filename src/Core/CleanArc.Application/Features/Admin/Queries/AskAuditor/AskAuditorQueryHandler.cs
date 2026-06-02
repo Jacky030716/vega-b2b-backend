@@ -1,3 +1,4 @@
+using CleanArc.Application.Contracts.Audit;
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
@@ -13,7 +14,10 @@ internal sealed class AskAuditorQueryHandler(
     IAiUsageService aiUsageService,
     IAiRateLimitService aiRateLimitService,
     IUnitOfWork unitOfWork,
-    IInstitutionUserReportRepository institutionUserReportRepository)
+    IInstitutionUserReportRepository institutionUserReportRepository,
+    IAuditRouter auditRouter,
+    IAuditRouteHandler auditRouteHandler,
+    IAuditFindingsSummarizer auditFindingsSummarizer)
     : IRequestHandler<AskAuditorQuery, OperationResult<AskAuditorResult>>
 {
     public async ValueTask<OperationResult<AskAuditorResult>> Handle(AskAuditorQuery request, CancellationToken cancellationToken)
@@ -44,6 +48,7 @@ internal sealed class AskAuditorQueryHandler(
         var userMetadata = users.Select(user => new
         {
             user.Id,
+            FullName = $"{user.FirstName} {user.LastName}".Trim(),
             user.UserName,
             user.Role,
             user.IsActive,
@@ -51,6 +56,40 @@ internal sealed class AskAuditorQueryHandler(
             user.HasLoggedIn,
             user.LastLoginAt
         }).ToList();
+
+        var userNamesMap = users.ToDictionary(
+            user => user.Id,
+            user => $"{user.FirstName} {user.LastName}".Trim() is var name && !string.IsNullOrWhiteSpace(name) ? name : user.UserName);
+
+        var route = auditRouter.Route(request.Question);
+        if (!string.Equals(route.Intent, AuditIntentTypes.Unknown, StringComparison.Ordinal))
+        {
+            var routed = await auditRouteHandler.TryHandleAsync(
+                route,
+                new AuditRouteRequest(
+                    request.InstitutionId,
+                    request.UserId,
+                    request.Question,
+                    users.Select(user => new AuditRouteUserContext(
+                        user.Id,
+                        user.UserName,
+                        user.Role,
+                        user.ClassName,
+                        userNamesMap[user.Id])).ToList()),
+                cancellationToken);
+
+            if (routed is not null)
+            {
+                var hybridResult = await BuildHybridAuditResponseAsync(
+                    request,
+                    institution.Name,
+                    routed,
+                    userNamesMap,
+                    cancellationToken);
+
+                return OperationResult<AskAuditorResult>.SuccessResult(hybridResult);
+            }
+        }
 
         var dataContext = new
         {
@@ -152,8 +191,113 @@ internal sealed class AskAuditorQueryHandler(
         return OperationResult<AskAuditorResult>.SuccessResult(new AskAuditorResult
         {
             Answer = parsed.Answer,
-            MatchedUserIds = parsed.MatchedUserIds
+            MatchedUserIds = parsed.MatchedUserIds,
+            MatchedUserNames = parsed.MatchedUserIds
+                .Select(id => userNamesMap.TryGetValue(id, out var name) ? name : $"Student #{id}")
+                .ToList()
         });
+    }
+
+    private async Task<AskAuditorResult> BuildHybridAuditResponseAsync(
+        AskAuditorQuery request,
+        string institutionName,
+        AuditRouteResponse routed,
+        Dictionary<int, string> userNamesMap,
+        CancellationToken cancellationToken)
+    {
+        var findingsJson = AuditRouterResponseComposer.ExtractFindingsJson(routed.AnswerJson);
+        string? summary = null;
+        int? auditLogId = null;
+
+        if (!string.IsNullOrWhiteSpace(findingsJson))
+        {
+            var governanceError = await ValidateAuditorGovernanceAsync(request.UserId, cancellationToken);
+            if (governanceError is null)
+            {
+                var summaryPrompt = promptRegistry.Get(AiUseCases.AdminAuditorFindingsSummary);
+                auditLogId = await aiAuditService.StartAsync(
+                    new AiAuditStartRequest(
+                        AiUseCases.AdminAuditorFindingsSummary,
+                        "GEMINI",
+                        null,
+                        summaryPrompt.Version,
+                        JsonSerializer.Serialize(new
+                        {
+                            request.InstitutionId,
+                            InstitutionName = institutionName,
+                            request.Question,
+                            Findings = findingsJson
+                        }),
+                        RelatedUserId: request.UserId),
+                    cancellationToken);
+
+                summary = await auditFindingsSummarizer.SummarizeAsync(
+                    request.Question,
+                    findingsJson,
+                    cancellationToken);
+
+                if (string.IsNullOrWhiteSpace(summary))
+                {
+                    await aiAuditService.FailAsync(
+                        auditLogId.Value,
+                        null,
+                        new[] { "Audit findings summary generation failed." },
+                        cancellationToken);
+                }
+                else
+                {
+                    await aiAuditService.CompleteAsync(
+                        auditLogId.Value,
+                        summary,
+                        JsonSerializer.Serialize(new { summary }),
+                        AiValidationStatuses.Valid,
+                        Array.Empty<string>(),
+                        cancellationToken);
+
+                    if (request.UserId is int consumeUserId)
+                    {
+                        await aiUsageService.ConsumeUsageAsync(
+                            consumeUserId,
+                            AiFeatureTypes.AdminAuditor,
+                            "POST /api/v1.1/advisor/auditor/hybrid-summary",
+                            "GEMINI",
+                            null,
+                            1,
+                            true,
+                            null,
+                            "institution",
+                            request.InstitutionId,
+                            cancellationToken);
+                    }
+                }
+            }
+        }
+
+        var answer = AuditRouterResponseComposer.AttachSummary(routed.AnswerJson, summary);
+        return new AskAuditorResult
+        {
+            Answer = answer,
+            MatchedUserIds = routed.MatchedUserIds,
+            MatchedUserNames = routed.MatchedUserIds
+                .Select(id => userNamesMap.TryGetValue(id, out var name) ? name : $"Student #{id}")
+                .ToList()
+        };
+    }
+
+    private async Task<string?> ValidateAuditorGovernanceAsync(int? userId, CancellationToken cancellationToken)
+    {
+        if (userId is not int resolvedUserId)
+            return null;
+
+        var rateLimit = await aiRateLimitService.TryAcquireAsync(resolvedUserId, AiFeatureTypes.AdminAuditor, cancellationToken);
+        if (!rateLimit.Allowed)
+            return "Too many AI requests. Please try again later.";
+
+        var quota = await aiUsageService.GetRemainingQuotaAsync(resolvedUserId, AiFeatureTypes.AdminAuditor, cancellationToken);
+        if (quota.Remaining <= 0)
+            return "Your AI quota is exhausted for this month.";
+
+        return null;
     }
 
     private static AuditorParseResult ParseAuditorResponse(
