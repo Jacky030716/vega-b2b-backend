@@ -117,9 +117,9 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             var completed = challenges.Count(challenge =>
                 challenge.LifecycleState == ChallengeLifecycleState.Completed ||
                 challenge.Progresses.Any(progress => progress.HasCompleted));
-            // Exclude player-completed challenges from the active bucket so total is not double-counted
+            // Exclude player-completed or entity-completed challenges from the active bucket
             var active = challenges.Count(challenge =>
-                challenge.LifecycleState is ChallengeLifecycleState.Active or ChallengeLifecycleState.Scheduled
+                challenge.LifecycleState != ChallengeLifecycleState.Completed
                 && challenge.Progresses.All(progress => !progress.HasCompleted));
             var progress = challenges.Count > 0
                 ? (int)Math.Round((double)completed / challenges.Count * 100)
