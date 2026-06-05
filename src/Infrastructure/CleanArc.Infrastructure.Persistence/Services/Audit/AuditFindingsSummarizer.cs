@@ -28,7 +28,7 @@ public sealed class AuditFindingsSummarizer(
             """;
 
         var aiRequest = new ChallengeGenerationRequest(
-            Model: string.Empty,
+            Model: "gemini-3.5-flash",
             SystemPrompt: prompt.SystemInstruction,
             UserPrompt: userPrompt,
             Temperature: 0.2,

@@ -129,6 +129,17 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 ? (DateTime?)null
                 : challenges.Max(challenge => challenge.LastActivityAt ?? challenge.ModifiedDate ?? challenge.CreatedTime);
 
+            var completedProgresses = challenges
+                .SelectMany(c => c.Progresses)
+                .Where(p => p.HasCompleted)
+                .ToList();
+            var avgAccuracy = completedProgresses.Any()
+                ? Math.Round(completedProgresses.Average(p => {
+                    var acc = p.BestAccuracy ?? (decimal)p.BestScore;
+                    return acc <= 1.0m ? acc * 100m : acc;
+                  }), 2)
+                : 0m;
+
             return new StudentModuleTrackDto(
                 module.Id,
                 string.IsNullOrWhiteSpace(module.UnitTitle) ? module.Title : module.UnitTitle,
@@ -142,7 +153,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 challenges.Any(challenge => challenge.IsPinned || challenge.RecommendedScore > 0),
                 challenges.Count,
                 weakWordCount,
-                mastery?.AverageScore ?? 0,
+                avgAccuracy,
                 lastActivityAt,
                 ResolveModuleProgressStatus(challenges.Count, progress, weakWordCount));
         }).ToList();

@@ -108,7 +108,7 @@ internal sealed class AskAuditorQueryHandler(
         var systemPrompt = prompt.SystemInstruction + serializedContext;
 
         var aiRequest = new ChallengeGenerationRequest(
-            Model: string.Empty,
+            Model: "gemini-3.5-flash",
             SystemPrompt: systemPrompt,
             UserPrompt: request.Question,
             Temperature: 0.3,

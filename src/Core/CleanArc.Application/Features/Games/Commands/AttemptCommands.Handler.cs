@@ -227,7 +227,9 @@ internal class CompleteAttemptCommandHandler(
           HasCompleted      = existing?.HasCompleted == true || isFirstCompletion,
           BestScore         = isBetter ? attempt.Score : (existing?.BestScore ?? 0),
           BestStars         = Math.Max(clampedStars, existing?.BestStars ?? 0),
-          BestAccuracy      = isBetter && accuracy.HasValue ? accuracy : existing?.BestAccuracy,
+          BestAccuracy      = isBetter && accuracy.HasValue
+              ? (accuracy.Value <= 1.0m ? accuracy.Value * 100m : accuracy.Value)
+              : existing?.BestAccuracy,
           BestDurationSeconds = isBetter && durationSeconds.HasValue ? durationSeconds : existing?.BestDurationSeconds,
           TotalXpEarned     = (existing?.TotalXpEarned ?? 0) + xp,
           LastAttemptAt     = DateTime.UtcNow,

@@ -34,7 +34,7 @@ internal sealed class GenerateSmartFeedbackCommandHandler(
         var systemPrompt = prompt.SystemInstruction + "\n\nContext:\n" + serializedContext;
 
         var aiRequest = new ChallengeGenerationRequest(
-            Model: string.Empty,
+            Model: "gemini-3.1-flash-lite",
             SystemPrompt: systemPrompt,
             UserPrompt: "Please generate the feedback based on my recent game.",
             Temperature: 0.7,

@@ -42,6 +42,12 @@ public class GameEndpoints : ICarterModule
       return result.ToEndpointResult();
     }), _version, "GetGames", _tag);
 
+    app.MapEndpoint(builder => builder.MapGet("api/v1.1/temp-progress-debug", (CleanArc.Infrastructure.Persistence.ApplicationDbContext db) =>
+    {
+      var progress = db.ChallengeProgresses.ToList();
+      return Results.Ok(progress);
+    }), _version, "TempProgressDebug", _tag);
+
     // ── Student: adventure map for a specific game ───────────────────────────
 
     app.MapEndpoint(builder => builder.MapGet(

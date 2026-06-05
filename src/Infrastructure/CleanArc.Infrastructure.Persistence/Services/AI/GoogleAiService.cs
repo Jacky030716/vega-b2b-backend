@@ -44,6 +44,7 @@ public sealed class GoogleAiService(
     if (!result.IsSuccess)
     {
       var fallbackModel = string.Equals(modelId, "gemini-3.5-flash", StringComparison.OrdinalIgnoreCase)
+                          || string.Equals(modelId, "gemini-3.1-flash-lite", StringComparison.OrdinalIgnoreCase)
         ? "gemini-3.1-flash"
         : "gemini-3.5-flash";
 
