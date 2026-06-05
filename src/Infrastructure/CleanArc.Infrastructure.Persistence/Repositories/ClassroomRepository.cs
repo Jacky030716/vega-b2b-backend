@@ -421,6 +421,21 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
         .ToListAsync();
   }
 
+  public async Task<IReadOnlyDictionary<int, int>> GetClassroomStudentStarsAsync(int classroomId)
+  {
+    var stars = await DbContext.ChallengeProgresses.AsNoTracking()
+        .Where(cp => cp.ClassroomId == classroomId)
+        .GroupBy(cp => cp.UserId)
+        .Select(group => new
+        {
+            UserId = group.Key,
+            TotalStars = group.Sum(cp => cp.BestStars)
+        })
+        .ToDictionaryAsync(x => x.UserId, x => x.TotalStars);
+
+    return stars;
+  }
+
   // Challenges
   public async Task<List<Challenge>> GetClassroomChallengesAsync(int classroomId)
   {

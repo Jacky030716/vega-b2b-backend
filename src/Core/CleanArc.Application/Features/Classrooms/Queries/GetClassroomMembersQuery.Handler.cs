@@ -22,6 +22,7 @@ internal class GetClassroomMembersQueryHandler : IRequestHandler<GetClassroomMem
     var members = await _unitOfWork.ClassroomRepository.GetClassroomMembersAsync(request.ClassroomId);
     var avatarItems = await _unitOfWork.ShopRepository.GetShopItemsAsync("avatar");
     var avatarUrlById = avatarItems.ToDictionary(item => item.Id, item => item.ImageUrl);
+    var starMap = await _unitOfWork.ClassroomRepository.GetClassroomStudentStarsAsync(request.ClassroomId);
 
     static string ResolveAvatarForResponse(string rawAvatarId, IReadOnlyDictionary<int, string> avatarMap)
     {
@@ -47,7 +48,8 @@ internal class GetClassroomMembersQueryHandler : IRequestHandler<GetClassroomMem
             ResolveAvatarForResponse(m.User.AvatarId, avatarUrlById),
             m.User.Experience,
             m.User.Diamonds,
-            m.JoinedDate
+            m.JoinedDate,
+            starMap.GetValueOrDefault(m.User.Id, 0)
         ))
         .ToList();
 

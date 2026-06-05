@@ -13,5 +13,6 @@ public record ClassroomMemberDto(
     string? AvatarId,
     int Experience,
     int Diamonds,
-    DateTime JoinedAt
+    DateTime JoinedAt,
+    int Stars
 );

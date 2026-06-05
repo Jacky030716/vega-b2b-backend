@@ -28,6 +28,7 @@ public interface IClassroomRepository
   Task<ClassroomStudent> GetClassroomStudentAsync(int classroomId, int userId);
   Task<int> GetStudentCountAsync(int classroomId);
   Task<List<ClassroomStudent>> GetClassroomMembersAsync(int classroomId);
+  Task<IReadOnlyDictionary<int, int>> GetClassroomStudentStarsAsync(int classroomId);
 
   // Challenges assigned to this classroom
   Task<List<Challenge>> GetClassroomChallengesAsync(int classroomId);
