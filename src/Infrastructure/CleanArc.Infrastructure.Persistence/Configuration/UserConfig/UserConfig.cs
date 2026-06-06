@@ -1,4 +1,4 @@
-﻿using CleanArc.Domain.Entities.User;
+using CleanArc.Domain.Entities.User;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,5 +11,7 @@ internal class UserConfig : IEntityTypeConfiguration<User>
         builder.ToTable("Users", "usr").Property(p => p.Id).HasColumnName("UserId");
         builder.Property(u => u.ExternalUuid).IsRequired();
         builder.HasIndex(u => u.ExternalUuid).IsUnique();
+        builder.Property(u => u.ExpoPushToken).HasMaxLength(500);
+        builder.Property(u => u.LastSrsNotificationSentAt);
     }
 }

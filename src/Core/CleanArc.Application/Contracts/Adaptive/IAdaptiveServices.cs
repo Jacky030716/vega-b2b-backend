@@ -95,3 +95,10 @@ public interface IStudentModuleProgressionService
     Task<IReadOnlyList<StudentCustomChallengeDto>> GetCustomChallengesAsync(int classroomId, int studentId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ActiveStudentChallengeDto>> GetActiveStudentChallengesAsync(int studentId, CancellationToken cancellationToken);
 }
+
+public interface ISrsNotificationService
+{
+    Task RegisterPushTokenAsync(int studentId, string token, CancellationToken cancellationToken);
+    Task SendMasteryDecayNotificationsAsync(CancellationToken cancellationToken);
+    Task SendNotificationIfOverdueAsync(int studentId, CancellationToken cancellationToken);
+}

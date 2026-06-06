@@ -421,6 +421,7 @@ public class SpellingTestService(
             Total: total,
             Score: score,
             Stars: stars));
+        await UpdateWordProgressAfterSpellingTestAsync(attempt, results, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -915,6 +916,67 @@ public class SpellingTestService(
         foreach (var character in value)
             hash = unchecked(hash * 31 + character);
         return Math.Abs(hash);
+    }
+
+    private async Task UpdateWordProgressAfterSpellingTestAsync(
+        StudentSpellingTestAttempt attempt,
+        List<SpellingTestAnswerResultDto> results,
+        CancellationToken cancellationToken)
+    {
+        if (results == null || results.Count == 0) return;
+
+        var vocabularyItemIds = results.Select(r => r.VocabularyItemId).Distinct().ToList();
+
+        var existingProgresses = await dbContext.WordProgresses
+            .Where(wp => wp.StudentId == attempt.StudentId && vocabularyItemIds.Contains(wp.WordId))
+            .ToListAsync(cancellationToken);
+
+        var progressMap = existingProgresses.ToDictionary(wp => wp.WordId);
+
+        foreach (var result in results)
+        {
+            var wordId = result.VocabularyItemId;
+
+            if (!progressMap.TryGetValue(wordId, out var wp))
+            {
+                wp = new WordProgress
+                {
+                    StudentId = attempt.StudentId,
+                    WordId = wordId,
+                    TotalAttempts = 0,
+                    TotalCorrect = 0,
+                    MasteryScore = 0,
+                    LastPracticedAt = null,
+                    NextReviewDate = null
+                };
+                dbContext.WordProgresses.Add(wp);
+                progressMap[wordId] = wp;
+            }
+
+            wp.TotalAttempts += 1;
+            if (result.WasCorrect)
+            {
+                wp.TotalCorrect += 1;
+            }
+            wp.LastPracticedAt = DateTime.UtcNow;
+
+            // Fetch recent attempts from other challenge types for consistency calculations
+            var recentAttempts = await dbContext.StudentChallengeItemAttempts
+                .Where(i => i.StudentChallengeAttempt.StudentId == attempt.StudentId && i.VocabularyItemId == wordId)
+                .OrderByDescending(i => i.AnsweredAt)
+                .Take(10)
+                .Select(i => i.WasCorrect)
+                .ToListAsync(cancellationToken);
+            recentAttempts.Reverse();
+
+            // Calculate accuracy, consistency, and mastery score
+            double accuracy = AdaptiveAttemptService.CalculateAccuracy(wp.TotalCorrect, wp.TotalAttempts);
+            double consistency = AdaptiveAttemptService.CalculateConsistency(wp.TotalCorrect, wp.TotalAttempts, recentAttempts);
+            double retention = 100.0; // Reset retention to 100% after practice/test completion
+
+            wp.MasteryScore = AdaptiveAttemptService.CalculateMasteryScore(accuracy, consistency, retention);
+            wp.NextReviewDate = AdaptiveAttemptService.CalculateNextReviewDate(wp.MasteryScore, result.WasCorrect);
+        }
     }
 
     private record AttemptResultEnvelope(

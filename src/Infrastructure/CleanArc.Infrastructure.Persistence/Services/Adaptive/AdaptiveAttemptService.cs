@@ -169,13 +169,13 @@ public class AdaptiveAttemptService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static double CalculateAccuracy(int totalCorrect, int totalAttempts)
+    public static double CalculateAccuracy(int totalCorrect, int totalAttempts)
     {
         if (totalAttempts <= 0) return 0;
         return Math.Min(100.0, Math.Max(0.0, ((double)totalCorrect / totalAttempts) * 100.0));
     }
 
-    private static double CalculateConsistency(int totalCorrect, int totalAttempts, List<bool>? recentAttempts)
+    public static double CalculateConsistency(int totalCorrect, int totalAttempts, List<bool>? recentAttempts)
     {
         if (totalAttempts <= 0) return 0;
 
@@ -205,13 +205,13 @@ public class AdaptiveAttemptService(
         return baseAccuracy * volumeFactor;
     }
 
-    private static int CalculateMasteryScore(double accuracy, double consistency, double retention)
+    public static int CalculateMasteryScore(double accuracy, double consistency, double retention)
     {
         double score = (accuracy * 0.5) + (consistency * 0.3) + (retention * 0.2);
         return Math.Min(100, Math.Max(0, (int)Math.Round(score)));
     }
 
-    private static DateTime CalculateNextReviewDate(int score, bool wasCorrect)
+    public static DateTime CalculateNextReviewDate(int score, bool wasCorrect)
     {
         var now = DateTime.UtcNow;
         if (!wasCorrect || score < 50) return now.AddDays(1); // Weak / Incorrect

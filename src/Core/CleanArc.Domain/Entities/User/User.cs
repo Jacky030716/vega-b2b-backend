@@ -36,6 +36,8 @@ public class User : IdentityUser<int>, IEntity
     public string AvatarUrl { get; set; }
     public bool WeeklyAiInsightsEmail { get; set; } = true;
     public bool InactiveStudentAlerts { get; set; } = true;
+    public string? ExpoPushToken { get; set; }
+    public DateTime? LastSrsNotificationSentAt { get; set; }
 
     // Password reset tracking (store hashed token only)
     public DateTime? PasswordResetTokenExpiresAt { get; set; }

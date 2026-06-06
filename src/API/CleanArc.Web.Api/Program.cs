@@ -163,6 +163,16 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 app.MapControllers();
 
+// Register Hangfire recurring job for SRS mastery decay notifications
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    recurringJobManager.AddOrUpdate<ISrsNotificationService>(
+        "SrsMasteryDecayNotification",
+        service => service.SendMasteryDecayNotificationsAsync(CancellationToken.None),
+        "0 */8 * * *");
+}
+
 
 app.ConfigureGrpcPipeline();
 

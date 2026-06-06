@@ -118,6 +118,7 @@ public static class ServiceCollectionExtensions
 
         services.AddHttpClient<IStickerImageStorageService, FirebaseStickerImageStorageService>();
         services.AddHttpClient<CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails.IClassroomThumbnailImageStorageService, FirebaseClassroomThumbnailStorageService>();
+        services.AddHttpClient<ISrsNotificationService, SrsNotificationService>();
 
         services.Configure<AiUsageLimitOptions>(configuration.GetSection("AiUsageLimits"));
         services.Configure<AiRateLimitOptions>(configuration.GetSection("AiRateLimits"));

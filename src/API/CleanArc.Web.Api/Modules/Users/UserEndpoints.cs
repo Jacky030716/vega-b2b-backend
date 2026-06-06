@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Carter;
+using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.DTOs.User;
 using CleanArc.Application.Features.Users.Commands.Create;
 using CleanArc.Application.Features.Users.Commands.ForgotPassword;
@@ -97,9 +98,27 @@ public class UserEndpoints : ICarterModule
             .RequireAuthorization();
 
         app.MapEndpoint(
-            builder => builder.MapGet($"{_routePrefix}Profile", async (ClaimsPrincipal user, ISender sender) =>
+            builder => builder.MapGet($"{_routePrefix}Profile", async (
+                ClaimsPrincipal user, 
+                ISender sender,
+                ISrsNotificationService srsNotificationService,
+                CancellationToken cancellationToken) =>
             {
-                var result = await sender.Send(new GetUserProfileQuery(int.Parse(user.Identity.GetUserId())));
+                var userId = int.Parse(user.Identity.GetUserId());
+                
+                // Fire-and-forget background notification check on first profile load of the day
+                _ = Task.Run(async () => {
+                    try
+                    {
+                        await srsNotificationService.SendNotificationIfOverdueAsync(userId, cancellationToken);
+                    }
+                    catch
+                    {
+                        // Avoid crashing main execution thread
+                    }
+                }, cancellationToken);
+
+                var result = await sender.Send(new GetUserProfileQuery(userId));
                 return result.ToEndpointResult();
             }), _version, "GetProfile", _tag)
             .RequireAuthorization();
