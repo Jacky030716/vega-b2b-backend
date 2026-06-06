@@ -1,6 +1,9 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Carter;
+using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Contracts.Infrastructure.Documents;
+using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Features.Games.Commands;
 using CleanArc.Application.Features.Games.Queries;
 using CleanArc.SharedKernel.Extensions;
@@ -13,6 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 #nullable enable
 
 namespace CleanArc.Web.Api.Endpoints;
+
 
 /// <summary>
 /// Games + Challenges + Attempts — the core adventure-map API.
@@ -96,22 +100,76 @@ public class GameEndpoints : ICarterModule
           string gameKey,
           [FromForm] GenerateAiChallengeDraftRequest request,
           ClaimsPrincipal user,
-          ISender sender,
+          IUnitOfWork unitOfWork,
+          IAiRateLimitService rateLimitService,
+          IAiUsageService aiUsageService,
+          IAiAuditService aiAuditService,
+          IAiPromptRegistry promptRegistry,
           CancellationToken cancellationToken) =>
         {
           var userId = int.Parse(user.Identity!.GetUserId());
 
-          var documentPayload = await BuildDocumentPayloadAsync(request.SyllabusFile, cancellationToken);
-          var result = await sender.Send(new GenerateAiChallengeDraftCommand(
-              userId,
-              gameKey,
-              request.ClassroomId,
-              request.Prompt,
-              documentPayload
-            ),
-            cancellationToken);
+          if (gameKey is not ("spell_catcher" or "syllable_sushi" or "voice_bridge"))
+              return Results.BadRequest(new { message = "Unsupported game key for AI generation." });
 
-          return result.ToEndpointResult();
+          var classroom = await unitOfWork.ClassroomRepository.GetClassroomByIdAsync(request.ClassroomId);
+          if (classroom is null || !classroom.IsActive)
+              return Results.NotFound(new { message = "Classroom not found." });
+
+          if (classroom.TeacherId != userId)
+              return Results.Json(new { message = "You are not authorized to generate challenges for this classroom." }, statusCode: StatusCodes.Status401Unauthorized);
+
+          // Rate limit & Quota check
+          var rateLimit = await rateLimitService.TryAcquireAsync(userId, AiFeatureTypes.CustomChallengeGeneration, cancellationToken);
+          if (!rateLimit.Allowed)
+          {
+              return Results.Json(
+                  new { message = "Too many AI requests. Please try again later.", retryAfterSeconds = rateLimit.RetryAfterSeconds },
+                  statusCode: StatusCodes.Status429TooManyRequests);
+          }
+
+          var quota = await aiUsageService.GetRemainingQuotaAsync(userId, AiFeatureTypes.CustomChallengeGeneration, cancellationToken);
+          if (quota.Remaining <= 0)
+          {
+              return Results.BadRequest(new { message = "Your AI quota is exhausted for this month." });
+          }
+
+          var promptText = request.Prompt?.Trim() ?? string.Empty;
+          var documentPayload = await BuildDocumentPayloadAsync(request.SyllabusFile, cancellationToken);
+
+          if (string.IsNullOrWhiteSpace(promptText) && documentPayload is null)
+              return Results.BadRequest(new { message = "Provide a prompt or upload a syllabus document." });
+
+          // Start Audit Log
+          var promptDefinition = promptRegistry.Get(AiUseCases.CustomChallengeExtraction, gameKey);
+          var auditLogId = await aiAuditService.StartAsync(
+              new AiAuditStartRequest(
+                  AiUseCases.CustomChallengeExtraction,
+                  "GEMINI",
+                  null,
+                  promptDefinition.Version,
+                  JsonSerializer.Serialize(new
+                  {
+                      request.ClassroomId,
+                      gameKey,
+                      prompt = promptText,
+                      hasSyllabus = documentPayload is not null
+                  }),
+                  userId,
+                  request.ClassroomId),
+              cancellationToken);
+
+          // Enqueue Hangfire background job
+          Hangfire.BackgroundJob.Enqueue<IBackgroundJobExecutor>(x =>
+              x.ExecuteChallengeDraftJobAsync(
+                  auditLogId,
+                  gameKey,
+                  userId,
+                  request.ClassroomId,
+                  promptText,
+                  documentPayload));
+
+          return Results.Accepted($"/api/v1.1/ai/jobs/{auditLogId}", new { auditLogId, status = "PENDING" });
         }
     ), _version, "GenerateAiChallengeDraft", _tag)
       .DisableAntiforgery()

@@ -37,17 +37,18 @@ public sealed class ChallengeAiPipelineService(
     CustomVocabularyGenerationRequest request,
     CancellationToken cancellationToken)
   {
-    if (request.RelatedUserId is int userId)
+    if (request.RelatedUserId is int userId && request.ExistingAuditLogId is null)
     {
       var access = await EnsureAccessAsync(userId, AiFeatureTypes.CustomChallengeGeneration, cancellationToken);
       if (!access.IsSuccess)
         return OperationResult<CustomVocabularyGenerationResult>.FailureResult(access.ErrorMessage ?? "AI request blocked.");
     }
 
+
     var prompt = promptRegistry.Get(AiUseCases.CustomChallengeExtraction, request.GameKey);
     var systemPrompt = prompt.SystemInstruction;
     var userPrompt = BuildCustomExtractionUserPrompt(request.GameKey, request.Prompt, request.AugmentedContext);
-    var auditLogId = await StartAuditAsync(
+    var auditLogId = request.ExistingAuditLogId ?? await StartAuditAsync(
       AiUseCases.CustomChallengeExtraction,
       prompt,
       new
@@ -60,6 +61,7 @@ public sealed class ChallengeAiPipelineService(
       request.RelatedClassroomId,
       null,
       cancellationToken);
+
 
     var generation = await GenerateJsonAsync(AiUseCases.CustomChallengeExtraction, systemPrompt, userPrompt, 0.2d, cancellationToken);
     if (!generation.IsSuccess)

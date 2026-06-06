@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using CleanArc.Domain.Common;
 using CleanArc.Domain.Entities.Adaptive;
@@ -111,6 +112,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     // Social
     // public DbSet<Friendship> Friendships { get; set; }
 
+    // Cache PropertyInfo[] per entity type so reflection only runs once per type, not once per Save.
+    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> _stringPropertiesCache = new();
+
     private void OnSavingChanges(object sender, SavingChangesEventArgs e)
     {
         _cleanString();
@@ -126,12 +130,14 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
             if (item.Entity == null)
                 continue;
 
-            var properties = item.Entity.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && p.CanWrite && p.PropertyType == typeof(string));
+            var entityType = item.Entity.GetType();
+            var properties = _stringPropertiesCache.GetOrAdd(entityType, t =>
+                t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                 .Where(p => p.CanRead && p.CanWrite && p.PropertyType == typeof(string))
+                 .ToArray());
 
             foreach (var property in properties)
             {
-                var propName = property.Name;
                 var val = (string)property.GetValue(item.Entity, null);
 
                 if (val.HasValue())
@@ -147,7 +153,6 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-
         base.OnModelCreating(modelBuilder);
 
         var entitiesAssembly = typeof(IEntity).Assembly;
@@ -173,7 +178,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
         {
             if (entity != null)
             {
-                entity.ModifiedDate = DateTime.UtcNow; // Ensure UTC
+                entity.ModifiedDate = DateTime.UtcNow;
             }
         }
 
@@ -181,8 +186,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
         {
             if (entity != null)
             {
-                entity.CreatedTime = DateTime.UtcNow; // Ensure UTC
-                entity.ModifiedDate = DateTime.UtcNow; // Ensure UTC
+                entity.CreatedTime = DateTime.UtcNow;
+                entity.ModifiedDate = DateTime.UtcNow;
             }
         }
     }

@@ -68,7 +68,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAttemptConsistencyService, AttemptConsistencyService>();
         services.AddScoped<IBillingPaymentService, StripeBillingPaymentService>();
         services.AddScoped<IAiUsageService, AiUsageService>();
+        services.AddScoped<IBackgroundJobExecutor, BackgroundJobExecutor>();
         services.AddSingleton<IAiRateLimitService, AiRateLimitService>();
+
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IClassroomGeneratorService, ClassroomGeneratorService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IStudentImportService, StudentImportService>();
         services.AddScoped<CleanArc.Application.Contracts.Infrastructure.IRosterPdfGenerator, RosterPdfGenerator>();

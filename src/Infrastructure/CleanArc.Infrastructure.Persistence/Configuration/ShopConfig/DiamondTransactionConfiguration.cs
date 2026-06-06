@@ -11,7 +11,8 @@ public class DiamondTransactionConfiguration : IEntityTypeConfiguration<DiamondT
     builder.Property(d => d.UserId).IsRequired();
     builder.Property(d => d.Amount).IsRequired();
     builder.Property(d => d.Reason).IsRequired().HasMaxLength(50);
-    builder.HasIndex(d => d.UserId);
+    // Composite index covers WHERE UserId = ? ORDER BY CreatedTime DESC in GetDiamondTransactionsAsync.
+    builder.HasIndex(d => new { d.UserId, d.CreatedTime });
     builder.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId);
   }
 }

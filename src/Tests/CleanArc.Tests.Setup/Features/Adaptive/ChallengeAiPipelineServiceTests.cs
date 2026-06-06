@@ -21,7 +21,7 @@ public class ChallengeAiPipelineServiceTests
           "title": "Word Pair: Animals",
           "description": "Match animal words.",
           "content": {
-            "pairs": [
+            "items": [
               { "key": "kucing", "value": "cat" },
               { "key": "anjing", "value": "dog" },
               { "key": "burung", "value": "bird" }
@@ -36,7 +36,7 @@ public class ChallengeAiPipelineServiceTests
             CancellationToken.None);
 
         Assert.True(result.IsSuccess, result.ErrorMessage);
-        Assert.Equal("spell_catcher", result.Result.DraftSchema);
+        Assert.Equal("SPELL_CATCHER", result.Result.DraftSchema);
         Assert.Contains("kucing", result.Result.DraftPayload);
         Assert.Contains("cat", result.Result.PlayableContentData);
         Assert.Equal(42, result.Result.AiAuditLogId);
@@ -51,7 +51,7 @@ public class ChallengeAiPipelineServiceTests
           "title": "Word Pair: Animals",
           "description": "Match animal words.",
           "content": {
-            "pairs": [
+            "items": [
               { "key": "kucing", "value": "cat" }
             ]
           }
@@ -63,13 +63,13 @@ public class ChallengeAiPipelineServiceTests
             CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.Contains("at least 3 pairs", result.ErrorMessage);
+        Assert.Contains("at least 3 items", result.ErrorMessage);
         await audit.Received(1).CompleteAsync(
             42,
             Arg.Any<string>(),
             "{}",
             AiValidationStatuses.Invalid,
-            Arg.Is<IReadOnlyList<string>>(errors => errors.Any(error => error.Contains("at least 3 pairs"))),
+            Arg.Is<IReadOnlyList<string>>(errors => errors.Any(error => error.Contains("at least 3 items"))),
             Arg.Any<CancellationToken>());
     }
 
@@ -200,7 +200,7 @@ public class ChallengeAiPipelineServiceTests
         await audit.Received(1).StartAsync(
             Arg.Is<AiAuditStartRequest>(request =>
                 request.Provider == "RULE_BASED"
-                && request.ModelName == null
+                && request.ModelName == "gemini-test"
                 && request.RelatedClassroomId == 99
                 && request.RelatedModuleId == 10),
             Arg.Any<CancellationToken>());
@@ -226,12 +226,20 @@ public class ChallengeAiPipelineServiceTests
         audit.StartAsync(Arg.Any<AiAuditStartRequest>(), Arg.Any<CancellationToken>())
             .Returns(42);
 
+        var rateLimit = Substitute.For<IAiRateLimitService>();
+        rateLimit.TryAcquireAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult((Allowed: true, RetryAfterSeconds: 0)));
+
+        var usage = Substitute.For<IAiUsageService>();
+        usage.GetRemainingQuotaAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new AiQuotaResult(100, 0, 100)));
+
         return new ChallengeAiPipelineService(
             ai,
             new AiPromptRegistry(),
             audit,
-            Substitute.For<IAiUsageService>(),
-            Substitute.For<IAiRateLimitService>(),
+            usage,
+            rateLimit,
             Options.Create(new GoogleAiOptions { ModelId = "gemini-test" }),
             Substitute.For<ILogger<ChallengeAiPipelineService>>());
     }

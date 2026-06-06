@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Carter;
+using Hangfire;
+using Hangfire.PostgreSql;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Models.Common;
 using CleanArc.Application.ServiceConfiguration;
@@ -72,6 +74,13 @@ builder.Services.AddApplicationServices()
     .RegisterIdentityServices(identitySettings)
     .AddPersistenceServices(configuration)
     .AddWebFrameworkServices();
+
+builder.Services.AddHangfire(config => config
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(configuration.GetConnectionString("PostgreSQL"))));
+builder.Services.AddHangfireServer();
+
 
 builder.Services.RegisterValidatorsAsServices();
 builder.Services.AddExceptionHandler<ExceptionHandler>();
@@ -147,7 +156,12 @@ app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>()
+});
 app.MapControllers();
+
 
 app.ConfigureGrpcPipeline();
 

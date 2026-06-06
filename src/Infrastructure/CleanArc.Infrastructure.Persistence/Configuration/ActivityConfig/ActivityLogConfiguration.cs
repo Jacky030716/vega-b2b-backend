@@ -10,8 +10,8 @@ public class ActivityLogConfiguration : IEntityTypeConfiguration<ActivityLog>
   {
     builder.Property(a => a.Type).IsRequired().HasMaxLength(30);
     builder.Property(a => a.Title).IsRequired().HasMaxLength(200);
-    builder.HasIndex(a => a.UserId);
-    builder.HasIndex(a => a.CreatedTime);
+    // Composite index covers WHERE UserId = ? ORDER BY CreatedTime DESC in GetRecentActivityAsync.
+    builder.HasIndex(a => new { a.UserId, a.CreatedTime });
     builder.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId);
   }
 }

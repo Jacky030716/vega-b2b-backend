@@ -158,30 +158,35 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
 
     public async Task UpsertChallengeProgressAsync(ChallengeProgress incoming)
     {
-        var existing = await DbContext.ChallengeProgresses
-            .FirstOrDefaultAsync(cp =>
-                cp.UserId == incoming.UserId &&
-                cp.ChallengeId == incoming.ChallengeId &&
-                cp.ClassroomId == incoming.ClassroomId);
-
-        if (existing is null)
-        {
-            DbContext.ChallengeProgresses.Add(incoming);
-        }
-        else
-        {
-            existing.AttemptCount = incoming.AttemptCount;
-            existing.HasCompleted = incoming.HasCompleted;
-            existing.BestScore = incoming.BestScore;
-            existing.BestStars = incoming.BestStars;
-            existing.BestAccuracy = incoming.BestAccuracy;
-            existing.BestDurationSeconds = incoming.BestDurationSeconds;
-            existing.TotalXpEarned = incoming.TotalXpEarned;
-            existing.LastAttemptAt = incoming.LastAttemptAt;
-            existing.FirstCompletedAt = incoming.FirstCompletedAt;
-        }
-
-        await DbContext.SaveChangesAsync();
+        // Atomic upsert — eliminates TOCTOU race condition when two concurrent
+        // submissions both finish at the same time and both read existing == null.
+        // PostgreSQL executes the INSERT and the ON CONFLICT UPDATE as a single
+        // atomic operation so no row can be double-inserted.
+        await DbContext.Database.ExecuteSqlAsync($"""
+            INSERT INTO "ChallengeProgresses"
+                ("UserId", "ChallengeId", "ClassroomId",
+                 "AttemptCount", "HasCompleted",
+                 "BestScore", "BestStars", "BestAccuracy", "BestDurationSeconds",
+                 "TotalXpEarned", "LastAttemptAt", "FirstCompletedAt",
+                 "CreatedTime", "ModifiedDate")
+            VALUES
+                ({incoming.UserId}, {incoming.ChallengeId}, {incoming.ClassroomId},
+                 {incoming.AttemptCount}, {incoming.HasCompleted},
+                 {incoming.BestScore}, {incoming.BestStars}, {incoming.BestAccuracy}, {incoming.BestDurationSeconds},
+                 {incoming.TotalXpEarned}, {incoming.LastAttemptAt}, {incoming.FirstCompletedAt},
+                 NOW(), NOW())
+            ON CONFLICT ("UserId", "ChallengeId", "ClassroomId") DO UPDATE SET
+                "AttemptCount"        = EXCLUDED."AttemptCount",
+                "HasCompleted"        = EXCLUDED."HasCompleted",
+                "BestScore"           = EXCLUDED."BestScore",
+                "BestStars"           = EXCLUDED."BestStars",
+                "BestAccuracy"        = EXCLUDED."BestAccuracy",
+                "BestDurationSeconds" = EXCLUDED."BestDurationSeconds",
+                "TotalXpEarned"       = EXCLUDED."TotalXpEarned",
+                "LastAttemptAt"       = EXCLUDED."LastAttemptAt",
+                "FirstCompletedAt"    = COALESCE("ChallengeProgresses"."FirstCompletedAt", EXCLUDED."FirstCompletedAt"),
+                "ModifiedDate"        = NOW()
+            """);
     }
 
     public async Task<List<ChallengeProgress>> GetChallengeLeaderboardAsync(int challengeId, int classroomId)

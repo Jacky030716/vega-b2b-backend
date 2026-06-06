@@ -27,6 +27,8 @@ public interface IClassroomRepository
   Task<ClassroomStudent> JoinClassroomAsync(ClassroomStudent student);
   Task<ClassroomStudent> GetClassroomStudentAsync(int classroomId, int userId);
   Task<int> GetStudentCountAsync(int classroomId);
+  /// <summary>Batch version of GetStudentCountAsync — returns counts for all given classroomIds in one query.</summary>
+  Task<IReadOnlyDictionary<int, int>> GetStudentCountsAsync(IReadOnlyList<int> classroomIds);
   Task<List<ClassroomStudent>> GetClassroomMembersAsync(int classroomId);
   Task<IReadOnlyDictionary<int, int>> GetClassroomStudentStarsAsync(int classroomId);
 
@@ -34,4 +36,8 @@ public interface IClassroomRepository
   Task<List<Challenge>> GetClassroomChallengesAsync(int classroomId);
 
   Task<int> GetModuleCountAsync(int classroomId);
+  /// <summary>Batch version of GetModuleCountAsync — returns counts for all given classroomIds in one query.</summary>
+  Task<IReadOnlyDictionary<int, int>> GetModuleCountsAsync(IReadOnlyList<int> classroomIds);
+  /// <summary>Returns the number of non-recovery challenges per classroom in one query, avoiding N+1 per-classroom fetches.</summary>
+  Task<IReadOnlyDictionary<int, int>> GetChallengeCountsAsync(IReadOnlyList<int> classroomIds);
 }

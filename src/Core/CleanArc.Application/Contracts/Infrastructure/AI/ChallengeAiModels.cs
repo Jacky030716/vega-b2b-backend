@@ -103,7 +103,9 @@ public record CustomVocabularyGenerationRequest(
   string Prompt,
   string AugmentedContext,
   int? RelatedUserId = null,
-  int? RelatedClassroomId = null);
+  int? RelatedClassroomId = null,
+  int? ExistingAuditLogId = null);
+
 
 public record CustomVocabularyGenerationResult(
   string Title,

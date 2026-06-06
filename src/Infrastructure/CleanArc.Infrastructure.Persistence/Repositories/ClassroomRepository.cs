@@ -38,66 +38,54 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
 
   public async Task<List<Classroom>> GetTeacherClassroomsAsync(int teacherId, bool includeDeleted = false)
   {
-    // Check if the requesting user has the InstitutionAdmin or admin role
-    var user = await DbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == teacherId);
-    if (user != null)
+    // Resolve whether this user is an InstitutionAdmin in a single query by joining
+    // Users → UserRoles → Roles. Replaces 4 sequential round-trips.
+    var adminInfo = await DbContext.Users
+        .AsNoTracking()
+        .Where(u => u.Id == teacherId)
+        .Join(DbContext.UserRoles.AsNoTracking(),
+              u => u.Id,
+              ur => ur.UserId,
+              (u, ur) => new { u.InstitutionId, ur.RoleId })
+        .Join(DbContext.Roles.AsNoTracking(),
+              x => x.RoleId,
+              r => r.Id,
+              (x, r) => new { x.InstitutionId, RoleName = r.Name })
+        .Select(x => new { x.InstitutionId, x.RoleName })
+        .ToListAsync();
+
+    var isInstitutionAdmin = adminInfo.Any(x =>
+        x.RoleName == "InstitutionAdmin" || x.RoleName == "institutionadmin" ||
+        x.RoleName == "admin" || x.RoleName == "Admin");
+
+    if (isInstitutionAdmin)
     {
-      var isInstitutionAdmin = await DbContext.UserRoles.AsNoTracking()
-          .Join(DbContext.Roles.AsNoTracking(),
-                ur => ur.RoleId,
-                r => r.Id,
-                (ur, r) => new { ur.UserId, r.Name })
-          .AnyAsync(x => x.UserId == teacherId && (x.Name == "InstitutionAdmin" || x.Name == "admin" || x.Name == "Admin"));
+      var institutionId = adminInfo.Select(x => x.InstitutionId).FirstOrDefault() ?? 1;
 
-      if (isInstitutionAdmin)
-      {
-        // For institution admins, return all classrooms in their institution (default to 1 if not set)
-        var institutionId = user.InstitutionId ?? 1;
+      // Return all classrooms belonging to teachers in this institution.
+      // Uses a subquery instead of loading all teacher IDs into memory.
+      var adminQuery = TableNoTracking
+          .Include(c => c.Teacher)
+          .Include(c => c.Subjects)
+          .AsSplitQuery()
+          .Where(c => c.Teacher != null && c.Teacher.InstitutionId == institutionId);
 
-        // Find all teacher IDs in this institution
-        var teacherIdsInInstitution = await DbContext.Users.AsNoTracking()
-            .Where(u => u.InstitutionId == institutionId)
-            .Select(u => u.Id)
-            .ToListAsync();
+      if (!includeDeleted)
+        adminQuery = adminQuery.Where(c => c.IsActive && !c.IsDeleted);
 
-        // Also include mr_smith_teacher's classrooms because mr_smith_teacher is the seeded teacher
-        var smithTeacherId = await DbContext.Users.AsNoTracking()
-            .Where(u => u.UserName == "mr_smith_teacher")
-            .Select(u => u.Id)
-            .FirstOrDefaultAsync();
-
-        var teacherIdsList = teacherIdsInInstitution;
-        if (smithTeacherId > 0 && !teacherIdsList.Contains(smithTeacherId))
-        {
-          teacherIdsList.Add(smithTeacherId);
-        }
-
-        var adminQuery = TableNoTracking
-            .Include(c => c.Teacher)
-            .Include(c => c.Subjects)
-            .Where(c => teacherIdsList.Contains(c.TeacherId));
-
-        if (!includeDeleted)
-        {
-          adminQuery = adminQuery.Where(c => c.IsActive && !c.IsDeleted);
-        }
-
-        return await adminQuery.ToListAsync();
-      }
+      return await adminQuery.ToListAsync();
     }
 
     var query = TableNoTracking
         .Include(c => c.Teacher)
         .Include(c => c.Subjects)
+        .AsSplitQuery()
         .Where(c => c.TeacherId == teacherId);
 
     if (!includeDeleted)
-    {
       query = query.Where(c => c.IsActive && !c.IsDeleted);
-    }
 
-    return await query
-        .ToListAsync();
+    return await query.ToListAsync();
   }
 
   public async Task<Classroom> GetClassroomByIdAsync(int classroomId, bool includeDeleted = false, bool tracking = false)
@@ -111,6 +99,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     return await query
       .Include(c => c.Teacher)
       .Include(c => c.Subjects)
+      .AsSplitQuery()
       .FirstOrDefaultAsync(c => c.Id == classroomId);
   }
 
@@ -407,15 +396,57 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     return await DbContext.ClassroomStudents.CountAsync(cs => cs.ClassroomId == classroomId);
   }
 
+  public async Task<IReadOnlyDictionary<int, int>> GetStudentCountsAsync(IReadOnlyList<int> classroomIds)
+  {
+    if (classroomIds.Count == 0)
+      return new Dictionary<int, int>();
+
+    return await DbContext.ClassroomStudents
+        .AsNoTracking()
+        .Where(cs => classroomIds.Contains(cs.ClassroomId))
+        .GroupBy(cs => cs.ClassroomId)
+        .Select(g => new { ClassroomId = g.Key, Count = g.Count() })
+        .ToDictionaryAsync(x => x.ClassroomId, x => x.Count);
+  }
+
   public async Task<int> GetModuleCountAsync(int classroomId)
   {
     return await DbContext.ClassroomModules.CountAsync(cm => cm.ClassroomId == classroomId);
+  }
+
+  public async Task<IReadOnlyDictionary<int, int>> GetModuleCountsAsync(IReadOnlyList<int> classroomIds)
+  {
+    if (classroomIds.Count == 0)
+      return new Dictionary<int, int>();
+
+    return await DbContext.ClassroomModules
+        .AsNoTracking()
+        .Where(cm => classroomIds.Contains(cm.ClassroomId))
+        .GroupBy(cm => cm.ClassroomId)
+        .Select(g => new { ClassroomId = g.Key, Count = g.Count() })
+        .ToDictionaryAsync(x => x.ClassroomId, x => x.Count);
+  }
+
+  public async Task<IReadOnlyDictionary<int, int>> GetChallengeCountsAsync(IReadOnlyList<int> classroomIds)
+  {
+    if (classroomIds.Count == 0)
+      return new Dictionary<int, int>();
+
+    return await DbContext.Challenges
+        .AsNoTracking()
+        .Where(c => c.ClassroomId != null &&
+                    classroomIds.Contains(c.ClassroomId.Value) &&
+                    c.SourceType != "RECOVERY_MISSION")
+        .GroupBy(c => c.ClassroomId!.Value)
+        .Select(g => new { ClassroomId = g.Key, Count = g.Count() })
+        .ToDictionaryAsync(x => x.ClassroomId, x => x.Count);
   }
 
   public async Task<List<ClassroomStudent>> GetClassroomMembersAsync(int classroomId)
   {
     return await DbContext.ClassroomStudents.AsNoTracking()
         .Include(cs => cs.User)
+        .AsSplitQuery()
         .Where(cs => cs.ClassroomId == classroomId)
         .OrderByDescending(cs => cs.User.Experience)
         .ToListAsync();

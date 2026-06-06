@@ -93,57 +93,18 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
           return Results.BadRequest(new { message = "Your AI thumbnail quota is exhausted for this month." });
         }
 
-        var generation = await generationService.GenerateAsync(
-          new ClassroomThumbnailGenerationRequest(
+        // Enqueue Hangfire background job
+        Hangfire.BackgroundJob.Enqueue<IBackgroundJobExecutor>(x =>
+          x.ExecuteClassroomThumbnailJobAsync(
+            auditLogId,
             userId,
             request.ClassroomName,
             request.YearLevel,
             subjects,
             request.Description,
-            request.ThumbnailPrompt.Trim()),
-          cancellationToken);
+            request.ThumbnailPrompt));
 
-        if (!generation.IsSuccess)
-        {
-          await aiAuditService.FailAsync(auditLogId, null, new[] { generation.ErrorMessage ?? "Thumbnail generation failed." }, cancellationToken);
-          return Results.BadRequest(new { message = generation.ErrorMessage ?? "Thumbnail generation failed." });
-        }
-
-        await aiUsageService.ConsumeUsageAsync(
-          userId,
-          AiFeatureTypes.ClassroomThumbnailGeneration,
-          "POST /api/v1.1/ai/classroom-thumbnails/generate",
-          "HUGGING_FACE",
-          generation.Result.ModelName,
-          1,
-          true,
-          null,
-          "classroom_thumbnail",
-          null,
-          cancellationToken);
-
-        var refreshedQuota = await aiUsageService.GetRemainingQuotaAsync(userId, AiFeatureTypes.ClassroomThumbnailGeneration, cancellationToken);
-        await aiAuditService.CompleteAsync(
-          auditLogId,
-          JsonSerializer.Serialize(new { promptUsed, model = generation.Result.ModelName }),
-          JsonSerializer.Serialize(new
-          {
-            promptUsed,
-            mimeType = generation.Result.MimeType,
-            imageBytes = generation.Result.ImageBytes.Length,
-            remainingQuota = refreshedQuota.Remaining
-          }),
-          AiValidationStatuses.Valid,
-          Array.Empty<string>(),
-          cancellationToken);
-
-        return Results.Ok(new
-        {
-          imageBase64 = Convert.ToBase64String(generation.Result.ImageBytes),
-          mimeType = generation.Result.MimeType,
-          promptUsed,
-          remainingQuota = refreshedQuota.Remaining
-        });
+        return Results.Accepted($"/api/v1.1/ai/jobs/{auditLogId}", new { auditLogId, status = "PENDING" });
       }), Version, "GenerateClassroomThumbnail", Tag)
       .DisableAntiforgery()
       .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));

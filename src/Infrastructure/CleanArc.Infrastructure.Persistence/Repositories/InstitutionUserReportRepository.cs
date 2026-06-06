@@ -12,56 +12,81 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
     {
         var institutionId = filter.InstitutionId <= 0 ? 1 : filter.InstitutionId;
         var now = DateTime.UtcNow;
+        var normalizedRole = NormalizeFilter(filter.Role, "all");
+        var search = filter.Search?.Trim();
+
         var institutionUserIds = dbContext.InstitutionUsers
             .AsNoTracking()
             .Where(m => m.InstitutionId == institutionId && m.IsActive)
             .Select(m => m.UserId);
 
-        var users = await dbContext.Users
+        // Join users with roles at the DB level — only student/teacher rows come back.
+        // This replaces the previous pattern of loading all institution users then filtering in memory.
+        var query = dbContext.Users
             .AsNoTracking()
             .Where(u => institutionUserIds.Contains(u.Id))
-            .Select(u => new
-            {
-                u.Id,
-                u.Name,
-                u.FamilyName,
-                u.UserName,
-                u.Email,
-                u.LockoutEnd
-            })
+            .Join(
+                dbContext.UserRoles.AsNoTracking()
+                    .Join(
+                        dbContext.Roles.AsNoTracking(),
+                        ur => ur.RoleId,
+                        r => r.Id,
+                        (ur, r) => new { ur.UserId, r.Name }),
+                u => u.Id,
+                ur => ur.UserId,
+                (u, ur) => new { u.Id, u.Name, u.FamilyName, u.UserName, u.Email, u.LockoutEnd, RoleName = ur.Name })
+            .Where(x => x.RoleName == "student" || x.RoleName == "teacher" ||
+                        x.RoleName == "Student" || x.RoleName == "Teacher");
+
+        // Push role filter into SQL when a specific role is requested.
+        if (normalizedRole == "student")
+            query = query.Where(x => x.RoleName == "student" || x.RoleName == "Student");
+        else if (normalizedRole == "teacher")
+            query = query.Where(x => x.RoleName == "teacher" || x.RoleName == "Teacher");
+
+        // Push search into SQL using PostgreSQL case-insensitive ILIKE on username and email.
+        // Class-name search stays in-memory (className is resolved after the user fetch).
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search}%";
+            query = query.Where(x =>
+                EF.Functions.ILike(x.UserName ?? "", pattern) ||
+                EF.Functions.ILike(x.Email ?? "", pattern));
+        }
+
+        var raw = await query
+            .Select(x => new { x.Id, x.Name, x.FamilyName, x.UserName, x.Email, x.LockoutEnd, x.RoleName })
             .ToListAsync(cancellationToken);
+
+        if (raw.Count == 0)
+            return [];
+
+        // Normalize roles and deduplicate (user may have multiple matching roles).
+        var users = raw
+            .GroupBy(u => u.Id)
+            .Select(g =>
+            {
+                var first = g.First();
+                return new
+                {
+                    first.Id,
+                    first.Name,
+                    first.FamilyName,
+                    first.UserName,
+                    first.Email,
+                    first.LockoutEnd,
+                    Role = NormalizeRole(g.Select(x => x.RoleName ?? "").FirstOrDefault(r =>
+                        string.Equals(r, "student", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(r, "teacher", StringComparison.OrdinalIgnoreCase)) ?? "")
+                };
+            })
+            .Where(u => u.Role is "student" or "teacher")
+            .ToList();
 
         if (users.Count == 0)
-        {
             return [];
-        }
 
-        var userIds = users.Select(u => u.Id).ToArray();
-
-        var roleMap = await dbContext.UserRoles
-            .AsNoTracking()
-            .Where(ur => userIds.Contains(ur.UserId))
-            .Join(
-                dbContext.Roles.AsNoTracking(),
-                ur => ur.RoleId,
-                role => role.Id,
-                (ur, role) => new { ur.UserId, RoleName = role.Name ?? string.Empty })
-            .ToListAsync(cancellationToken);
-
-        var roleLookup = roleMap
-            .GroupBy(x => x.UserId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Select(x => NormalizeRole(x.RoleName)).FirstOrDefault(x => x is "student" or "teacher"));
-
-        var validUserIds = userIds
-            .Where(id => roleLookup.TryGetValue(id, out var role) && role is "student" or "teacher")
-            .ToArray();
-
-        if (validUserIds.Length == 0)
-        {
-            return [];
-        }
+        var validUserIds = users.Select(u => u.Id).ToArray();
 
         var teacherClassMap = await dbContext.Classrooms
             .AsNoTracking()
@@ -96,28 +121,20 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
             .AsNoTracking()
             .Where(rt => validUserIds.Contains(rt.UserId))
             .GroupBy(rt => rt.UserId)
-            .Select(g => new
-            {
-                UserId = g.Key,
-                LastLoginAt = g.Max(x => (DateTime?)x.CreatedAt)
-            })
+            .Select(g => new { UserId = g.Key, LastLoginAt = g.Max(x => (DateTime?)x.CreatedAt) })
             .ToDictionaryAsync(x => x.UserId, x => x.LastLoginAt, cancellationToken);
 
         var studentLogins = await dbContext.StudentCredentials
             .AsNoTracking()
             .Where(sc => validUserIds.Contains(sc.UserId))
             .GroupBy(sc => sc.UserId)
-            .Select(g => new
-            {
-                UserId = g.Key,
-                LastLoginAt = g.Max(x => x.LastSuccessfulLoginAt)
-            })
+            .Select(g => new { UserId = g.Key, LastLoginAt = g.Max(x => x.LastSuccessfulLoginAt) })
             .ToDictionaryAsync(x => x.UserId, x => x.LastLoginAt, cancellationToken);
 
-        var rows = new List<InstitutionUserReportRow>(validUserIds.Length);
-        foreach (var user in users.Where(u => validUserIds.Contains(u.Id)))
+        var rows = new List<InstitutionUserReportRow>(users.Count);
+        foreach (var user in users)
         {
-            var role = roleLookup[user.Id]!;
+            var role = user.Role;
 
             teacherClassMap.TryGetValue(user.Id, out var teacherClass);
             studentClassMap.TryGetValue(user.Id, out var studentClass);
@@ -149,7 +166,14 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
                 CredentialHint: hasLoggedIn ? string.Empty : $"Username: {user.UserName}"));
         }
 
-        var filtered = ApplyFilter(rows, filter);
+        // Tab filter stays in-memory — depends on classroom/login lookups above.
+        var tab = NormalizeFilter(filter.Tab, "all");
+        IEnumerable<InstitutionUserReportRow> filtered = rows;
+        if (tab == "unassigned")
+            filtered = filtered.Where(x => x.IsUnassigned);
+        else if (tab == "inactive")
+            filtered = filtered.Where(x => !x.IsActive);
+
         return filtered
             .OrderBy(x => x.UserName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -181,9 +205,7 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
             .FirstOrDefaultAsync(cancellationToken);
 
         if (user is null)
-        {
             return null;
-        }
 
         var roles = await dbContext.UserRoles
             .AsNoTracking()
@@ -200,9 +222,7 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
             .FirstOrDefault(x => x is "student" or "teacher");
 
         if (role is not ("student" or "teacher"))
-        {
             return null;
-        }
 
         List<InstitutionUserClassroomDto> classrooms;
         if (role == "teacher")
@@ -285,9 +305,7 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
                 cancellationToken);
 
         if (!userExists)
-        {
             return false;
-        }
 
         var roles = await dbContext.UserRoles
             .AsNoTracking()
@@ -302,40 +320,6 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
         return roles
             .Select(NormalizeRole)
             .Any(x => x is "student" or "teacher");
-    }
-
-    private static IEnumerable<InstitutionUserReportRow> ApplyFilter(
-        IEnumerable<InstitutionUserReportRow> rows,
-        InstitutionUserReportFilter filter)
-    {
-        var result = rows;
-        var role = NormalizeFilter(filter.Role, "all");
-        var tab = NormalizeFilter(filter.Tab, "all");
-        var search = filter.Search?.Trim();
-
-        if (role is "student" or "teacher")
-        {
-            result = result.Where(x => x.Role == role);
-        }
-
-        if (tab == "unassigned")
-        {
-            result = result.Where(x => x.IsUnassigned);
-        }
-        else if (tab == "inactive")
-        {
-            result = result.Where(x => !x.IsActive);
-        }
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            result = result.Where(x =>
-                ContainsIgnoreCase(x.UserName, search!) ||
-                ContainsIgnoreCase(x.Email, search!) ||
-                ContainsIgnoreCase(x.ClassName, search!));
-        }
-
-        return result;
     }
 
     private static string NormalizeRole(string roleName)
@@ -359,9 +343,7 @@ internal sealed class InstitutionUserReportRepository(ApplicationDbContext dbCon
     private static bool ContainsIgnoreCase(string? source, string search)
     {
         if (string.IsNullOrEmpty(source))
-        {
             return false;
-        }
 
         return source.Contains(search, StringComparison.OrdinalIgnoreCase);
     }
