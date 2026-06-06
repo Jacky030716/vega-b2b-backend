@@ -51,7 +51,11 @@ internal sealed class GetTeacherProfileQueryHandler(
           if (progress.HasCompleted)
           {
             snapshot.CompletedChallengeCount += 1;
-            snapshot.AccuracyTotal += progress.BestAccuracy ?? Math.Min(100, progress.BestScore);
+            var estimatedTotal = challenge.MaxStars * 100;
+            var fallbackAccuracy = estimatedTotal > 0
+                ? (decimal)progress.BestScore / estimatedTotal * 100m
+                : 0m;
+            snapshot.AccuracyTotal += progress.BestAccuracy ?? Math.Min(100m, fallbackAccuracy);
             snapshot.AccuracyCount += 1;
           }
         }

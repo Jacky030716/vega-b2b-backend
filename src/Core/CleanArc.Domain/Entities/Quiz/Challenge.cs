@@ -6,7 +6,7 @@ using CleanArc.Domain.Entities.User;
 
 namespace CleanArc.Domain.Entities.Quiz;
 
-public class Challenge : BaseEntity<int>
+public class Challenge : BaseEntity<int>, IPlayableActivity
 {
     public int GameId { get; set; }
     public Game Game { get; set; } = null!;

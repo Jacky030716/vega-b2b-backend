@@ -71,5 +71,16 @@ public class AdaptiveEndpoints : ICarterModule
         var result = await sender.Send(new GetAdaptiveChallengeByIdQuery(id), cancellationToken);
         return result is null ? Results.NotFound() : Results.Ok(result);
       }), Version, "GetAdaptiveChallenge", Tag).RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapGet(
+      $"{RoutePrefix}student/challenges/active",
+      async (
+        ClaimsPrincipal user,
+        IStudentModuleProgressionService service,
+        CancellationToken cancellationToken) =>
+      {
+        var studentId = int.Parse(user.Identity!.GetUserId());
+        return Results.Ok(await service.GetActiveStudentChallengesAsync(studentId, cancellationToken));
+      }), Version, "GetStudentActiveChallenges", Tag).RequireAuthorization();
   }
 }

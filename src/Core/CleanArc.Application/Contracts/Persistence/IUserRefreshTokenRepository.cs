@@ -1,4 +1,4 @@
-﻿using CleanArc.Domain.Entities.User;
+using CleanArc.Domain.Entities.User;
 
 namespace CleanArc.Application.Contracts.Persistence;
 
@@ -8,4 +8,5 @@ public interface IUserRefreshTokenRepository
     Task<UserRefreshToken> GetTokenWithInvalidation(Guid id);
     Task<User> GetUserByRefreshToken(Guid tokenId);
     Task RemoveUserOldTokens(int userId, CancellationToken cancellationToken);
+    Task<List<UserRefreshToken>> GetTokensByUserIdAsync(int userId, CancellationToken cancellationToken);
 }

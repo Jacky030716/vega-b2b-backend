@@ -64,20 +64,28 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
         : metrics.MasteryValue >= 60 ? "Steady"
         : "Needs Support";
 
-    // Last active = most recent challenge attempt, or most recent activity log, whichever is later.
+    var refreshTokens = await unitOfWork.UserRefreshTokenRepository.GetTokensByUserIdAsync(request.StudentId, cancellationToken);
+    var credentials = await unitOfWork.StudentCredentialRepository.GetByUserIdAsync(request.StudentId);
+
+    // Last active = most recent challenge attempt, activity log, refresh token creation, or successful login.
     var lastAttemptAt = metrics.RecentPerformances.Count > 0
         ? (DateTime?)metrics.RecentPerformances.Max(p => p.CompletedAt)
         : null;
     var lastActivityAt = recentActivities.Count > 0
         ? (DateTime?)recentActivities.Max(a => a.CreatedTime)
         : null;
-    DateTime? lastActiveAt = (lastAttemptAt, lastActivityAt) switch
-    {
-      (not null, not null) => lastAttemptAt > lastActivityAt ? lastAttemptAt : lastActivityAt,
-      (not null, null)     => lastAttemptAt,
-      (null, not null)     => lastActivityAt,
-      _                    => null,
-    };
+    var lastTokenAt = refreshTokens.Count > 0
+        ? (DateTime?)refreshTokens.Max(t => t.CreatedAt)
+        : null;
+    var lastLoginAt = credentials.Count > 0
+        ? credentials.Max(c => c.LastSuccessfulLoginAt)
+        : null;
+
+    var dates = new[] { lastAttemptAt, lastActivityAt, lastTokenAt, lastLoginAt }
+        .Where(d => d.HasValue)
+        .Select(d => d!.Value)
+        .ToList();
+    DateTime? lastActiveAt = dates.Count > 0 ? dates.Max() : null;
 
     var result = new ClassroomStudentDiagnosticsDto(
         student.Id,
@@ -186,8 +194,8 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
 
     var consistencyValue = recentFive.Count > 1
         ? Math.Min(100, Math.Max(0,
-            100 - recentFive.Max(p => p.ScorePercentage) +
-            recentFive.Min(p => p.ScorePercentage)))
+            100 - (recentFive.Max(p => p.ScorePercentage) -
+            recentFive.Min(p => p.ScorePercentage))))
         : Math.Round(averageScore);
 
     // ── Speed: based on average duration of recent performances ──────────────────────────────

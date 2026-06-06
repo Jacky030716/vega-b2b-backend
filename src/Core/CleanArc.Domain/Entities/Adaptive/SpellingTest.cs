@@ -2,7 +2,7 @@ using CleanArc.Domain.Common;
 
 namespace CleanArc.Domain.Entities.Adaptive;
 
-public class SpellingTest : BaseEntity<int>
+public class SpellingTest : BaseEntity<int>, IPlayableActivity
 {
     public int ClassroomId { get; set; }
     public CleanArc.Domain.Entities.Classroom.Classroom Classroom { get; set; } = null!;
@@ -20,9 +20,13 @@ public class SpellingTest : BaseEntity<int>
 
     public string ConfigJson { get; set; } = "{}";
     public ICollection<StudentSpellingTestAttempt> StudentAttempts { get; set; } = new List<StudentSpellingTestAttempt>();
+
+    // Explicit implementations for IPlayableActivity
+    int? IPlayableActivity.ClassroomId => ClassroomId;
+    DateTime? IPlayableActivity.DueAt => DueAt;
 }
 
-public class StudentSpellingTestAttempt : BaseEntity<int>
+public class StudentSpellingTestAttempt : BaseEntity<int>, IActivityAttempt
 {
     public int SpellingTestId { get; set; }
     public SpellingTest SpellingTest { get; set; } = null!;
@@ -41,6 +45,9 @@ public class StudentSpellingTestAttempt : BaseEntity<int>
     public DateTime? ModalSeenAt { get; set; }
     public DateTime? DismissedAt { get; set; }
     public string ResultJson { get; set; } = "{}";
+
+    // Explicit implementation for IActivityAttempt
+    int IActivityAttempt.ActivityId => SpellingTestId;
 }
 
 public static class SpellingTestStatuses

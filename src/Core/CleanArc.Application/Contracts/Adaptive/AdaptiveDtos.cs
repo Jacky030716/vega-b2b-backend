@@ -488,12 +488,27 @@ public record ModuleChallengeDto(
     bool WasFallbackUsed,
     string? ValidationStatus,
     IReadOnlyList<string> TrustIndicators,
-    string GenerationSource);
+    string GenerationSource,
+    int? StudentId = null);
 
 public record GenerateModuleChallengeRequest(
     int ClassroomId,
     string GameType,
-    string Mode);
+    string Mode,
+    int? StudentId = null);
+
+public record ActiveStudentChallengeDto(
+    int ChallengeId,
+    string Title,
+    string Description,
+    string GameKey,
+    string GameTemplateCode,
+    int DifficultyLevel,
+    DateTime? DueAt,
+    int? ModuleId,
+    string? Subject,
+    string? ChallengeMode,
+    string? SourceType);
 
 public record CreateCustomModuleChallengeRequest(
     string Title,
@@ -627,7 +642,8 @@ public record SpellingTestConfigDto(
     bool IncludeUnmasteredOnly,
     bool RandomizeOrder,
     bool AllowRetries,
-    int? TimeLimitSeconds);
+    int? TimeLimitSeconds,
+    string? GameType = null);
 
 public record CreateSpellingTestRequest(
     string Subject,
@@ -680,7 +696,8 @@ public record StudentSpellingTestSummaryDto(
     int? RemainingSeconds,
     DateTime? ModalSeenAt,
     DateTime? DismissedAt,
-    bool ShouldShowModal);
+    bool ShouldShowModal,
+    SpellingTestConfigDto Config);
 
 public record SpellingTestQuestionDto(
     int VocabularyItemId,

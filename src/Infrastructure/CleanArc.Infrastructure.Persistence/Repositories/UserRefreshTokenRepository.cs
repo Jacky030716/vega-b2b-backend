@@ -1,4 +1,4 @@
-﻿using CleanArc.Application.Contracts.Persistence;
+using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using Microsoft.EntityFrameworkCore;
@@ -36,5 +36,12 @@ internal class UserRefreshTokenRepository : BaseAsyncRepository<UserRefreshToken
     public Task RemoveUserOldTokens(int userId, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
+    }
+
+    public async Task<List<UserRefreshToken>> GetTokensByUserIdAsync(int userId, CancellationToken cancellationToken)
+    {
+        return await base.TableNoTracking
+            .Where(t => t.UserId == userId)
+            .ToListAsync(cancellationToken);
     }
 }

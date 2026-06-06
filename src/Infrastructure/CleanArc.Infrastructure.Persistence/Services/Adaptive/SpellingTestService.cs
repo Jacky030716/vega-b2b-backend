@@ -3,10 +3,13 @@ using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CleanArc.Infrastructure.Persistence.Services.Adaptive;
 
-public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTestService
+public class SpellingTestService(
+    ApplicationDbContext dbContext,
+    ILogger<SpellingTestService> logger) : ISpellingTestService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan CompletedVisibilityWindow = TimeSpan.FromHours(24);
@@ -19,43 +22,60 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
         bool isAdmin,
         CancellationToken cancellationToken)
     {
+        logger.LogInformation(
+            "Creating spelling test for classroom {ClassroomId} by teacher {TeacherId}. Subject={Subject}; Title={Title}; ModuleIds={ModuleIds}; DueAt={DueAt}; WordCount={WordCount}; GameType={GameType}",
+            classroomId,
+            teacherId,
+            request.Subject,
+            request.Title,
+            string.Join(",", request.ModuleIds ?? Array.Empty<int>()),
+            request.DueAt,
+            request.Config?.WordCount,
+            request.Config?.GameType);
+
         var classroom = await GetManagedClassroomAsync(classroomId, teacherId, isAdmin, cancellationToken);
-        var title = request.Title.Trim();
-        var subject = request.Subject.Trim();
+        var title = request.Title?.Trim() ?? string.Empty;
+        var subject = request.Subject?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(title))
-            throw new InvalidOperationException("Spelling test title is required.");
+            throw CreateSpellingTestFailure("Spelling test title is required.", classroomId, teacherId, request, null);
         if (string.IsNullOrWhiteSpace(subject))
-            throw new InvalidOperationException("Subject is required.");
+            throw CreateSpellingTestFailure("Subject is required.", classroomId, teacherId, request, null);
         if (request.DueAt <= DateTime.UtcNow)
-            throw new InvalidOperationException("Due date must be in the future.");
+            throw CreateSpellingTestFailure("Due date must be in the future.", classroomId, teacherId, request, null);
 
         var moduleIds = request.ModuleIds?.Where(id => id > 0).Distinct().ToList() ?? new List<int>();
         if (moduleIds.Count == 0)
-            throw new InvalidOperationException("Select at least one module.");
+            throw CreateSpellingTestFailure("Select at least one module.", classroomId, teacherId, request, moduleIds);
 
-        var duplicateExists = await dbContext.SpellingTests.AsNoTracking()
-            .AnyAsync(test =>
-                test.ClassroomId == classroomId &&
-                test.Status == SpellingTestStatuses.Active &&
-                test.Title.ToLower() == title.ToLower(), cancellationToken);
-        if (duplicateExists)
-            throw new InvalidOperationException("An active spelling test with this title already exists.");
+        await EnsureClassroomModuleLinksAsync(classroom, cancellationToken);
 
         await EnsureModulesAttachedAsync(classroomId, moduleIds, cancellationToken);
         var modules = await dbContext.SyllabusModules.AsNoTracking()
             .Where(module => moduleIds.Contains(module.Id) && module.IsActive)
             .ToListAsync(cancellationToken);
         if (modules.Count != moduleIds.Count)
-            throw new InvalidOperationException("One or more selected modules were not found.");
+            throw CreateSpellingTestFailure("One or more selected modules were not found.", classroomId, teacherId, request, moduleIds);
         if (modules.Any(module => !string.Equals(module.Subject, subject, StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidOperationException("Selected modules must match the selected subject.");
+            throw CreateSpellingTestFailure(
+                "Selected modules must match the selected subject.",
+                classroomId,
+                teacherId,
+                request,
+                moduleIds,
+                modules.Select(module => $"{module.Id}:{module.Subject}:Y{module.YearLevel}").ToList());
         if (modules.Any(module => module.YearLevel != classroom.YearLevel))
-            throw new InvalidOperationException("Selected modules must match the classroom year level.");
+            throw CreateSpellingTestFailure(
+                "Selected modules must match the classroom year level.",
+                classroomId,
+                teacherId,
+                request,
+                moduleIds,
+                modules.Select(module => $"{module.Id}:{module.Subject}:Y{module.YearLevel}").ToList());
 
         var config = NormalizeConfig(request.Config);
         var words = await SelectWordsAsync(classroomId, moduleIds, config, title, cancellationToken);
         if (words.Count == 0)
-            throw new InvalidOperationException("Selected modules do not contain vocabulary for a spelling test.");
+            throw CreateSpellingTestFailure("Selected modules do not contain vocabulary for a spelling test.", classroomId, teacherId, request, moduleIds);
 
         var test = new SpellingTest
         {
@@ -87,6 +107,12 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
 
         dbContext.SpellingTests.Add(test);
         await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation(
+            "Created spelling test {SpellingTestId} for classroom {ClassroomId}. WordCount={WordCount}; AssignedCount={AssignedCount}",
+            test.Id,
+            classroomId,
+            words.Count,
+            studentIds.Count);
         return await BuildTeacherSummaryAsync(test.Id, cancellationToken);
     }
 
@@ -432,9 +458,38 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
     private async Task<StudentSpellingTestAttempt> GetStudentAttemptAsync(int testId, int studentId, CancellationToken cancellationToken, bool tracking = false)
     {
         var query = tracking ? dbContext.StudentSpellingTestAttempts : dbContext.StudentSpellingTestAttempts.AsNoTracking();
-        return await query.Include(attempt => attempt.SpellingTest)
-            .FirstOrDefaultAsync(attempt => attempt.SpellingTestId == testId && attempt.StudentId == studentId, cancellationToken)
-            ?? throw new InvalidOperationException("Spelling test not found.");
+        var attempt = await query.Include(attempt => attempt.SpellingTest)
+            .FirstOrDefaultAsync(attempt => attempt.SpellingTestId == testId && attempt.StudentId == studentId, cancellationToken);
+
+        if (attempt != null)
+        {
+            return attempt;
+        }
+
+        var test = await dbContext.SpellingTests.AsNoTracking()
+            .FirstOrDefaultAsync(st => st.Id == testId, cancellationToken);
+        if (test == null)
+            throw new InvalidOperationException("Spelling test not found.");
+
+        var isMember = await dbContext.ClassroomStudents.AsNoTracking()
+            .AnyAsync(cs => cs.ClassroomId == test.ClassroomId && cs.UserId == studentId, cancellationToken);
+        if (!isMember)
+            throw new InvalidOperationException("Spelling test not found.");
+
+        var newAttempt = new StudentSpellingTestAttempt
+        {
+            SpellingTestId = testId,
+            StudentId = studentId,
+            Status = StudentSpellingTestAttemptStatuses.NotStarted,
+            ResultJson = "{}"
+        };
+
+        dbContext.StudentSpellingTestAttempts.Add(newAttempt);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var finalQuery = tracking ? dbContext.StudentSpellingTestAttempts : dbContext.StudentSpellingTestAttempts.AsNoTracking();
+        return await finalQuery.Include(a => a.SpellingTest)
+            .FirstAsync(a => a.SpellingTestId == testId && a.StudentId == studentId, cancellationToken);
     }
 
     private async Task EnsureModulesAttachedAsync(int classroomId, IReadOnlyList<int> moduleIds, CancellationToken cancellationToken)
@@ -444,7 +499,110 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
             .Select(link => link.ModuleId)
             .ToListAsync(cancellationToken);
         if (attached.Distinct().Count() != moduleIds.Count)
+        {
+            logger.LogWarning(
+                "Spelling test create rejected because selected modules are not all attached to classroom {ClassroomId}. RequestedModuleIds={RequestedModuleIds}; AttachedModuleIds={AttachedModuleIds}",
+                classroomId,
+                string.Join(",", moduleIds),
+                string.Join(",", attached));
             throw new InvalidOperationException("Selected modules must belong to this classroom.");
+        }
+    }
+
+    private InvalidOperationException CreateSpellingTestFailure(
+        string message,
+        int classroomId,
+        int teacherId,
+        CreateSpellingTestRequest request,
+        IReadOnlyList<int>? normalizedModuleIds,
+        IReadOnlyList<string>? moduleDetails = null)
+    {
+        logger.LogWarning(
+            "Spelling test create rejected: {Reason}. ClassroomId={ClassroomId}; TeacherId={TeacherId}; Subject={Subject}; Title={Title}; RequestModuleIds={RequestModuleIds}; NormalizedModuleIds={NormalizedModuleIds}; DueAt={DueAt}; WordCount={WordCount}; Difficulty={Difficulty}; GameType={GameType}; ModuleDetails={ModuleDetails}",
+            message,
+            classroomId,
+            teacherId,
+            request.Subject,
+            request.Title,
+            string.Join(",", request.ModuleIds ?? Array.Empty<int>()),
+            normalizedModuleIds is null ? null : string.Join(",", normalizedModuleIds),
+            request.DueAt,
+            request.Config?.WordCount,
+            request.Config?.Difficulty,
+            request.Config?.GameType,
+            moduleDetails is null ? null : string.Join(" | ", moduleDetails));
+
+        return new InvalidOperationException(message);
+    }
+
+    private async Task EnsureClassroomModuleLinksAsync(Classroom classroom, CancellationToken cancellationToken)
+    {
+        var subjects = await dbContext.ClassroomSubjects.AsNoTracking()
+            .Where(subject => subject.ClassroomId == classroom.Id)
+            .Select(subject => subject.Subject)
+            .ToListAsync(cancellationToken);
+
+        if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
+        {
+            subjects.Add(classroom.Subject.Trim());
+        }
+
+        subjects = subjects
+            .Where(subject => !string.IsNullOrWhiteSpace(subject))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (subjects.Count == 0)
+        {
+            return;
+        }
+
+        var existingSubjects = (await dbContext.ClassroomSubjects.AsNoTracking()
+                .Where(subject => subject.ClassroomId == classroom.Id)
+                .Select(subject => subject.Subject)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var subject in subjects.Where(subject => !existingSubjects.Contains(subject)))
+        {
+            dbContext.ClassroomSubjects.Add(new ClassroomSubject
+            {
+                ClassroomId = classroom.Id,
+                Subject = subject
+            });
+        }
+
+        var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
+            .Where(module => module.IsActive
+                             && module.ModuleType == SyllabusModule.PredefinedModuleType
+                             && module.YearLevel == classroom.YearLevel
+                             && subjects.Contains(module.Subject)
+                             && dbContext.VocabularyItems.Any(vocabulary => vocabulary.ModuleId == module.Id && vocabulary.IsActive))
+            .Select(module => module.Id)
+            .ToListAsync(cancellationToken);
+
+        if (matchingModuleIds.Count == 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var existingModuleIds = await dbContext.ClassroomModules.AsNoTracking()
+            .Where(link => link.ClassroomId == classroom.Id && matchingModuleIds.Contains(link.ModuleId))
+            .Select(link => link.ModuleId)
+            .ToListAsync(cancellationToken);
+        var existingModules = existingModuleIds.ToHashSet();
+
+        foreach (var moduleId in matchingModuleIds.Where(moduleId => !existingModules.Contains(moduleId)))
+        {
+            dbContext.ClassroomModules.Add(new ClassroomModule
+            {
+                ClassroomId = classroom.Id,
+                ModuleId = moduleId
+            });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<IReadOnlyList<VocabularyItem>> SelectWordsAsync(
@@ -454,16 +612,29 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
         string title,
         CancellationToken cancellationToken)
     {
-        var query = dbContext.VocabularyItems.AsNoTracking()
-            .Where(item => moduleIds.Contains(item.ModuleId) && item.IsActive);
-        if (config.Difficulty is int difficulty)
-            query = query.Where(item => item.DifficultyLevel == difficulty);
-
-        var words = await query
+        var allWords = await dbContext.VocabularyItems.AsNoTracking()
+            .Where(item => moduleIds.Contains(item.ModuleId) && item.IsActive)
             .OrderBy(item => item.ModuleId)
             .ThenBy(item => item.DisplayOrder)
             .ThenBy(item => item.Word)
             .ToListAsync(cancellationToken);
+
+        var words = allWords;
+        if (config.Difficulty is int difficulty)
+        {
+            var filtered = allWords.Where(item => item.DifficultyLevel == difficulty).ToList();
+            if (filtered.Count > 0)
+            {
+                words = filtered;
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Spelling test words selection: No words found with difficulty {Difficulty} in modules {ModuleIds}. Falling back to all difficulties.",
+                    difficulty,
+                    string.Join(",", moduleIds));
+            }
+        }
 
         if (config.IncludeUnmasteredOnly)
         {
@@ -563,7 +734,8 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
             GetVisibleRemainingSeconds(attempt, test.DueAt, now),
             attempt.ModalSeenAt,
             attempt.DismissedAt,
-            status is StudentSpellingTestAttemptStatuses.NotStarted && !attempt.ModalSeenAt.HasValue && !attempt.DismissedAt.HasValue);
+            status is StudentSpellingTestAttemptStatuses.NotStarted && !attempt.ModalSeenAt.HasValue && !attempt.DismissedAt.HasValue,
+            ParseConfig(test.ConfigJson));
     }
 
     private async Task<StudentSpellingTestDetailDto> BuildStudentDetailAsync(int testId, int studentId, CancellationToken cancellationToken)
@@ -628,13 +800,19 @@ public class SpellingTestService(ApplicationDbContext dbContext) : ISpellingTest
         var timeLimitSeconds = config?.TimeLimitSeconds is > 0
             ? Math.Clamp(config.TimeLimitSeconds.Value, 30, 3600)
             : DefaultTimeLimitSeconds;
+        var gameType = config?.GameType?.Trim();
+        if (string.IsNullOrWhiteSpace(gameType))
+        {
+            gameType = "MIXED";
+        }
         return new SpellingTestConfigDto(
             wordCount,
             difficulty,
             config?.IncludeUnmasteredOnly ?? false,
             config?.RandomizeOrder ?? true,
             config?.AllowRetries ?? false,
-            timeLimitSeconds);
+            timeLimitSeconds,
+            gameType);
     }
 
     private static SpellingTestConfigDto ParseConfig(string raw)

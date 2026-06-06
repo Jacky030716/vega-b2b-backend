@@ -3,7 +3,7 @@ using CleanArc.Domain.Entities.User;
 
 namespace CleanArc.Domain.Entities.Quiz;
 
-public class Attempt : BaseEntity<int>
+public class Attempt : BaseEntity<int>, IActivityAttempt
 {
     public int UserId { get; set; }
     public User.User User { get; set; } = null!;
@@ -25,4 +25,13 @@ public class Attempt : BaseEntity<int>
 
     // JSON string containing what the user answered, used for analytics
     public string AttemptData { get; set; } = string.Empty;
+
+    // Explicit implementations for IActivityAttempt
+    int IActivityAttempt.StudentId => UserId;
+    int IActivityAttempt.ActivityId => ChallengeId;
+    string IActivityAttempt.Status => IsCompleted ? "COMPLETED" : "IN_PROGRESS";
+    int? IActivityAttempt.Score => Score;
+    int? IActivityAttempt.Stars => StarsEarned;
+    DateTime? IActivityAttempt.StartedAt => null;
+    DateTime? IActivityAttempt.CompletedAt => CompletedAt;
 }

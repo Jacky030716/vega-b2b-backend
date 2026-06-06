@@ -93,4 +93,5 @@ public interface IStudentModuleProgressionService
     Task<IReadOnlyList<string>> GetClassroomSubjectsAsync(int classroomId, int studentId, CancellationToken cancellationToken);
     Task<StudentModuleProgressionDto> GetModuleProgressionAsync(int moduleId, int classroomId, int studentId, CancellationToken cancellationToken);
     Task<IReadOnlyList<StudentCustomChallengeDto>> GetCustomChallengesAsync(int classroomId, int studentId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ActiveStudentChallengeDto>> GetActiveStudentChallengesAsync(int studentId, CancellationToken cancellationToken);
 }

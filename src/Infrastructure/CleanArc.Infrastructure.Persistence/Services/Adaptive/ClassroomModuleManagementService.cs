@@ -249,7 +249,7 @@ public class ClassroomModuleManagementService(
         if (vocabulary.Count == 0)
             throw new InvalidOperationException("Module has no active vocabulary items.");
 
-        var weakness = await GetModuleWeaknessAsync(classroom.Id, module.Id, cancellationToken);
+        var weakness = await GetModuleWeaknessAsync(classroom.Id, module.Id, request.StudentId, cancellationToken);
         var moduleTitle = string.IsNullOrWhiteSpace(module.UnitTitle) ? module.Title : module.UnitTitle;
         var aiPlan = await challengeAiPipelineService.GenerateModuleChallengePlanAsync(
             new ModuleChallengePlanRequest(
@@ -285,8 +285,8 @@ public class ClassroomModuleManagementService(
             if (config.IsSuccess)
             {
                 var assigned = await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
-                    teacherId, null, classroom.Id, null,
-                    config.Result with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id },
+                    teacherId, request.StudentId, classroom.Id, null,
+                    config.Result with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id, StudentId = request.StudentId },
                     module.Subject,
                     null,
                     AiGenerationStatuses.AiAssisted,
@@ -337,12 +337,12 @@ public class ClassroomModuleManagementService(
         CancellationToken cancellationToken)
     {
         var preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
-            "class", null, classroomId, request.Mode, "PREDEFINED_MODULE", module.Id,
+            request.StudentId.HasValue ? "student" : "class", request.StudentId, classroomId, request.Mode, "PREDEFINED_MODULE", module.Id,
             request.GameType, request.Mode.Replace('_', ' '), null, null, null), cancellationToken);
 
         var assigned = await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
-            teacherId, null, classroomId, null,
-            preview with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id },
+            teacherId, request.StudentId, classroomId, null,
+            preview with { SourceType = "PREDEFINED_MODULE", ModuleId = module.Id, StudentId = request.StudentId },
             module.Subject,
             null,
             fallbackUsed ? AiGenerationStatuses.FailedFallback : AiGenerationStatuses.None,
@@ -689,12 +689,24 @@ public class ClassroomModuleManagementService(
         return (rows.Count, rows.Count(ActiveStates.Contains));
     }
 
-    private async Task<ModuleWeaknessContext> GetModuleWeaknessAsync(int classroomId, int moduleId, CancellationToken cancellationToken)
+    private async Task<ModuleWeaknessContext> GetModuleWeaknessAsync(int classroomId, int moduleId, int? studentId, CancellationToken cancellationToken)
     {
-        var studentIds = await dbContext.ClassroomStudents.AsNoTracking()
-            .Where(s => s.ClassroomId == classroomId)
-            .Select(s => s.UserId)
-            .ToListAsync(cancellationToken);
+        List<int> studentIds;
+        if (studentId.HasValue)
+        {
+            var belongsToClass = await dbContext.ClassroomStudents.AsNoTracking()
+                .AnyAsync(s => s.ClassroomId == classroomId && s.UserId == studentId.Value, cancellationToken);
+            if (!belongsToClass)
+                throw new InvalidOperationException("Student does not belong to this classroom");
+            studentIds = new List<int> { studentId.Value };
+        }
+        else
+        {
+            studentIds = await dbContext.ClassroomStudents.AsNoTracking()
+                .Where(s => s.ClassroomId == classroomId)
+                .Select(s => s.UserId)
+                .ToListAsync(cancellationToken);
+        }
 
         if (studentIds.Count == 0)
             return new ModuleWeaknessContext(Array.Empty<string>(), null);
@@ -865,7 +877,8 @@ public class ClassroomModuleManagementService(
             wasFallbackUsed,
             validationStatus,
             trustIndicators,
-            ResolveGenerationSource(challenge, wasFallbackUsed));
+            ResolveGenerationSource(challenge, wasFallbackUsed),
+            challenge.StudentId);
     }
 
     private static ChallengeLifecycleState ResolveModuleLifecycleState(Challenge challenge)

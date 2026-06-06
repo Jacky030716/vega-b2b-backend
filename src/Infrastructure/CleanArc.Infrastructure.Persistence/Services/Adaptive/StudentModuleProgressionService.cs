@@ -78,6 +78,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 challenge.ClassroomId == classroomId &&
                 challenge.ModuleId != null &&
                 moduleIds.Contains(challenge.ModuleId.Value) &&
+                (challenge.StudentId == null || challenge.StudentId == studentId) &&
                 (challenge.SourceType == null || challenge.SourceType != RecoverySourceType) &&
                 (StudentVisibleStates.Contains(challenge.LifecycleState) ||
                  StudentVisibleStatuses.Contains(challenge.Status)))
@@ -130,13 +131,21 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 : challenges.Max(challenge => challenge.LastActivityAt ?? challenge.ModifiedDate ?? challenge.CreatedTime);
 
             var completedProgresses = challenges
-                .SelectMany(c => c.Progresses)
-                .Where(p => p.HasCompleted)
+                .SelectMany(c => c.Progresses.Where(p => p.HasCompleted).Select(p => new { Challenge = c, Progress = p }))
                 .ToList();
             var avgAccuracy = completedProgresses.Any()
-                ? Math.Round(completedProgresses.Average(p => {
-                    var acc = p.BestAccuracy ?? (decimal)p.BestScore;
-                    return acc <= 1.0m ? acc * 100m : acc;
+                ? Math.Round(completedProgresses.Average(x => {
+                    if (x.Progress.BestAccuracy.HasValue)
+                    {
+                        var acc = x.Progress.BestAccuracy.Value;
+                        return acc <= 1.0m ? acc * 100m : acc;
+                    }
+                    var maxStars = x.Challenge.MaxStars;
+                    var estimatedTotal = maxStars * 100;
+                    var fallbackAccuracy = estimatedTotal > 0
+                        ? (decimal)x.Progress.BestScore / estimatedTotal * 100m
+                        : 0m;
+                    return Math.Min(100m, fallbackAccuracy);
                   }), 2)
                 : 0m;
 
@@ -210,6 +219,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             .Where(challenge =>
                 challenge.ClassroomId == classroomId &&
                 challenge.ModuleId == moduleId &&
+                (challenge.StudentId == null || challenge.StudentId == studentId) &&
                 (challenge.SourceType == null || challenge.SourceType != RecoverySourceType) &&
                 (StudentVisibleStates.Contains(challenge.LifecycleState) ||
                  StudentVisibleStatuses.Contains(challenge.Status)))
@@ -244,6 +254,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 challenge.ModuleId != null &&
                 challenge.Module != null &&
                 challenge.Module.ModuleType == SyllabusModule.CustomModuleType &&
+                (challenge.StudentId == null || challenge.StudentId == studentId) &&
                 (challenge.SourceType == null || challenge.SourceType != RecoverySourceType) &&
                 (StudentVisibleStates.Contains(challenge.LifecycleState) ||
                  StudentVisibleStatuses.Contains(challenge.Status)))
@@ -479,6 +490,41 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         }
 
         return node.DeepClone();
+    }
+
+    public async Task<IReadOnlyList<ActiveStudentChallengeDto>> GetActiveStudentChallengesAsync(
+        int studentId,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var challenges = await dbContext.Challenges.AsNoTracking()
+            .Include(c => c.Game)
+            .Include(c => c.GameTemplate)
+            .Where(c => c.StudentId == studentId
+                     && c.LifecycleState == ChallengeLifecycleState.Active
+                     && (c.DueAt == null || c.DueAt > now))
+            .ToListAsync(cancellationToken);
+
+        var completedIds = await dbContext.ChallengeProgresses.AsNoTracking()
+            .Where(p => p.UserId == studentId && p.HasCompleted)
+            .Select(p => p.ChallengeId)
+            .ToListAsync(cancellationToken);
+
+        return challenges
+            .Where(c => !completedIds.Contains(c.Id))
+            .Select(c => new ActiveStudentChallengeDto(
+                c.Id,
+                c.Title,
+                c.Description,
+                c.Game?.Key ?? string.Empty,
+                c.GameTemplate?.Code ?? string.Empty,
+                c.DifficultyLevel,
+                c.DueAt,
+                c.ModuleId,
+                c.Subject,
+                c.ChallengeMode,
+                c.SourceType))
+            .ToList();
     }
 
     private static string ToCamelCase(string key)
