@@ -60,6 +60,12 @@ public interface IChallengeRepository
   /// </summary>
   Task<ChallengeProgress?> GetStudentChallengeProgressAsync(int userId, int challengeId, int classroomId);
 
+  /// <summary>
+  /// Returns all progress rows for a student within a classroom in one query.
+  /// Used by the diagnostics handler to avoid N+1 per-challenge lookups.
+  /// </summary>
+  Task<List<ChallengeProgress>> GetStudentProgressForClassroomAsync(int userId, int classroomId);
+
   Task<bool> IsStudentModuleCompletedAsync(int userId, int classroomId, int moduleId);
 }
 

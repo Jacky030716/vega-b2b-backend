@@ -28,7 +28,8 @@ public record ClassroomStudentDiagnosticsDto(
     List<RadarAxisDto> RadarAxes,
     List<StudentActivityItemDto> RecentActivities,
     List<StudentAchievementItemDto> RecentAchievements,
-    List<ClassroomPerformanceItemDto> RecentClassroomPerformances);
+    List<ClassroomPerformanceItemDto> RecentClassroomPerformances,
+    DateTime? LastActiveAt);
 
 public record RadarAxisDto(string Label, double Value);
 

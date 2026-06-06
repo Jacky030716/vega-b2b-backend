@@ -1,9 +1,11 @@
 using System.Text.Json;
 using CleanArc.Application.Contracts.Achievements;
 using CleanArc.Application.Contracts.Persistence;
+using CleanArc.Application.Features.Classrooms.Queries;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Quiz;
 using Mediator;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace CleanArc.Application.Features.Games.Commands;
 
@@ -48,7 +50,8 @@ internal class CreateAttemptCommandHandler(IUnitOfWork unitOfWork)
 
 internal class CompleteAttemptCommandHandler(
   IUnitOfWork unitOfWork,
-  IAchievementTrackingService achievementTrackingService)
+  IAchievementTrackingService achievementTrackingService,
+  IMemoryCache cache)
     : IRequestHandler<CompleteAttemptCommand, OperationResult<CompleteAttemptDto>>
 {
   private const string RecoverySourceType = "RECOVERY_MISSION";
@@ -237,6 +240,9 @@ internal class CompleteAttemptCommandHandler(
         };
 
         await unitOfWork.ChallengeRepository.UpsertChallengeProgressAsync(progress);
+
+        // Invalidate cached diagnostics so the next teacher view recalculates.
+        cache.Remove(GetClassroomStudentDiagnosticsQueryHandler.CacheKey(request.UserId, classroomId));
 
         if (isFirstCompletion
             && challenge.ModuleId is int moduleId

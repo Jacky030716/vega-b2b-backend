@@ -82,6 +82,7 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 
 
+builder.Services.AddMemoryCache();
 builder.Services.RegisterValidatorsAsServices();
 builder.Services.AddExceptionHandler<ExceptionHandler>();
 
