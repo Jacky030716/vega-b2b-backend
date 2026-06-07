@@ -14,6 +14,7 @@ using CleanArc.Infrastructure.Persistence.SeedDatabaseService;
 using CleanArc.Infrastructure.Persistence.Services.AI;
 using CleanArc.Infrastructure.Persistence.Services;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Services.Adaptive.Strategies;
 using CleanArc.Infrastructure.Persistence.Services.Audit;
 using CleanArc.Infrastructure.Persistence.Services.Billing;
 using CleanArc.Infrastructure.Persistence.Services.Classrooms;
@@ -55,6 +56,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRecommendationEngine, RecommendationEngine>();
         services.AddScoped<IMasteryEngine, MasteryEngine>();
         services.AddScoped<IChallengeOrchestrator, ChallengeOrchestrator>();
+        services.AddScoped<IGameStrategy, SpellCatcherGameStrategy>();
+        services.AddScoped<IGameStrategy, SyllableSushiGameStrategy>();
+        services.AddScoped<IGameStrategy, VoiceBridgeGameStrategy>();
+        services.AddScoped<IGameStrategy, TranslationGameStrategy>();
         services.AddScoped<IClassroomModuleManagementService, ClassroomModuleManagementService>();
         services.AddScoped<IStudentModuleProgressionService, StudentModuleProgressionService>();
         services.AddScoped<IRecoveryMissionService, RecoveryMissionService>();

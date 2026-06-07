@@ -5,8 +5,12 @@ using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Quiz;
 using Microsoft.EntityFrameworkCore;
 
+using CleanArc.Infrastructure.Persistence.Services.Adaptive.Strategies;
+
 namespace CleanArc.Infrastructure.Persistence.Services.Adaptive;
-public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGenerator
+public class ChallengeGenerator(
+    ApplicationDbContext dbContext,
+    IEnumerable<IGameStrategy> strategies) : IChallengeGenerator
 {
     private static readonly string[] SyllableHints =
     {
@@ -56,6 +60,8 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             }
 
             var vocabItems = await dbContext.VocabularyItems.AsNoTracking()
+                .Include(v => v.Translations)
+                .Include(v => v.SyllableInfo)
                 .Where(v => v.ModuleId == moduleId2 && v.IsActive)
                 .ToListAsync(cancellationToken);
 
@@ -116,12 +122,12 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
                 v.PhoneticHint ?? v.MeaningText,
                 v.MeaningText,
                 v.ExampleSentence,
-                v.SyllablesJson,
+                v.SyllableInfo?.SyllablesJson ?? "[]",
                 v.DifficultyLevel,
-                v.BmText,
-                v.ZhText,
-                v.EnText,
-                v.SyllableText,
+                GetTranslation(v, "ms"),
+                GetTranslation(v, "zh"),
+                GetTranslation(v, "en"),
+                v.SyllableInfo?.SyllableText,
                 v.ItemType,
                 v.DisplayOrder,
                 null,
@@ -151,79 +157,43 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             "SPELL_CATCHER" => $"Spell Catcher: {titleBase}",
             "SYLLABLE_SUSHI" => $"Syllable Sushi: {titleBase}",
             "VOICE_BRIDGE" => $"Voice Bridge: {titleBase}",
+            "TRANSLATION" => $"Translation: {titleBase}",
             _ => $"Adaptive Practice: {titleBase}"
         };
 
         var difficulty = Math.Clamp((int)Math.Round(items.Average(i => i.DifficultyLevel)), 1, 5);
-        List<SyllableSushiSpecDto>? syllableSushiSpecs = null;
-        SyllableSushiSpecDto? primarySyllableSushiSpec = null;
-        List<SpellCatcherSpecDto>? spellCatcherSpecs = null;
-        SpellCatcherSpecDto? primarySpellCatcherSpec = null;
-        Dictionary<int, SpellCatcherWeakness>? spellCatcherWeakness = null;
+        var strategy = strategies.FirstOrDefault(s => s.GameTemplateCode == templateCode || s.GameKey == gameKey);
+        if (strategy == null)
+            throw new InvalidOperationException($"No strategy registered for game template '{templateCode}'.");
 
+        Dictionary<int, SpellCatcherWeakness>? weaknesses = null;
         if (templateCode == "SPELL_CATCHER" && request.StudentId is int studentId)
         {
-            spellCatcherWeakness = await BuildSpellCatcherWeaknessMapAsync(studentId, items, cancellationToken);
+            weaknesses = await BuildSpellCatcherWeaknessMapAsync(studentId, items, cancellationToken);
         }
 
-        if (templateCode == "SPELL_CATCHER")
+        var configJson = JsonSerializer.Serialize(new
         {
-            spellCatcherSpecs = items
-                .Select(item => BuildSpellCatcherSpec(item, ResolveSpellCatcherWeakness(item, spellCatcherWeakness)))
-                .ToList();
-            primarySpellCatcherSpec = spellCatcherSpecs.FirstOrDefault();
-            items = items.Zip(spellCatcherSpecs, (item, spec) => item with
-            {
-                DifficultyLevel = spec.DifficultyLevel,
-                SpellCatcherSpecJson = JsonSerializer.Serialize(spec, JsonOptions)
-            }).ToList();
-        }
-
-        if (templateCode == "SYLLABLE_SUSHI")
-        {
-            syllableSushiSpecs = items.Select(BuildSyllableSushiSpec).ToList();
-            primarySyllableSushiSpec = syllableSushiSpecs.FirstOrDefault();
-            items = items.Zip(syllableSushiSpecs, (item, spec) => item with
-            {
-                SyllablePoolJson = JsonSerializer.Serialize(spec.SyllablePool, JsonOptions),
-                DistractorsJson = JsonSerializer.Serialize(spec.Distractors, JsonOptions),
-                CorrectOrderJson = JsonSerializer.Serialize(spec.CorrectOrder, JsonOptions),
-                DifficultyLevel = spec.DifficultyLevel
-            }).ToList();
-        }
-
-        var contentData = JsonSerializer.Serialize(new
-        {
-            gameTemplateCode = templateCode,
-            category,
+            targetType = request.TargetType,
             objective = request.Objective,
-            moduleId = request.ModuleId,
-            spellCatcherSpec = primarySpellCatcherSpec,
-            spellCatcherSpecs = spellCatcherSpecs,
-            syllableSushiSpec = primarySyllableSushiSpec,
-            syllableSushiSpecs = syllableSushiSpecs,
-            items = items.Select(i => new
-            {
-                vocabularyItemId = i.VocabularyItemId,
-                word = i.Word,
-                normalizedWord = i.NormalizedWord,
-                hint = i.Hint,
-                meaningText = i.MeaningText,
-                exampleSentence = i.ExampleSentence,
-                syllablesJson = TryParseJson(i.SyllablesJson) ?? JsonNode.Parse("[]"),
-                difficultyLevel = i.DifficultyLevel,
-                bmText = i.BmText,
-                zhText = i.ZhText,
-                enText = i.EnText,
-                syllableText = i.SyllableText,
-                itemType = i.ItemType,
-                displayOrder = i.DisplayOrder,
-                syllablePoolJson = TryParseJson(i.SyllablePoolJson) ?? JsonNode.Parse("[]"),
-                distractorsJson = TryParseJson(i.DistractorsJson) ?? JsonNode.Parse("[]"),
-                correctOrderJson = TryParseJson(i.CorrectOrderJson) ?? JsonNode.Parse("[]"),
-                spellCatcherSpecJson = TryParseJson(i.SpellCatcherSpecJson)
-            })
+            sourceType = request.SourceType,
+            learningFocus = request.LearningFocus,
+            studentId = request.StudentId,
+            weaknesses = weaknesses
         }, JsonOptions);
+
+        var playableContent = strategy.GeneratePlayableContent(items, difficulty, configJson);
+        var contentData = JsonSerializer.Serialize(playableContent, JsonOptions);
+
+        SyllableSushiSpecDto? primarySyllableSushiSpec = null;
+        SpellCatcherSpecDto? primarySpellCatcherSpec = null;
+        try
+        {
+            var node = JsonNode.Parse(contentData);
+            primarySyllableSushiSpec = node?["syllableSushiSpec"]?.Deserialize<SyllableSushiSpecDto>(JsonOptions);
+            primarySpellCatcherSpec = node?["spellCatcherSpec"]?.Deserialize<SpellCatcherSpecDto>(JsonOptions);
+        }
+        catch { }
 
         return new GeneratedAdaptiveChallengePreviewDto(
             title,
@@ -259,6 +229,9 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
 
         var progresses = await dbContext.WordProgresses.AsNoTracking()
             .Include(wp => wp.Word)
+                .ThenInclude(w => w.Translations)
+            .Include(wp => wp.Word)
+                .ThenInclude(w => w.SyllableInfo)
             .Where(wp => wp.StudentId == request.StudentId.Value && wp.Word.IsActive)
             .ToListAsync(cancellationToken);
 
@@ -311,12 +284,12 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             v.PhoneticHint ?? v.MeaningText,
             v.MeaningText,
             v.ExampleSentence,
-            v.SyllablesJson,
+            v.SyllableInfo?.SyllablesJson ?? "[]",
             v.DifficultyLevel,
-            v.BmText,
-            v.ZhText,
-            v.EnText,
-            v.SyllableText,
+            GetTranslation(v, "ms"),
+            GetTranslation(v, "zh"),
+            GetTranslation(v, "en"),
+            v.SyllableInfo?.SyllableText,
             v.ItemType,
             v.DisplayOrder,
             null,
@@ -1010,33 +983,36 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
             .ToList();
     }
 
-  internal static string NormalizeTemplateCode(string? preferred, string? objective, string? focus)
-  {
-    var candidate = preferred?.Trim().ToUpperInvariant();
-    if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI")
-      return candidate;
-
-        var signal = $"{objective} {focus}".ToLowerInvariant();
-    if (signal.Contains("syllable")) return "SYLLABLE_SUSHI";
-    if (signal.Contains("voice") || signal.Contains("pronunciation") || signal.Contains("oral")) return "VOICE_BRIDGE";
-    return "SPELL_CATCHER";
-  }
-
-  internal static string ToGameKey(string templateCode) => templateCode switch
-  {
-      "SPELL_CATCHER" => "spell_catcher",
-      "VOICE_BRIDGE" => "voice_bridge",
-      "SYLLABLE_SUSHI" => "syllable_sushi",
-      _ => templateCode.ToLowerInvariant()
-  };
-
-  internal static string ToCategory(string templateCode) => templateCode switch
-  {
-      "VOICE_BRIDGE" => "SPEAKING",
-      "SYLLABLE_SUSHI" => "STRUCTURE",
-      "SPELL_CATCHER" => "RECALL",
-      _ => "RECALL"
-  };
+   internal static string NormalizeTemplateCode(string? preferred, string? objective, string? focus)
+   {
+     var candidate = preferred?.Trim().ToUpperInvariant();
+     if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI" or "TRANSLATION")
+       return candidate;
+ 
+         var signal = $"{objective} {focus}".ToLowerInvariant();
+     if (signal.Contains("syllable")) return "SYLLABLE_SUSHI";
+     if (signal.Contains("voice") || signal.Contains("pronunciation") || signal.Contains("oral")) return "VOICE_BRIDGE";
+     if (signal.Contains("translate") || signal.Contains("translation")) return "TRANSLATION";
+     return "SPELL_CATCHER";
+   }
+ 
+   internal static string ToGameKey(string templateCode) => templateCode switch
+   {
+       "SPELL_CATCHER" => "spell_catcher",
+       "VOICE_BRIDGE" => "voice_bridge",
+       "SYLLABLE_SUSHI" => "syllable_sushi",
+       "TRANSLATION" => "translation",
+       _ => templateCode.ToLowerInvariant()
+   };
+ 
+   internal static string ToCategory(string templateCode) => templateCode switch
+   {
+       "VOICE_BRIDGE" => "SPEAKING",
+       "SYLLABLE_SUSHI" => "STRUCTURE",
+       "SPELL_CATCHER" => "RECALL",
+       "TRANSLATION" => "RECALL",
+       _ => "RECALL"
+   };
 
     internal static JsonNode? TryParseJson(string? raw)
     {
@@ -1050,9 +1026,13 @@ public class ChallengeGenerator(ApplicationDbContext dbContext) : IChallengeGene
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    internal readonly record struct SpellCatcherWeakness(
-        bool NeedsMeaningSupport,
-        bool NeedsSyllableSupport,
-        bool NeedsAudioSupport);
+    internal static string? GetTranslation(VocabularyItem? item, string langCode)
+    {
+        if (item is null) return null;
+        var trans = item.Translations?.FirstOrDefault(t => t.LanguageCode.Equals(langCode, System.StringComparison.OrdinalIgnoreCase));
+        if (trans != null) return trans.TranslationText;
+        if (item.Language.Equals(langCode, System.StringComparison.OrdinalIgnoreCase)) return item.Word;
+        return null;
+    }
 }
 

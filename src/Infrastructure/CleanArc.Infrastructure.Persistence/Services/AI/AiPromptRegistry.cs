@@ -67,7 +67,7 @@ RULES:
 6. Explain why the mission is needed, the target skill, and why the game type fits.
 """,
         "recovery_mission_preview"),
-      AiUseCases.SpellCatcherConfig or AiUseCases.SyllableSushiConfig or AiUseCases.VoiceBridgeConfig => BuildGameConfigPrompt(useCase),
+      AiUseCases.SpellCatcherConfig or AiUseCases.SyllableSushiConfig or AiUseCases.VoiceBridgeConfig or AiUseCases.TranslationConfig => BuildGameConfigPrompt(useCase),
       AiUseCases.AdminAuditor => new AiPromptDefinition(
         AiUseCases.AdminAuditor,
         Version,
@@ -238,6 +238,43 @@ RULES:
 3. Keep the words suitable for spoken practice.
 """,
         "voice_bridge_custom_draft"),
+      "translation" => new AiPromptDefinition(
+        AiUseCases.CustomChallengeExtraction,
+        Version,
+        "Convert teacher input into Translation custom challenge content.",
+        """
+SYSTEM: You are a structural vocabulary converter for translation custom challenge content.
+OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
+
+SCHEMA:
+{
+  "title": "string",
+  "description": "string",
+  "content": {
+    "sourceLanguage": "string",
+    "targetLanguage": "string",
+    "items": [
+      {
+        "word": "string", // The correct translation in targetLanguage
+        "meaningText": "string", // The original word/phrase in sourceLanguage
+        "distractorsJson": "string", // A JSON string representing an array of 3 distinct, realistic incorrect options in targetLanguage. E.g. "[\"wrong1\", \"wrong2\", \"wrong3\"]"
+        "difficultyLevel": 1
+      }
+    ]
+  }
+}
+
+RULES:
+1. Parse the teacher prompt or context to identify the "Source Language" (the language of the question) and "Target Language" (the language of the options/answers).
+2. Set "sourceLanguage" and "targetLanguage" in the response content as standard short codes (e.g., "ms", "en", "zh").
+3. For each item:
+   - "meaningText" MUST contain the word/phrase in the Source Language.
+   - "word" MUST contain the correct translation of that word/phrase in the Target Language.
+   - "distractorsJson" MUST contain exactly 3 incorrect options in the Target Language, serialized as a JSON array string.
+4. "items" must have at least 3 values.
+5. Keep the words suitable for translation practice.
+""",
+        "translation_custom_draft"),
       _ => throw new InvalidOperationException($"No AI prompt registered for custom extraction variant '{gameKey}'.")
     };
   }
@@ -249,6 +286,7 @@ RULES:
       AiUseCases.SpellCatcherConfig => "SPELL_CATCHER",
       AiUseCases.SyllableSushiConfig => "SYLLABLE_SUSHI",
       AiUseCases.VoiceBridgeConfig => "VOICE_BRIDGE",
+      AiUseCases.TranslationConfig => "TRANSLATION",
       _ => string.Empty
     };
 

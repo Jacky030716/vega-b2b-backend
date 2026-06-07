@@ -10,14 +10,11 @@ public class VocabularyItem : BaseEntity<int>
 
     public string Word { get; set; } = string.Empty;
     public string NormalizedWord { get; set; } = string.Empty;
-    public string BmText { get; set; } = string.Empty;
-    public string? ZhText { get; set; }
-    public string? EnText { get; set; }
     public string Language { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public int YearLevel { get; set; }
-    public string SyllablesJson { get; set; } = "[]";
-    public string? SyllableText { get; set; }
+    public virtual ICollection<VocabularyTranslation> Translations { get; set; } = new List<VocabularyTranslation>();
+    public virtual VocabularySyllableInfo? SyllableInfo { get; set; }
     public string ItemType { get; set; } = "WORD";
     public int DisplayOrder { get; set; }
     public string? PhoneticHint { get; set; }

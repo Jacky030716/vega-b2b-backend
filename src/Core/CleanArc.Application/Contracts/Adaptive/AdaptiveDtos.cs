@@ -126,6 +126,11 @@ public record SpellCatcherHintsDto(
     string Level2,
     string Level3);
 
+public record SpellCatcherWeakness(
+    bool NeedsMeaningSupport,
+    bool NeedsSyllableSupport,
+    bool NeedsAudioSupport);
+
 public record SpellCatcherSpecDto(
     string GameType,
     string TargetWord,

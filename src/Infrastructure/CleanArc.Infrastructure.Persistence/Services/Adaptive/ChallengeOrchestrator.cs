@@ -6,11 +6,14 @@ using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Quiz;
 using Microsoft.EntityFrameworkCore;
 
+using CleanArc.Infrastructure.Persistence.Services.Adaptive.Strategies;
+
 namespace CleanArc.Infrastructure.Persistence.Services.Adaptive;
 public class ChallengeOrchestrator(
     ApplicationDbContext dbContext,
     IChallengeGenerator challengeGenerator,
-    IRecommendationEngine recommendationEngine) : IChallengeOrchestrator
+    IRecommendationEngine recommendationEngine,
+    IEnumerable<IGameStrategy> strategies) : IChallengeOrchestrator
 {
     public Task<IReadOnlyList<AdaptiveRecommendationDto>> RecommendForStudentAsync(
         int studentId,
@@ -48,7 +51,7 @@ public class ChallengeOrchestrator(
             Title = preview.Title,
             Description = preview.Description,
             DifficultyLevel = preview.DifficultyLevel,
-            ContentData = preview.ContentData,
+            ContentData = string.Empty,
             OrderIndex = nextOrderIndex + 1,
             MaxStars = 3,
             CreatedById = request.CreatedByTeacherId,
@@ -96,10 +99,7 @@ public class ChallengeOrchestrator(
                 item.SyllableText,
                 item.ItemType,
                 item.DisplayOrder,
-                item.SyllablePoolJson,
                 item.DistractorsJson,
-                item.CorrectOrderJson,
-                item.SpellCatcherSpecJson,
                 item.Language
             }, ChallengeGenerator.JsonOptions)
         }).ToList();
@@ -166,6 +166,9 @@ public class ChallengeOrchestrator(
 
         var challengeItems = await dbContext.ChallengeItems.AsNoTracking()
             .Include(i => i.VocabularyItem)
+                .ThenInclude(v => v!.Translations)
+            .Include(i => i.VocabularyItem)
+                .ThenInclude(v => v!.SyllableInfo)
             .Where(i => i.ChallengeId == challenge.Id)
             .OrderBy(i => i.SequenceNo)
             .ToListAsync(cancellationToken);
@@ -178,12 +181,12 @@ public class ChallengeOrchestrator(
                 i.VocabularyItem != null ? i.VocabularyItem.PhoneticHint ?? i.VocabularyItem.MeaningText : ReadSetting(i.SettingsJson, "hint"),
                 i.VocabularyItem != null ? i.VocabularyItem.MeaningText : ReadSetting(i.SettingsJson, "meaningText"),
                 i.VocabularyItem != null ? i.VocabularyItem.ExampleSentence : ReadSetting(i.SettingsJson, "exampleSentence"),
-                i.VocabularyItem != null ? i.VocabularyItem.SyllablesJson : ReadSetting(i.SettingsJson, "syllablesJson") ?? "[]",
+                i.VocabularyItem?.SyllableInfo?.SyllablesJson ?? ReadSetting(i.SettingsJson, "syllablesJson") ?? "[]",
                 i.VocabularyItem != null ? i.VocabularyItem.DifficultyLevel : 1,
-                i.VocabularyItem?.BmText ?? ReadSetting(i.SettingsJson, "bmText"),
-                i.VocabularyItem?.ZhText ?? ReadSetting(i.SettingsJson, "zhText"),
-                i.VocabularyItem?.EnText ?? ReadSetting(i.SettingsJson, "enText"),
-                i.VocabularyItem?.SyllableText ?? ReadSetting(i.SettingsJson, "syllableText"),
+                GetTranslation(i.VocabularyItem, "ms", i.SettingsJson, "bmText"),
+                GetTranslation(i.VocabularyItem, "zh", i.SettingsJson, "zhText"),
+                GetTranslation(i.VocabularyItem, "en", i.SettingsJson, "enText"),
+                i.VocabularyItem?.SyllableInfo?.SyllableText ?? ReadSetting(i.SettingsJson, "syllableText"),
                 i.VocabularyItem?.ItemType ?? ReadSetting(i.SettingsJson, "itemType"),
                 i.VocabularyItem?.DisplayOrder,
                 ReadSetting(i.SettingsJson, "syllablePoolJson"),
@@ -194,13 +197,27 @@ public class ChallengeOrchestrator(
             .ToList();
 
         var code = challenge.GameTemplate?.Code ?? challenge.Game?.Key ?? string.Empty;
-        var syllableSpec = TryReadSyllableSushiSpec(challenge.ContentData);
-        var spellSpec = TryReadSpellCatcherSpec(challenge.ContentData);
+        var gameKey = challenge.Game?.Key ?? ChallengeGenerator.ToGameKey(code);
+        
+        string contentData;
+        var strategy = strategies.FirstOrDefault(s => s.GameTemplateCode == code || s.GameKey == gameKey);
+        if (strategy != null)
+        {
+            var playableContent = strategy.GeneratePlayableContent(items, challenge.DifficultyLevel, challenge.ConfigJson);
+            contentData = JsonSerializer.Serialize(playableContent, ChallengeGenerator.JsonOptions);
+        }
+        else
+        {
+            contentData = challenge.ContentData;
+        }
+
+        var syllableSpec = TryReadSyllableSushiSpec(contentData);
+        var spellSpec = TryReadSpellCatcherSpec(contentData);
         return new GeneratedAdaptiveChallengePreviewDto(
             challenge.Title,
             challenge.Description,
             code,
-            challenge.Game?.Key ?? ChallengeGenerator.ToGameKey(code),
+            gameKey,
             challenge.GameTemplate?.Category ?? ChallengeGenerator.ToCategory(code),
             challenge.DifficultyLevel,
             challenge.ModuleId,
@@ -208,7 +225,7 @@ public class ChallengeOrchestrator(
             challenge.ClassroomId,
             challenge.ChallengeMode ?? "assigned",
             challenge.SourceType ?? "unknown",
-            challenge.ContentData,
+            contentData,
             challenge.ConfigJson,
             items,
             syllableSpec,
@@ -292,6 +309,15 @@ public class ChallengeOrchestrator(
         {
             return null;
         }
+    }
+
+    private static string? GetTranslation(VocabularyItem? item, string langCode, string fallbackSettingsJson, string settingKey)
+    {
+        if (item is null) return ReadSetting(fallbackSettingsJson, settingKey);
+        var trans = item.Translations?.FirstOrDefault(t => t.LanguageCode.Equals(langCode, System.StringComparison.OrdinalIgnoreCase));
+        if (trans != null) return trans.TranslationText;
+        if (item.Language.Equals(langCode, System.StringComparison.OrdinalIgnoreCase)) return item.Word;
+        return ReadSetting(fallbackSettingsJson, settingKey);
     }
 }
 

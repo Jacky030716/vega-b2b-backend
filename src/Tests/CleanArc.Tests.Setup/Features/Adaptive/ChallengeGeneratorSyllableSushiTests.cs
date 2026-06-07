@@ -2,6 +2,7 @@ using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Infrastructure.Persistence;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Services.Adaptive.Strategies;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,13 @@ namespace CleanArc.Tests.Setup.Features.Adaptive;
 
 public class ChallengeGeneratorSyllableSushiTests
 {
+    private static readonly IGameStrategy[] TestStrategies = new IGameStrategy[]
+    {
+        new SpellCatcherGameStrategy(),
+        new SyllableSushiGameStrategy(),
+        new VoiceBridgeGameStrategy(),
+        new TranslationGameStrategy()
+    };
     private static ApplicationDbContext CreateContext()
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = ":memory:" }.ToString());
@@ -27,7 +35,7 @@ public class ChallengeGeneratorSyllableSushiTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "bercuti", "[\"ber\",\"cu\",\"ti\"]", "ber/cu/ti", 2);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
 
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
@@ -60,7 +68,7 @@ public class ChallengeGeneratorSyllableSushiTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "abang", "[\"a\",\"bang\"]", "a/bang", 1);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
 
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
@@ -88,7 +96,7 @@ public class ChallengeGeneratorSyllableSushiTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "abang", "[\"abang\"]", "abang", 1);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
 
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
@@ -115,7 +123,7 @@ public class ChallengeGeneratorSyllableSushiTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "bekal makanan", "[\"be\",\"kal\",\"ma\",\"ka\",\"nan\"]", "be/kal ma/ka/nan", 1);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
 
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
@@ -134,7 +142,7 @@ public class ChallengeGeneratorSyllableSushiTests
 
         var spec = Assert.IsType<SyllableSushiSpecDto>(preview.SyllableSushiSpec);
         Assert.Equal(new[] { "be", "kal", "ma", "ka", "nan" }, spec.CorrectSyllables);
-        Assert.Contains("ber", spec.Distractors);
+        Assert.Contains("bel", spec.Distractors);
         Assert.Contains("nang", spec.Distractors);
         Assert.DoesNotContain("bek", spec.Distractors);
         Assert.DoesNotContain("maka", spec.Distractors);
@@ -145,7 +153,7 @@ public class ChallengeGeneratorSyllableSushiTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "sekolah", "[\"se\",\"ko\",\"lah\"]", "se/ko/lah", 3);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
 
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
@@ -171,7 +179,7 @@ public class ChallengeGeneratorSyllableSushiTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "bermain", "[\"ber\",\"ma\",\"in\"]", "ber/ma/in", 2);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
 
         var request = new GenerateAdaptiveChallengeRequest(
             "class",
@@ -220,17 +228,17 @@ public class ChallengeGeneratorSyllableSushiTests
             ModuleId = module.Id,
             Word = "apple",
             NormalizedWord = "apple",
-            EnText = "apple",
             Language = "en",
             Subject = "English",
             YearLevel = 1,
-            SyllablesJson = "[\"ap\",\"ple\"]",
             DifficultyLevel = 1,
-            IsActive = true
+            IsActive = true,
+            Translations = new List<VocabularyTranslation> { new VocabularyTranslation { LanguageCode = "en", TranslationText = "apple" } },
+            SyllableInfo = new VocabularySyllableInfo { SyllablesJson = "[\"ap\",\"ple\"]", SyllableText = "ap-ple" }
         });
         await context.SaveChangesAsync();
 
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
                 "class",
@@ -278,17 +286,16 @@ public class ChallengeGeneratorSyllableSushiTests
             ModuleId = module.Id,
             Word = "熊猫",
             NormalizedWord = "熊猫",
-            ZhText = "熊猫",
             Language = "zh",
             Subject = "Mandarin",
             YearLevel = 1,
-            SyllablesJson = "[]",
             DifficultyLevel = 1,
-            IsActive = true
+            IsActive = true,
+            Translations = new List<VocabularyTranslation> { new VocabularyTranslation { LanguageCode = "zh", TranslationText = "熊猫" } }
         });
         await context.SaveChangesAsync();
 
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
                 "class",
@@ -341,18 +348,20 @@ public class ChallengeGeneratorSyllableSushiTests
             ModuleId = module.Id,
             Word = bmWord,
             NormalizedWord = bmWord.ToLowerInvariant(),
-            BmText = bmWord,
-            ZhText = "zh-test",
-            EnText = "en-test",
             Language = "ms",
             Subject = "Bahasa Melayu",
             YearLevel = 1,
-            SyllablesJson = syllablesJson,
-            SyllableText = syllableText,
             ItemType = "WORD",
             DisplayOrder = 1,
             DifficultyLevel = difficulty,
-            IsActive = true
+            IsActive = true,
+            Translations = new List<VocabularyTranslation> 
+            { 
+                new VocabularyTranslation { LanguageCode = "ms", TranslationText = bmWord },
+                new VocabularyTranslation { LanguageCode = "zh", TranslationText = "zh-test" },
+                new VocabularyTranslation { LanguageCode = "en", TranslationText = "en-test" }
+            },
+            SyllableInfo = new VocabularySyllableInfo { SyllablesJson = syllablesJson, SyllableText = syllableText }
         });
 
         await context.SaveChangesAsync();

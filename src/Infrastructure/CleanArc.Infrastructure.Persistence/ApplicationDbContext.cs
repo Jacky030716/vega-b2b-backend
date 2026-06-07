@@ -52,6 +52,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<AiUsageLog> AiUsageLogs { get; set; }
     public DbSet<SyllabusModule> SyllabusModules { get; set; }
     public DbSet<VocabularyItem> VocabularyItems { get; set; }
+    public DbSet<VocabularyTranslation> VocabularyTranslations { get; set; }
+    public DbSet<VocabularySyllableInfo> VocabularySyllableInfos { get; set; }
     public DbSet<GameTemplate> GameTemplates { get; set; }
     public DbSet<ChallengeItem> ChallengeItems { get; set; }
     public DbSet<StudentChallengeAttempt> StudentChallengeAttempts { get; set; }

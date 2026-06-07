@@ -15,7 +15,8 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
     {
         var now = DateTime.UtcNow;
         var progresses = await dbContext.WordProgresses.AsNoTracking()
-            .Include(wp => wp.Word)
+            .Include(wp => wp.Word).ThenInclude(w => w.Translations)
+            .Include(wp => wp.Word).ThenInclude(w => w.SyllableInfo)
             .Where(wp => wp.StudentId == studentId && wp.Word.IsActive)
             .ToListAsync(cancellationToken);
 
@@ -63,12 +64,12 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
                 wp.Word.PhoneticHint ?? wp.Word.MeaningText,
                 wp.Word.MeaningText,
                 wp.Word.ExampleSentence,
-                wp.Word.SyllablesJson,
+                wp.Word.SyllableInfo?.SyllablesJson ?? "[]",
                 wp.Word.DifficultyLevel,
-                wp.Word.BmText,
-                wp.Word.ZhText,
-                wp.Word.EnText,
-                wp.Word.SyllableText,
+                ChallengeGenerator.GetTranslation(wp.Word, "ms"),
+                ChallengeGenerator.GetTranslation(wp.Word, "zh"),
+                ChallengeGenerator.GetTranslation(wp.Word, "en"),
+                wp.Word.SyllableInfo?.SyllableText,
                 wp.Word.ItemType,
                 wp.Word.DisplayOrder,
                 null,
@@ -80,13 +81,36 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
 
         if (items.Count == 0 && context?.ModuleId is int moduleId)
         {
-            items = await dbContext.VocabularyItems.AsNoTracking()
+            var rawItems = await dbContext.VocabularyItems.AsNoTracking()
+                .Include(v => v.Translations)
+                .Include(v => v.SyllableInfo)
                 .Where(v => v.ModuleId == moduleId && v.IsActive)
                 .OrderBy(v => v.DisplayOrder)
                 .ThenBy(v => v.Word)
                 .Take(12)
-                .Select(v => new AdaptiveChallengeItemDto(null, v.Id, v.Word, v.NormalizedWord, v.PhoneticHint ?? v.MeaningText, v.MeaningText, v.ExampleSentence, v.SyllablesJson, v.DifficultyLevel, v.BmText, v.ZhText, v.EnText, v.SyllableText, v.ItemType, v.DisplayOrder, null, null, null, null, v.Language))
                 .ToListAsync(cancellationToken);
+
+            items = rawItems.Select(v => new AdaptiveChallengeItemDto(
+                null,
+                v.Id,
+                v.Word,
+                v.NormalizedWord,
+                v.PhoneticHint ?? v.MeaningText,
+                v.MeaningText,
+                v.ExampleSentence,
+                v.SyllableInfo?.SyllablesJson ?? "[]",
+                v.DifficultyLevel,
+                ChallengeGenerator.GetTranslation(v, "ms"),
+                ChallengeGenerator.GetTranslation(v, "zh"),
+                ChallengeGenerator.GetTranslation(v, "en"),
+                v.SyllableInfo?.SyllableText,
+                v.ItemType,
+                v.DisplayOrder,
+                null,
+                null,
+                null,
+                null,
+                v.Language)).ToList();
         }
 
         var tagList = new List<string>();
@@ -103,7 +127,9 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
             ? "SYLLABLE_SUSHI"
             : tags.Contains("pronunciation") || tags.Contains("oral")
                 ? "VOICE_BRIDGE"
-                : "SPELL_CATCHER";
+                : tags.Contains("translation") || tags.Contains("translate")
+                    ? "TRANSLATION"
+                    : "SPELL_CATCHER";
 
         var objective = overdue ? "review_overdue_words" : context?.Objective ?? "improve_weak_words";
         var reason = overdue
@@ -112,6 +138,7 @@ public class RecommendationEngine(ApplicationDbContext dbContext) : IRecommendat
             {
                 "SYLLABLE_SUSHI" => "Recent attempts show weak syllable assembly.",
                 "VOICE_BRIDGE" => "Recent attempts show weak oral recall or pronunciation.",
+                "TRANSLATION" => "Recent attempts show weak word translation recall.",
                 _ => "Recent attempts show weak full spelling recall."
             };
 

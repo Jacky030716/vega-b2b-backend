@@ -152,6 +152,8 @@ public class SyllabusModuleIngestionService(
 
             var normalized = SyllabusModuleService.NormalizeWord(bmText);
             var item = await dbContext.VocabularyItems
+                .Include(v => v.Translations)
+                .Include(v => v.SyllableInfo)
                 .FirstOrDefaultAsync(
                     v => v.ModuleId == module.Id && v.NormalizedWord == normalized,
                     cancellationToken);
@@ -165,20 +167,28 @@ public class SyllabusModuleIngestionService(
             };
 
             item.Word = bmText;
-            item.BmText = bmText;
-            item.ZhText = seedItem.Text?.Zh?.Trim();
-            item.EnText = seedItem.Text?.En?.Trim();
+            UpdateTranslation(item, "ms", bmText);
+            UpdateTranslation(item, "zh", seedItem.Text?.Zh?.Trim());
+            UpdateTranslation(item, "en", seedItem.Text?.En?.Trim());
             item.Language = module.Language;
             item.Subject = module.Subject;
             item.YearLevel = module.YearLevel;
-            item.SyllablesJson = JsonSerializer.Serialize(seedItem.Syllables ?? Array.Empty<string>());
-            item.SyllableText = seedItem.SyllableText?.Trim();
+            
+            var syllablesJson = JsonSerializer.Serialize(seedItem.Syllables ?? Array.Empty<string>());
+            var syllableText = seedItem.SyllableText?.Trim();
+            if (item.SyllableInfo == null)
+            {
+                item.SyllableInfo = new VocabularySyllableInfo();
+            }
+            item.SyllableInfo.SyllablesJson = syllablesJson;
+            item.SyllableInfo.SyllableText = syllableText;
+            
             item.ItemType = string.IsNullOrWhiteSpace(seedItem.ItemType)
                 ? "WORD"
                 : seedItem.ItemType.Trim().ToUpperInvariant();
             item.DisplayOrder = seedItem.DisplayOrder.Value;
             item.DifficultyLevel = Math.Clamp(item.DifficultyLevel <= 0 ? 1 : item.DifficultyLevel, 1, 5);
-            item.MeaningText = item.EnText;
+            item.MeaningText = seedItem.Text?.En?.Trim();
             
             // Map Pinyin to PhoneticHint for Mandarin/Mixed content
             if (!string.IsNullOrWhiteSpace(seedItem.Pinyin))
@@ -188,7 +198,7 @@ public class SyllabusModuleIngestionService(
             }
             else
             {
-                item.PhoneticHint = item.SyllableText;
+                item.PhoneticHint = syllableText;
                 item.PronunciationText = bmText;
             }
 
@@ -210,6 +220,30 @@ public class SyllabusModuleIngestionService(
 
     private static string NormalizeCode(string? value) =>
         string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToUpperInvariant();
+
+    private static void UpdateTranslation(VocabularyItem item, string langCode, string? text)
+    {
+        if (text == null) text = string.Empty;
+        var translation = item.Translations.FirstOrDefault(t => t.LanguageCode.Equals(langCode, StringComparison.OrdinalIgnoreCase));
+        if (translation == null)
+        {
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                item.Translations.Add(new VocabularyTranslation { LanguageCode = langCode, TranslationText = text });
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                item.Translations.Remove(translation);
+            }
+            else
+            {
+                translation.TranslationText = text;
+            }
+        }
+    }
 
     private sealed class IngestionCounters
     {

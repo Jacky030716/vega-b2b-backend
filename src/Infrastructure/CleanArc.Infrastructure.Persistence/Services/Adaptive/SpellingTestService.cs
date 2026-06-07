@@ -378,6 +378,7 @@ public class SpellingTestService(
     {
         var wordIds = ParseIntList(attempt.SpellingTest.WordItemIdsJson);
         var questions = await dbContext.VocabularyItems.AsNoTracking()
+            .Include(item => item.Translations)
             .Where(item => wordIds.Contains(item.Id))
             .ToListAsync(cancellationToken);
         var questionsById = questions.ToDictionary(item => item.Id);
@@ -390,8 +391,9 @@ public class SpellingTestService(
                 continue;
             var answer = answers.LastOrDefault(candidate => candidate.VocabularyItemId == wordId);
             var answerText = answer?.AnswerText ?? string.Empty;
+            var bmText = ChallengeGenerator.GetTranslation(question, "ms");
             var wasCorrect = NormalizeAnswer(answerText) == NormalizeAnswer(question.Word)
-                             || NormalizeAnswer(answerText) == NormalizeAnswer(question.BmText);
+                             || (!string.IsNullOrEmpty(bmText) && NormalizeAnswer(answerText) == NormalizeAnswer(bmText));
             if (wasCorrect) correct++;
             results.Add(new SpellingTestAnswerResultDto(
                 wordId,
@@ -747,6 +749,8 @@ public class SpellingTestService(
             .FirstAsync(item => item.SpellingTestId == testId && item.StudentId == studentId, cancellationToken);
         var wordIds = ParseIntList(test.WordItemIdsJson);
         var words = await dbContext.VocabularyItems.AsNoTracking()
+            .Include(item => item.Translations)
+            .Include(item => item.SyllableInfo)
             .Where(item => wordIds.Contains(item.Id))
             .ToListAsync(cancellationToken);
         var byId = words.ToDictionary(item => item.Id);
@@ -760,10 +764,10 @@ public class SpellingTestService(
                     item.Word,
                     item.MeaningText,
                     item.ExampleSentence,
-                    item.BmText,
-                    item.EnText,
-                    item.ZhText,
-                    item.SyllableText,
+                    ChallengeGenerator.GetTranslation(item, "ms"),
+                    ChallengeGenerator.GetTranslation(item, "en"),
+                    ChallengeGenerator.GetTranslation(item, "zh"),
+                    item.SyllableInfo?.SyllableText,
                     item.DifficultyLevel);
             })
             .ToList();

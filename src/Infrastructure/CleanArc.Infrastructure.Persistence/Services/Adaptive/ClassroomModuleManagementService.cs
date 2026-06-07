@@ -241,6 +241,8 @@ public class ClassroomModuleManagementService(
         await EnsureModuleChallengeCapacityAsync(classroom.Id, module.Id, cancellationToken);
 
         var vocabulary = await dbContext.VocabularyItems.AsNoTracking()
+            .Include(v => v.Translations)
+            .Include(v => v.SyllableInfo)
             .Where(v => v.ModuleId == module.Id && v.IsActive)
             .OrderBy(v => v.DisplayOrder)
             .ThenBy(v => v.Word)
@@ -767,11 +769,11 @@ public class ClassroomModuleManagementService(
         new(
             item.Id,
             item.Word,
-            item.BmText,
-            item.EnText,
-            item.ZhText,
-            item.SyllablesJson,
-            item.SyllableText,
+            ChallengeGenerator.GetTranslation(item, "ms"),
+            ChallengeGenerator.GetTranslation(item, "en"),
+            ChallengeGenerator.GetTranslation(item, "zh"),
+            item.SyllableInfo?.SyllablesJson ?? "[]",
+            item.SyllableInfo?.SyllableText,
             item.ItemType,
             item.DifficultyLevel,
             item.MeaningText,
@@ -786,12 +788,12 @@ public class ClassroomModuleManagementService(
             item.PhoneticHint ?? item.MeaningText,
             item.MeaningText,
             item.ExampleSentence,
-            item.SyllablesJson,
+            item.SyllableInfo?.SyllablesJson ?? "[]",
             item.DifficultyLevel,
-            item.BmText,
-            item.ZhText,
-            item.EnText,
-            item.SyllableText,
+            ChallengeGenerator.GetTranslation(item, "ms"),
+            ChallengeGenerator.GetTranslation(item, "zh"),
+            ChallengeGenerator.GetTranslation(item, "en"),
+            item.SyllableInfo?.SyllableText,
             item.ItemType,
             item.DisplayOrder,
             null,
@@ -816,9 +818,9 @@ public class ClassroomModuleManagementService(
 
     private static bool MatchesVocabularyWord(VocabularyItem item, string selectedWord)
         => string.Equals(item.Word, selectedWord, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(item.BmText, selectedWord, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(item.EnText, selectedWord, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(item.ZhText, selectedWord, StringComparison.OrdinalIgnoreCase);
+           || string.Equals(ChallengeGenerator.GetTranslation(item, "ms"), selectedWord, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(ChallengeGenerator.GetTranslation(item, "en"), selectedWord, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(ChallengeGenerator.GetTranslation(item, "zh"), selectedWord, StringComparison.OrdinalIgnoreCase);
 
     private static string? MapWeakSkill(string tag)
     {

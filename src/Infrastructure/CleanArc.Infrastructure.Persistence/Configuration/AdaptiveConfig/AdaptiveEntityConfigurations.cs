@@ -51,14 +51,9 @@ public class VocabularyItemConfiguration : IEntityTypeConfiguration<VocabularyIt
         builder.Property(x => x.ModuleId).HasColumnName("module_id");
         builder.Property(x => x.Word).HasColumnName("word").HasMaxLength(120).IsRequired();
         builder.Property(x => x.NormalizedWord).HasColumnName("normalized_word").HasMaxLength(120).IsRequired();
-        builder.Property(x => x.BmText).HasColumnName("bm_text").HasMaxLength(240).IsRequired();
-        builder.Property(x => x.ZhText).HasColumnName("zh_text").HasMaxLength(240);
-        builder.Property(x => x.EnText).HasColumnName("en_text").HasMaxLength(240);
         builder.Property(x => x.Language).HasColumnName("language").HasMaxLength(20).IsRequired();
         builder.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(100).IsRequired();
         builder.Property(x => x.YearLevel).HasColumnName("year_level");
-        builder.Property(x => x.SyllablesJson).HasColumnName("syllables_json").HasColumnType("jsonb").HasDefaultValue("[]");
-        builder.Property(x => x.SyllableText).HasColumnName("syllable_text").HasMaxLength(240);
         builder.Property(x => x.ItemType).HasColumnName("item_type").HasMaxLength(30).HasDefaultValue("WORD");
         builder.Property(x => x.DisplayOrder).HasColumnName("display_order").HasDefaultValue(0);
         builder.Property(x => x.PhoneticHint).HasColumnName("phonetic_hint");
@@ -69,9 +64,35 @@ public class VocabularyItemConfiguration : IEntityTypeConfiguration<VocabularyIt
         builder.Property(x => x.ImageUrl).HasColumnName("image_url");
         builder.Property(x => x.IsActive).HasColumnName("is_active").HasDefaultValue(true);
         builder.HasOne(x => x.Module).WithMany(x => x.VocabularyItems).HasForeignKey(x => x.ModuleId);
+        builder.HasMany(x => x.Translations).WithOne(x => x.VocabularyItem).HasForeignKey(x => x.VocabularyItemId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.SyllableInfo).WithOne(x => x.VocabularyItem).HasForeignKey<VocabularySyllableInfo>(x => x.VocabularyItemId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(x => x.PublicId).IsUnique();
         builder.HasIndex(x => new { x.ModuleId, x.NormalizedWord }).IsUnique();
         builder.HasIndex(x => new { x.ModuleId, x.DisplayOrder });
+    }
+}
+
+public class VocabularyTranslationConfiguration : IEntityTypeConfiguration<VocabularyTranslation>
+{
+    public void Configure(EntityTypeBuilder<VocabularyTranslation> builder)
+    {
+        SyllabusModuleConfiguration.ConfigureBase(builder, "vocabulary_translations");
+        builder.Property(x => x.VocabularyItemId).HasColumnName("vocabulary_item_id");
+        builder.Property(x => x.LanguageCode).HasColumnName("language_code").HasMaxLength(20).IsRequired();
+        builder.Property(x => x.TranslationText).HasColumnName("translation_text").HasMaxLength(240).IsRequired();
+        builder.HasIndex(x => new { x.VocabularyItemId, x.LanguageCode }).IsUnique();
+    }
+}
+
+public class VocabularySyllableInfoConfiguration : IEntityTypeConfiguration<VocabularySyllableInfo>
+{
+    public void Configure(EntityTypeBuilder<VocabularySyllableInfo> builder)
+    {
+        SyllabusModuleConfiguration.ConfigureBase(builder, "vocabulary_syllable_info");
+        builder.Property(x => x.VocabularyItemId).HasColumnName("vocabulary_item_id");
+        builder.Property(x => x.SyllablesJson).HasColumnName("syllables_json").HasColumnType("jsonb").HasDefaultValue("[]");
+        builder.Property(x => x.SyllableText).HasColumnName("syllable_text").HasMaxLength(240);
+        builder.HasIndex(x => x.VocabularyItemId).IsUnique();
     }
 }
 

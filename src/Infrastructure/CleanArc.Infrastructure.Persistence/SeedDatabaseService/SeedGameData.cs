@@ -533,7 +533,8 @@ public class SeedGameData : ISeedGameData
         {
             new GameTemplate { Code = "SPELL_CATCHER", Category = "RECALL", Name = "Spell Catcher", Description = "Catch and order letters to recall full spelling.", SupportsAdaptiveDifficulty = true, IsActive = true },
             new GameTemplate { Code = "VOICE_BRIDGE", Category = "SPEAKING", Name = "Voice Bridge", Description = "Speak target words and receive pronunciation recall feedback.", SupportsAdaptiveDifficulty = true, IsActive = true },
-            new GameTemplate { Code = "SYLLABLE_SUSHI", Category = "STRUCTURE", Name = "Syllable Sushi", Description = "Assemble words from syllable chunks.", SupportsAdaptiveDifficulty = true, IsActive = true }
+            new GameTemplate { Code = "SYLLABLE_SUSHI", Category = "STRUCTURE", Name = "Syllable Sushi", Description = "Assemble words from syllable chunks.", SupportsAdaptiveDifficulty = true, IsActive = true },
+            new GameTemplate { Code = "TRANSLATION", Category = "RECALL", Name = "Translation", Description = "Translate phrases or words between languages.", SupportsAdaptiveDifficulty = true, IsActive = true }
         };
 
         foreach (var template in templates)
@@ -548,7 +549,8 @@ public class SeedGameData : ISeedGameData
         {
             new Game { Key = "spell_catcher", Name = "Spell Catcher", Description = "Catch letters and spell syllabus words.", ImageUrl = string.Empty, Category = "RECALL", SkillsTaught = "spelling recall" },
             new Game { Key = "voice_bridge", Name = "Voice Bridge", Description = "Practice oral recall and pronunciation.", ImageUrl = string.Empty, Category = "SPEAKING", SkillsTaught = "pronunciation recall" },
-            new Game { Key = "syllable_sushi", Name = "Syllable Sushi", Description = "Build words from syllables.", ImageUrl = string.Empty, Category = "STRUCTURE", SkillsTaught = "syllable assembly" }
+            new Game { Key = "syllable_sushi", Name = "Syllable Sushi", Description = "Build words from syllables.", ImageUrl = string.Empty, Category = "STRUCTURE", SkillsTaught = "syllable assembly" },
+            new Game { Key = "translation", Name = "Translation", Description = "Translate syllabus words.", ImageUrl = string.Empty, Category = "RECALL", SkillsTaught = "word translation" }
         };
 
         foreach (var game in adaptiveGames)
@@ -595,16 +597,175 @@ public class SeedGameData : ISeedGameData
         await _dbContext.SyllabusModules.AddRangeAsync(bmModule, englishModule);
         await _dbContext.SaveChangesAsync();
 
-        await _dbContext.VocabularyItems.AddRangeAsync(
-            new VocabularyItem { ModuleId = bmModule.Id, Word = "buku", NormalizedWord = "buku", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"bu\",\"ku\"]", PhoneticHint = "bu-ku", PronunciationText = "buku", DifficultyLevel = 1, MeaningText = "book", ExampleSentence = "Saya baca buku.", IsActive = true },
-            new VocabularyItem { ModuleId = bmModule.Id, Word = "mata", NormalizedWord = "mata", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"ma\",\"ta\"]", PhoneticHint = "ma-ta", PronunciationText = "mata", DifficultyLevel = 1, MeaningText = "eye", ExampleSentence = "Mata saya sihat.", IsActive = true },
-            new VocabularyItem { ModuleId = bmModule.Id, Word = "sekolah", NormalizedWord = "sekolah", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"se\",\"ko\",\"lah\"]", PhoneticHint = "se-ko-lah", PronunciationText = "sekolah", DifficultyLevel = 2, MeaningText = "school", ExampleSentence = "Saya pergi ke sekolah.", IsActive = true },
-            new VocabularyItem { ModuleId = bmModule.Id, Word = "makan", NormalizedWord = "makan", Language = "ms", Subject = bmModule.Subject, YearLevel = 1, SyllablesJson = "[\"ma\",\"kan\"]", PhoneticHint = "ma-kan", PronunciationText = "makan", DifficultyLevel = 1, MeaningText = "eat", ExampleSentence = "Ali makan nasi.", IsActive = true },
-            new VocabularyItem { ModuleId = englishModule.Id, Word = "school", NormalizedWord = "school", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"school\"]", PhoneticHint = "skool", PronunciationText = "school", DifficultyLevel = 2, MeaningText = "place to learn", ExampleSentence = "I go to school.", IsActive = true },
-            new VocabularyItem { ModuleId = englishModule.Id, Word = "pencil", NormalizedWord = "pencil", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"pen\",\"cil\"]", PhoneticHint = "pen-sil", PronunciationText = "pencil", DifficultyLevel = 1, MeaningText = "tool for writing", ExampleSentence = "This is my pencil.", IsActive = true },
-            new VocabularyItem { ModuleId = englishModule.Id, Word = "friend", NormalizedWord = "friend", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"friend\"]", PhoneticHint = "frend", PronunciationText = "friend", DifficultyLevel = 2, MeaningText = "someone you like", ExampleSentence = "She is my friend.", IsActive = true },
-            new VocabularyItem { ModuleId = englishModule.Id, Word = "apple", NormalizedWord = "apple", Language = "en", Subject = englishModule.Subject, YearLevel = 1, SyllablesJson = "[\"ap\",\"ple\"]", PhoneticHint = "ap-pel", PronunciationText = "apple", DifficultyLevel = 1, MeaningText = "a fruit", ExampleSentence = "I eat an apple.", IsActive = true }
-        );
+        var items = new List<VocabularyItem>
+        {
+            new VocabularyItem
+            {
+                ModuleId = bmModule.Id,
+                Word = "buku",
+                NormalizedWord = "buku",
+                Language = "ms",
+                Subject = bmModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "bu-ku",
+                PronunciationText = "buku",
+                DifficultyLevel = 1,
+                MeaningText = "book",
+                ExampleSentence = "Saya baca buku.",
+                IsActive = true,
+                SyllableInfo = new VocabularySyllableInfo { SyllablesJson = "[\"bu\",\"ku\"]", SyllableText = "bu-ku" },
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "book" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "buku" }
+                }
+            },
+            new VocabularyItem
+            {
+                ModuleId = bmModule.Id,
+                Word = "mata",
+                NormalizedWord = "mata",
+                Language = "ms",
+                Subject = bmModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "ma-ta",
+                PronunciationText = "mata",
+                DifficultyLevel = 1,
+                MeaningText = "eye",
+                ExampleSentence = "Mata saya sihat.",
+                IsActive = true,
+                SyllableInfo = new VocabularySyllableInfo { SyllablesJson = "[\"ma\",\"ta\"]", SyllableText = "ma-ta" },
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "eye" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "mata" }
+                }
+            },
+            new VocabularyItem
+            {
+                ModuleId = bmModule.Id,
+                Word = "sekolah",
+                NormalizedWord = "sekolah",
+                Language = "ms",
+                Subject = bmModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "se-ko-lah",
+                PronunciationText = "sekolah",
+                DifficultyLevel = 2,
+                MeaningText = "school",
+                ExampleSentence = "Saya pergi ke sekolah.",
+                IsActive = true,
+                SyllableInfo = new VocabularySyllableInfo { SyllablesJson = "[\"se\",\"ko\",\"lah\"]", SyllableText = "se-ko-lah" },
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "school" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "sekolah" }
+                }
+            },
+            new VocabularyItem
+            {
+                ModuleId = bmModule.Id,
+                Word = "makan",
+                NormalizedWord = "makan",
+                Language = "ms",
+                Subject = bmModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "ma-kan",
+                PronunciationText = "makan",
+                DifficultyLevel = 1,
+                MeaningText = "eat",
+                ExampleSentence = "Ali makan nasi.",
+                IsActive = true,
+                SyllableInfo = new VocabularySyllableInfo { SyllablesJson = "[\"ma\",\"kan\"]", SyllableText = "ma-kan" },
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "eat" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "makan" }
+                }
+            },
+            new VocabularyItem
+            {
+                ModuleId = englishModule.Id,
+                Word = "school",
+                NormalizedWord = "school",
+                Language = "en",
+                Subject = englishModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "skool",
+                PronunciationText = "school",
+                DifficultyLevel = 2,
+                MeaningText = "place to learn",
+                ExampleSentence = "I go to school.",
+                IsActive = true,
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "school" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "sekolah" }
+                }
+            },
+            new VocabularyItem
+            {
+                ModuleId = englishModule.Id,
+                Word = "pencil",
+                NormalizedWord = "pencil",
+                Language = "en",
+                Subject = englishModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "pen-sil",
+                PronunciationText = "pencil",
+                DifficultyLevel = 1,
+                MeaningText = "tool for writing",
+                ExampleSentence = "This is my pencil.",
+                IsActive = true,
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "pencil" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "pensil" }
+                }
+            },
+            new VocabularyItem
+            {
+                ModuleId = englishModule.Id,
+                Word = "friend",
+                NormalizedWord = "friend",
+                Language = "en",
+                Subject = englishModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "frend",
+                PronunciationText = "friend",
+                DifficultyLevel = 2,
+                MeaningText = "someone you like",
+                ExampleSentence = "She is my friend.",
+                IsActive = true,
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "friend" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "kawan" }
+                }
+            },
+            new VocabularyItem
+            {
+                ModuleId = englishModule.Id,
+                Word = "apple",
+                NormalizedWord = "apple",
+                Language = "en",
+                Subject = englishModule.Subject,
+                YearLevel = 1,
+                PhoneticHint = "ap-pel",
+                PronunciationText = "apple",
+                DifficultyLevel = 1,
+                MeaningText = "a fruit",
+                ExampleSentence = "I eat an apple.",
+                IsActive = true,
+                Translations = new List<VocabularyTranslation>
+                {
+                    new VocabularyTranslation { LanguageCode = "en", TranslationText = "apple" },
+                    new VocabularyTranslation { LanguageCode = "ms", TranslationText = "epal" }
+                }
+            }
+        };
+
+        await _dbContext.VocabularyItems.AddRangeAsync(items);
 
         await _dbContext.SaveChangesAsync();
     }

@@ -2,6 +2,7 @@ using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Infrastructure.Persistence;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Services.Adaptive.Strategies;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,14 @@ namespace CleanArc.Tests.Setup.Features.Adaptive;
 
 public class ChallengeGeneratorSpellCatcherTests
 {
+    private static readonly IGameStrategy[] TestStrategies = new IGameStrategy[]
+    {
+        new SpellCatcherGameStrategy(),
+        new SyllableSushiGameStrategy(),
+        new VoiceBridgeGameStrategy(),
+        new TranslationGameStrategy()
+    };
+
     private static ApplicationDbContext CreateContext()
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = ":memory:" }.ToString());
@@ -27,7 +36,7 @@ public class ChallengeGeneratorSpellCatcherTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "bahagi", "[\"ba\",\"ha\",\"gi\"]", 2);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
 
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
@@ -57,7 +66,7 @@ public class ChallengeGeneratorSpellCatcherTests
     {
         await using var context = CreateContext();
         var module = await SeedModuleWithWordAsync(context, "bermain", "[\"ber\",\"ma\",\"in\"]", 2);
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
         var preview = await generator.GenerateAsync(
             new GenerateAdaptiveChallengeRequest(
                 "student",
@@ -108,18 +117,24 @@ public class ChallengeGeneratorSpellCatcherTests
             ModuleId = module.Id,
             Word = bmWord,
             NormalizedWord = bmWord.ToLowerInvariant(),
-            BmText = bmWord,
-            ZhText = "zh-test",
-            EnText = "en-test",
             Language = "ms",
             Subject = "Bahasa Melayu",
             YearLevel = 1,
-            SyllablesJson = syllablesJson,
-            SyllableText = string.Join('/', System.Text.Json.JsonSerializer.Deserialize<List<string>>(syllablesJson)!),
             ItemType = "WORD",
             DisplayOrder = 1,
             DifficultyLevel = difficulty,
-            IsActive = true
+            IsActive = true,
+            Translations = new List<VocabularyTranslation>
+            {
+                new VocabularyTranslation { LanguageCode = "ms", TranslationText = bmWord },
+                new VocabularyTranslation { LanguageCode = "zh", TranslationText = "zh-test" },
+                new VocabularyTranslation { LanguageCode = "en", TranslationText = "en-test" }
+            },
+            SyllableInfo = new VocabularySyllableInfo 
+            { 
+                SyllablesJson = syllablesJson, 
+                SyllableText = string.Join('/', System.Text.Json.JsonSerializer.Deserialize<List<string>>(syllablesJson)!) 
+            }
         });
 
         await context.SaveChangesAsync();

@@ -27,6 +27,7 @@ public static class AiUseCases
   public const string SpellCatcherConfig = "SPELL_CATCHER_CONFIG";
   public const string SyllableSushiConfig = "SYLLABLE_SUSHI_CONFIG";
   public const string VoiceBridgeConfig = "VOICE_BRIDGE_CONFIG";
+  public const string TranslationConfig = "TRANSLATION_CONFIG";
   public const string RecoveryMissionPreview = "RECOVERY_MISSION_PREVIEW";
   public const string AdminAuditor = "ADMIN_AUDITOR";
   public const string AdminAuditorFindingsSummary = "ADMIN_AUDITOR_FINDINGS_SUMMARY";

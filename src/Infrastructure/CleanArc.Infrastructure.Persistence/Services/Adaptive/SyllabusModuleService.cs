@@ -46,12 +46,15 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
 
     public async Task<IReadOnlyList<VocabularyItemDto>> GetVocabularyAsync(int moduleId, CancellationToken cancellationToken)
     {
-        return await dbContext.VocabularyItems.AsNoTracking()
+        var items = await dbContext.VocabularyItems.AsNoTracking()
+            .Include(v => v.Translations)
+            .Include(v => v.SyllableInfo)
             .Where(v => v.ModuleId == moduleId && v.IsActive)
             .OrderBy(v => v.DisplayOrder)
             .ThenBy(v => v.Word)
-            .Select(v => ToDto(v))
             .ToListAsync(cancellationToken);
+
+        return items.Select(ToDto).ToList();
     }
 
     public async Task<SyllabusModuleDto> CreateModuleAsync(CreateSyllabusModuleRequest request, CancellationToken cancellationToken)
@@ -96,14 +99,9 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
             ModuleId = module.Id,
             Word = word,
             NormalizedWord = NormalizeWord(word),
-            BmText = bmText,
-            ZhText = request.ZhText?.Trim(),
-            EnText = request.EnText?.Trim(),
             Language = request.Language?.Trim() ?? module.Language,
             Subject = request.Subject?.Trim() ?? module.Subject,
             YearLevel = request.YearLevel ?? module.YearLevel,
-            SyllablesJson = EnsureJsonArray(request.SyllablesJson),
-            SyllableText = request.SyllableText?.Trim(),
             ItemType = string.IsNullOrWhiteSpace(request.ItemType) ? "WORD" : request.ItemType.Trim().ToUpperInvariant(),
             DisplayOrder = Math.Max(0, request.DisplayOrder ?? 0),
             PhoneticHint = request.PhoneticHint?.Trim(),
@@ -114,6 +112,30 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
             ImageUrl = request.ImageUrl?.Trim(),
             IsActive = true
         };
+
+        if (!string.IsNullOrWhiteSpace(bmText))
+        {
+            item.Translations.Add(new VocabularyTranslation { LanguageCode = "ms", TranslationText = bmText });
+        }
+        if (!string.IsNullOrWhiteSpace(request.ZhText))
+        {
+            item.Translations.Add(new VocabularyTranslation { LanguageCode = "zh", TranslationText = request.ZhText.Trim() });
+        }
+        if (!string.IsNullOrWhiteSpace(request.EnText))
+        {
+            item.Translations.Add(new VocabularyTranslation { LanguageCode = "en", TranslationText = request.EnText.Trim() });
+        }
+
+        var syllablesJson = EnsureJsonArray(request.SyllablesJson);
+        var syllableText = request.SyllableText?.Trim();
+        if (syllablesJson != "[]" || !string.IsNullOrWhiteSpace(syllableText))
+        {
+            item.SyllableInfo = new VocabularySyllableInfo
+            {
+                SyllablesJson = syllablesJson,
+                SyllableText = syllableText
+            };
+        }
 
         dbContext.VocabularyItems.Add(item);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -136,29 +158,39 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
         module.SourceType,
         module.IsActive);
 
-    internal static VocabularyItemDto ToDto(VocabularyItem item) => new(
-        item.Id,
-        item.PublicId,
-        item.ModuleId,
-        item.Word,
-        item.NormalizedWord,
-        item.BmText,
-        item.ZhText,
-        item.EnText,
-        item.Language,
-        item.Subject,
-        item.YearLevel,
-        item.SyllablesJson,
-        item.SyllableText,
-        item.ItemType,
-        item.DisplayOrder,
-        item.PhoneticHint,
-        item.PronunciationText,
-        item.DifficultyLevel,
-        item.MeaningText,
-        item.ExampleSentence,
-        item.ImageUrl,
-        item.IsActive);
+    internal static VocabularyItemDto ToDto(VocabularyItem item)
+    {
+        var bmText = item.Translations?.FirstOrDefault(t => t.LanguageCode.Equals("ms", StringComparison.OrdinalIgnoreCase))?.TranslationText
+            ?? (item.Language.Equals("ms", StringComparison.OrdinalIgnoreCase) ? item.Word : string.Empty);
+        var zhText = item.Translations?.FirstOrDefault(t => t.LanguageCode.Equals("zh", StringComparison.OrdinalIgnoreCase))?.TranslationText
+            ?? (item.Language.Equals("zh", StringComparison.OrdinalIgnoreCase) ? item.Word : string.Empty);
+        var enText = item.Translations?.FirstOrDefault(t => t.LanguageCode.Equals("en", StringComparison.OrdinalIgnoreCase))?.TranslationText
+            ?? (item.Language.Equals("en", StringComparison.OrdinalIgnoreCase) ? item.Word : string.Empty);
+
+        return new(
+            item.Id,
+            item.PublicId,
+            item.ModuleId,
+            item.Word,
+            item.NormalizedWord,
+            bmText,
+            zhText,
+            enText,
+            item.Language,
+            item.Subject,
+            item.YearLevel,
+            item.SyllableInfo?.SyllablesJson ?? "[]",
+            item.SyllableInfo?.SyllableText,
+            item.ItemType,
+            item.DisplayOrder,
+            item.PhoneticHint,
+            item.PronunciationText,
+            item.DifficultyLevel,
+            item.MeaningText,
+            item.ExampleSentence,
+            item.ImageUrl,
+            item.IsActive);
+    }
 
     internal static string NormalizeWord(string value) =>
         string.Join(' ', value.Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));

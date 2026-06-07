@@ -5,6 +5,7 @@ using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Persistence;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
+using CleanArc.Infrastructure.Persistence.Services.Adaptive.Strategies;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -13,6 +14,13 @@ namespace CleanArc.Tests.Setup.Features.Adaptive;
 
 public class WordProgressMasteryTests
 {
+    private static readonly IGameStrategy[] TestStrategies = new IGameStrategy[]
+    {
+        new SpellCatcherGameStrategy(),
+        new SyllableSushiGameStrategy(),
+        new VoiceBridgeGameStrategy(),
+        new TranslationGameStrategy()
+    };
     private static ApplicationDbContext CreateContext()
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = ":memory:" }.ToString());
@@ -183,9 +191,12 @@ public class WordProgressMasteryTests
             ModuleId = module.Id,
             Word = "sekolah",
             NormalizedWord = "sekolah",
-            BmText = "sekolah",
             Language = "ms",
-            Subject = "BM"
+            Subject = "BM",
+            Translations = new List<VocabularyTranslation>
+            {
+                new VocabularyTranslation { LanguageCode = "ms", TranslationText = "sekolah" }
+            }
         };
         context.VocabularyItems.Add(vocabulary);
         await context.SaveChangesAsync();
@@ -297,7 +308,7 @@ public class WordProgressMasteryTests
         context.SyllabusModules.Add(module);
         await context.SaveChangesAsync();
 
-        var vocabulary = new VocabularyItem { ModuleId = module.Id, Word = "sekolah", NormalizedWord = "sekolah", BmText = "sekolah", Language = "ms", Subject = "BM" };
+        var vocabulary = new VocabularyItem { ModuleId = module.Id, Word = "sekolah", NormalizedWord = "sekolah", Language = "ms", Subject = "BM", Translations = new List<VocabularyTranslation> { new VocabularyTranslation { LanguageCode = "ms", TranslationText = "sekolah" } } };
         context.VocabularyItems.Add(vocabulary);
         var challenge = new Challenge { ClassroomId = classroom.Id, GameId = game.Id, Title = "Challenge 1", ContentData = "{}", LifecycleState = ChallengeLifecycleState.Active, Status = "assigned" };
         context.Challenges.Add(challenge);
@@ -376,7 +387,7 @@ public class WordProgressMasteryTests
         context.WordProgresses.AddRange(wp1, wp2, wp3, wp5);
         await context.SaveChangesAsync();
 
-        var generator = new ChallengeGenerator(context);
+        var generator = new ChallengeGenerator(context, TestStrategies);
         var request = new GenerateAdaptiveChallengeRequest(
             TargetType: "class",
             StudentId: student.Id,

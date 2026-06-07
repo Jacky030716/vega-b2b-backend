@@ -372,6 +372,8 @@ public class RecoveryMissionService(
             vocabularyQuery = vocabularyQuery.Where(v => v.YearLevel == classroom.YearLevel && v.Subject == classroom.Subject);
 
         var vocabulary = await vocabularyQuery
+            .Include(v => v.Translations)
+            .Include(v => v.SyllableInfo)
             .OrderBy(v => v.DisplayOrder)
             .ThenBy(v => v.Word)
             .Take(80)
@@ -382,7 +384,8 @@ public class RecoveryMissionService(
 
         var vocabularyIds = vocabulary.Select(v => v.Id).ToArray();
         var progresses = await dbContext.WordProgresses.AsNoTracking()
-            .Include(wp => wp.Word)
+            .Include(wp => wp.Word).ThenInclude(w => w.Translations)
+            .Include(wp => wp.Word).ThenInclude(w => w.SyllableInfo)
             .Where(wp => wp.StudentId == studentId && vocabularyIds.Contains(wp.WordId))
             .ToListAsync(cancellationToken);
 
@@ -555,6 +558,7 @@ public class RecoveryMissionService(
         if (source.Contains("syllable", StringComparison.OrdinalIgnoreCase)) return "SYLLABLE_STRUCTURE";
         if (source.Contains("speak", StringComparison.OrdinalIgnoreCase) || source.Contains("voice", StringComparison.OrdinalIgnoreCase)) return "SPEAKING";
         if (source.Contains("listen", StringComparison.OrdinalIgnoreCase)) return "LISTENING";
+        if (source.Contains("translate", StringComparison.OrdinalIgnoreCase) || source.Contains("translation", StringComparison.OrdinalIgnoreCase)) return "TRANSLATION";
         if (source.Contains("mixed", StringComparison.OrdinalIgnoreCase)) return "MIXED";
         return "SPELLING_RECALL";
     }
@@ -564,6 +568,7 @@ public class RecoveryMissionService(
         {
             "SYLLABLE_STRUCTURE" => "SYLLABLE_SUSHI",
             "SPEAKING" => "VOICE_BRIDGE",
+            "TRANSLATION" => "TRANSLATION",
             "MIXED" => "SYLLABLE_SUSHI",
             _ => "SPELL_CATCHER"
         };
@@ -587,6 +592,7 @@ public class RecoveryMissionService(
         {
             "SYLLABLE_STRUCTURE" => "Syllable Recovery Mission",
             "SPEAKING" => "Speaking Recovery Mission",
+            "TRANSLATION" => "Translation Recovery Mission",
             "MIXED" => "Mixed Skills Recovery Mission",
             _ => gameType == "SPELL_CATCHER" ? "Spelling Recovery Mission" : "Recovery Mission"
         };
@@ -602,21 +608,48 @@ public class RecoveryMissionService(
             "SPELL_CATCHER" or "SPELL" => "SPELL_CATCHER",
             "SYLLABLE_SUSHI" or "SYLLABLE" => "SYLLABLE_SUSHI",
             "VOICE_BRIDGE" or "VOICE" or "SPEAKING" => "VOICE_BRIDGE",
+            "TRANSLATION" => "TRANSLATION",
             _ => "SPELL_CATCHER"
         };
     }
 
     private static ModuleChallengeAiItem ToAiItem(VocabularyItem item) =>
-        new(item.Id, item.Word, item.BmText, item.EnText, item.ZhText, item.SyllablesJson, item.SyllableText, item.ItemType, item.DifficultyLevel, item.MeaningText, item.ExampleSentence);
+        new(
+            item.Id,
+            item.Word,
+            ChallengeGenerator.GetTranslation(item, "ms"),
+            ChallengeGenerator.GetTranslation(item, "en"),
+            ChallengeGenerator.GetTranslation(item, "zh"),
+            item.SyllableInfo?.SyllablesJson ?? "[]",
+            item.SyllableInfo?.SyllableText,
+            item.ItemType,
+            item.DifficultyLevel,
+            item.MeaningText,
+            item.ExampleSentence);
 
     private static AdaptiveChallengeItemDto ToAdaptiveItem(VocabularyItem item) =>
-        new(null, item.Id, item.Word, item.NormalizedWord, item.PhoneticHint ?? item.MeaningText, item.MeaningText, item.ExampleSentence, item.SyllablesJson, item.DifficultyLevel, item.BmText, item.ZhText, item.EnText, item.SyllableText, item.ItemType, item.DisplayOrder);
+        new(
+            null,
+            item.Id,
+            item.Word,
+            item.NormalizedWord,
+            item.PhoneticHint ?? item.MeaningText,
+            item.MeaningText,
+            item.ExampleSentence,
+            item.SyllableInfo?.SyllablesJson ?? "[]",
+            item.DifficultyLevel,
+            ChallengeGenerator.GetTranslation(item, "ms"),
+            ChallengeGenerator.GetTranslation(item, "zh"),
+            ChallengeGenerator.GetTranslation(item, "en"),
+            item.SyllableInfo?.SyllableText,
+            item.ItemType,
+            item.DisplayOrder);
 
     private static bool MatchesVocabularyWord(VocabularyItem item, string selectedWord)
         => string.Equals(item.Word, selectedWord, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(item.BmText, selectedWord, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(item.EnText, selectedWord, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(item.ZhText, selectedWord, StringComparison.OrdinalIgnoreCase);
+           || string.Equals(ChallengeGenerator.GetTranslation(item, "ms"), selectedWord, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(ChallengeGenerator.GetTranslation(item, "en"), selectedWord, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(ChallengeGenerator.GetTranslation(item, "zh"), selectedWord, StringComparison.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> ReadWords(string json)
     {

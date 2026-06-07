@@ -28,6 +28,8 @@ internal class GetClassroomAdventureMapQueryHandler(IUnitOfWork unitOfWork)
     var requestedGameKey = request.GameKey?.Trim() ?? string.Empty;
 
     var assignedChallenges = classroomChallenges
+        .Where(c => c.LifecycleState != Domain.Entities.Quiz.ChallengeLifecycleState.Archived 
+                    && !string.Equals(c.Status, "archived", StringComparison.OrdinalIgnoreCase))
         .OrderBy(c => c.OrderIndex)
         .ThenBy(c => c.DifficultyLevel)
         .ToList();

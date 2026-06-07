@@ -235,15 +235,18 @@ public class AttemptConsistencyServiceTests
       ModuleId = moduleId,
       Word = "sekolah",
       NormalizedWord = "sekolah",
-      BmText = "sekolah",
       Language = "ms",
       Subject = "BM",
       YearLevel = 1,
-      SyllablesJson = "[]",
       ItemType = "word",
       DisplayOrder = 1,
       DifficultyLevel = 1,
-      IsActive = true
+      IsActive = true,
+      Translations = new List<VocabularyTranslation>
+      {
+          new VocabularyTranslation { LanguageCode = "ms", TranslationText = "sekolah" }
+      },
+      SyllableInfo = new VocabularySyllableInfo { SyllablesJson = "[]", SyllableText = string.Empty }
     };
     context.VocabularyItems.Add(item);
     await context.SaveChangesAsync();
