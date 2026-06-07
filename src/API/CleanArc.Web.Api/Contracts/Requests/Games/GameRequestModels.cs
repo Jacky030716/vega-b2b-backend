@@ -15,4 +15,10 @@ public class GenerateAiChallengeDraftRequest
 
   [FromForm(Name = "syllabusFile")]
   public IFormFile? SyllabusFile { get; set; }
+
+  [FromForm(Name = "moduleId")]
+  public int? ModuleId { get; set; }
+
+  [FromForm(Name = "mode")]
+  public string? Mode { get; set; }
 }

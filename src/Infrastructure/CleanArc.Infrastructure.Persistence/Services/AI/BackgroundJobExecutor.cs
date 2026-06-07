@@ -20,9 +20,11 @@ public sealed class BackgroundJobExecutor(ISender sender) : IBackgroundJobExecut
         int userId, 
         int classroomId, 
         string prompt, 
-        ChallengeDocumentPayload? syllabusFile)
+        ChallengeDocumentPayload? syllabusFile,
+        int? moduleId = null,
+        string? mode = null)
     {
-        await sender.Send(new GenerateAiChallengeDraftJobCommand(auditLogId, userId, gameKey, classroomId, prompt, syllabusFile));
+        await sender.Send(new GenerateAiChallengeDraftJobCommand(auditLogId, userId, gameKey, classroomId, prompt, syllabusFile, moduleId, mode));
     }
 
     public async Task ExecuteClassroomThumbnailJobAsync(

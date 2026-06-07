@@ -10,5 +10,7 @@ public record GenerateAiChallengeDraftJobCommand(
     string GameKey,
     int ClassroomId,
     string? Prompt,
-    ChallengeDocumentPayload? SourceDocument)
+    ChallengeDocumentPayload? SourceDocument,
+    int? ModuleId = null,
+    string? Mode = null)
     : IRequest<OperationResult<bool>>;

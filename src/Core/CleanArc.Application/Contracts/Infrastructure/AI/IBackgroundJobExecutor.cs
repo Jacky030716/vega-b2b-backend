@@ -13,7 +13,9 @@ public interface IBackgroundJobExecutor
         int userId, 
         int classroomId, 
         string prompt, 
-        ChallengeDocumentPayload? syllabusFile);
+        ChallengeDocumentPayload? syllabusFile,
+        int? moduleId = null,
+        string? mode = null);
         
     Task ExecuteClassroomThumbnailJobAsync(
         int auditLogId, 

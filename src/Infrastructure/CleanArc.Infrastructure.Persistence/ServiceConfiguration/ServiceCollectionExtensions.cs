@@ -67,6 +67,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdaptiveAttemptService, AdaptiveAttemptService>();
         services.AddScoped<IAdaptiveAnalyticsService, AdaptiveAnalyticsService>();
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<CleanArc.Application.Contracts.AI.IVegaAgentService, CleanArc.Infrastructure.Persistence.Services.AI.VegaAgentService>();
         services.AddSingleton<IAuditRouter, AuditRouter>();
         services.AddScoped<IAuditRouteHandler, AuditRouteHandler>();
         services.AddScoped<IAuditFindingsSummarizer, AuditFindingsSummarizer>();

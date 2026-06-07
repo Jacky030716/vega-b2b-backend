@@ -11,6 +11,9 @@ using CleanArc.Application.Models.Common;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
+using System.Text.Json.Nodes;
+using CleanArc.Application.Contracts.Adaptive;
+
 namespace CleanArc.Application.Features.Games.Commands;
 
 internal sealed class GenerateAiChallengeDraftJobCommandHandler(
@@ -19,6 +22,7 @@ internal sealed class GenerateAiChallengeDraftJobCommandHandler(
     IRagRetrievalService ragRetrievalService,
     IChallengeAiPipelineService challengeAiPipelineService,
     IAiAuditService aiAuditService,
+    IChallengeGenerator challengeGenerator,
     ILogger<GenerateAiChallengeDraftJobCommandHandler> logger)
     : IRequestHandler<GenerateAiChallengeDraftJobCommand, OperationResult<bool>>
 {
@@ -36,6 +40,87 @@ internal sealed class GenerateAiChallengeDraftJobCommandHandler(
             {
                 await aiAuditService.FailAsync(request.AuditLogId, null, new[] { "Classroom not found." }, cancellationToken);
                 return OperationResult<bool>.FailureResult("Classroom not found.");
+            }
+
+            if (request.ModuleId.HasValue)
+            {
+                logger.LogInformation("Deterministic agent selected. Generating challenge draft deterministically for Classroom: {ClassroomId}, Module: {ModuleId}",
+                    request.ClassroomId, request.ModuleId);
+
+                var gameTemplateCode = request.GameKey switch
+                {
+                    "spell_catcher" => "SPELL_CATCHER",
+                    "syllable_sushi" => "SYLLABLE_SUSHI",
+                    "voice_bridge" => "VOICE_BRIDGE",
+                    "translation" => "TRANSLATION",
+                    _ => request.GameKey.ToUpperInvariant()
+                };
+
+                var challengeRequest = new GenerateAdaptiveChallengeRequest(
+                    TargetType: "class",
+                    StudentId: null,
+                    ClassId: request.ClassroomId,
+                    Objective: request.Mode ?? "practice_words",
+                    SourceType: "PREDEFINED_MODULE",
+                    ModuleId: request.ModuleId.Value,
+                    PreferredGameTemplateCode: gameTemplateCode,
+                    LearningFocus: (request.Mode ?? "practice_words").Replace('_', ' '),
+                    ManualWords: null,
+                    AiPrompt: null,
+                    SourceText: null
+                );
+
+                var config = await challengeGenerator.GenerateAsync(challengeRequest, cancellationToken);
+
+                var draftPayload = JsonSerializer.Serialize(new
+                {
+                    gameTemplateCode = config.GameTemplateCode,
+                    content = JsonNode.Parse(config.ContentData),
+                    items = config.Items.Select(item => new
+                    {
+                        word = item.Word,
+                        normalizedWord = item.NormalizedWord,
+                        hint = item.Hint,
+                        meaningText = item.MeaningText,
+                        exampleSentence = item.ExampleSentence,
+                        syllablesJson = TryParseJson(item.SyllablesJson) ?? JsonNode.Parse("[]"),
+                        difficultyLevel = item.DifficultyLevel,
+                        bmText = item.BmText,
+                        zhText = item.ZhText,
+                        enText = item.EnText,
+                        syllableText = item.SyllableText,
+                        itemType = item.ItemType,
+                        displayOrder = item.DisplayOrder,
+                        syllablePoolJson = TryParseJson(item.SyllablePoolJson) ?? JsonNode.Parse("[]"),
+                        distractorsJson = TryParseJson(item.DistractorsJson) ?? JsonNode.Parse("[]"),
+                        correctOrderJson = TryParseJson(item.CorrectOrderJson) ?? JsonNode.Parse("[]"),
+                        spellCatcherSpecJson = TryParseJson(item.SpellCatcherSpecJson),
+                        language = item.Language
+                    })
+                }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+                var deterministicEnriched = new
+                {
+                    title = config.Title,
+                    description = config.Description,
+                    draftSchema = "CUSTOM_CHALLENGE",
+                    draftPayload = draftPayload,
+                    playableContentData = config.ContentData,
+                    aiAuditLogId = request.AuditLogId,
+                    sourceDocumentName = (string?)null,
+                    retrievedChunks = Array.Empty<object>()
+                };
+
+                await aiAuditService.CompleteAsync(
+                    request.AuditLogId,
+                    config.ContentData,
+                    JsonSerializer.Serialize(deterministicEnriched),
+                    AiValidationStatuses.Valid,
+                    Array.Empty<string>(),
+                    cancellationToken);
+
+                logger.LogInformation("Background execution completed successfully using DETERMINISTIC Challenger Agent. AuditLogId: {AuditLogId}", request.AuditLogId);
+                return OperationResult<bool>.SuccessResult(true);
             }
 
             var promptText = request.Prompt?.Trim() ?? string.Empty;
@@ -123,6 +208,12 @@ internal sealed class GenerateAiChallengeDraftJobCommandHandler(
             await aiAuditService.FailAsync(request.AuditLogId, null, new[] { ex.Message }, cancellationToken);
             return OperationResult<bool>.FailureResult($"Failed to generate challenge draft: {ex.Message}");
         }
+    }
+
+    private static JsonNode? TryParseJson(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        try { return JsonNode.Parse(raw); } catch { return null; }
     }
 }
 

@@ -167,7 +167,9 @@ public class GameEndpoints : ICarterModule
                   userId,
                   request.ClassroomId,
                   promptText,
-                  documentPayload));
+                  documentPayload,
+                  request.ModuleId,
+                  request.Mode));
 
           return Results.Accepted($"/api/v1.1/ai/jobs/{auditLogId}", new { auditLogId, status = "PENDING" });
         }
