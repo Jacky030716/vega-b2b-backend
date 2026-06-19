@@ -258,4 +258,103 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
 
         return completedCount >= challengeIds.Count;
     }
+
+    public async Task CompleteHardcoreChallengeRewardsAsync(int userId, int challengeId, CancellationToken cancellationToken)
+    {
+        var hardcoreDraft = await DbContext.HardcoreChallengeDrafts
+            .FirstOrDefaultAsync(d => d.LinkedChallengeId == challengeId && d.StudentId == userId && d.Status == "ACCEPTED", cancellationToken);
+
+        if (hardcoreDraft != null)
+        {
+            hardcoreDraft.Status = "COMPLETED";
+            hardcoreDraft.CompletedAt = DateTime.UtcNow;
+
+            // Grant configurable rewards
+            var user = await DbContext.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            if (user != null)
+            {
+                user.Experience += hardcoreDraft.RewardXp;
+                user.Diamonds += hardcoreDraft.RewardDiamonds;
+            }
+
+            var userProgress = await DbContext.UserProgresses
+                .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+            if (userProgress != null)
+            {
+                userProgress.TotalXP += hardcoreDraft.RewardXp;
+                userProgress.ModifiedDate = DateTime.UtcNow;
+
+                var nextLevel = await DbContext.Levels.AsNoTracking()
+                    .Where(l => l.LevelNumber > userProgress.CurrentLevel && l.RequiredXP <= userProgress.TotalXP)
+                    .OrderByDescending(l => l.LevelNumber)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (nextLevel is not null)
+                {
+                    userProgress.CurrentLevel = nextLevel.LevelNumber;
+                    if (user is not null)
+                    {
+                        user.Level = nextLevel.LevelNumber;
+                    }
+                }
+            }
+
+            // Unlock limited edition mascot
+            if (hardcoreDraft.MascotEligibility && !string.IsNullOrWhiteSpace(hardcoreDraft.MascotName))
+            {
+                var mascotItem = await DbContext.ShopItems
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.Name == hardcoreDraft.MascotName && item.Category == "avatar", cancellationToken);
+
+                if (mascotItem != null)
+                {
+                    var alreadyOwned = await DbContext.UserInventoryItems
+                        .AnyAsync(ii => ii.UserId == userId && ii.ShopItemId == mascotItem.Id, cancellationToken);
+                    if (!alreadyOwned)
+                    {
+                        var invItem = new CleanArc.Domain.Entities.Shop.UserInventoryItem
+                        {
+                            UserId = userId,
+                            ShopItemId = mascotItem.Id,
+                            AcquiredAt = DateTime.UtcNow
+                        };
+                        DbContext.UserInventoryItems.Add(invItem);
+                    }
+                }
+            }
+
+            // Grant exclusive badge progression
+            if (!string.IsNullOrWhiteSpace(hardcoreDraft.BadgeCode))
+            {
+                var badge = await DbContext.Badges
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(b => b.Code == hardcoreDraft.BadgeCode, cancellationToken);
+
+                if (badge != null)
+                {
+                    var progress = await DbContext.UserBadgeProgresses
+                        .FirstOrDefaultAsync(bp => bp.UserId == userId && bp.BadgeId == badge.Id, cancellationToken);
+
+                    if (progress == null)
+                    {
+                        progress = new CleanArc.Domain.Entities.Achievement.UserBadgeProgress
+                        {
+                            UserId = userId,
+                            BadgeId = badge.Id,
+                            ProgressValue = 1,
+                            LastEvaluatedAt = DateTime.UtcNow
+                        };
+                        DbContext.UserBadgeProgresses.Add(progress);
+                    }
+                    else
+                    {
+                        progress.ProgressValue += 1;
+                        progress.LastEvaluatedAt = DateTime.UtcNow;
+                    }
+                }
+            }
+
+            await DbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
 }

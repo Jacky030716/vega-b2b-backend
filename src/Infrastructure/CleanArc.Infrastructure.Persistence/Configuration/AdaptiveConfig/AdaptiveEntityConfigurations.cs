@@ -306,3 +306,56 @@ public class WordProgressConfiguration : IEntityTypeConfiguration<WordProgress>
         builder.HasIndex(x => new { x.StudentId, x.WordId }).IsUnique();
     }
 }
+
+public class HardcoreChallengeDraftConfiguration : IEntityTypeConfiguration<HardcoreChallengeDraft>
+{
+    public void Configure(EntityTypeBuilder<HardcoreChallengeDraft> builder)
+    {
+        SyllabusModuleConfiguration.ConfigureBase(builder, "hardcore_challenge_drafts");
+        builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
+        builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000);
+        builder.Property(x => x.GameType).HasColumnName("game_type").HasMaxLength(50).IsRequired();
+        builder.Property(x => x.DifficultyLevel).HasColumnName("difficulty_level").IsRequired();
+        builder.Property(x => x.TargetWordsJson).HasColumnName("target_words_json").IsRequired();
+        builder.Property(x => x.ContentData).HasColumnName("content_data").IsRequired();
+        builder.Property(x => x.RewardXp).HasColumnName("reward_xp").IsRequired();
+        builder.Property(x => x.RewardDiamonds).HasColumnName("reward_diamonds").IsRequired();
+        builder.Property(x => x.MascotEligibility).HasColumnName("mascot_eligibility").IsRequired();
+        builder.Property(x => x.MascotName).HasColumnName("mascot_name").HasMaxLength(100);
+        builder.Property(x => x.BadgeCode).HasColumnName("badge_code").HasMaxLength(100);
+        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasDefaultValue("PENDING").IsRequired();
+        builder.Property(x => x.ExpiryAt).HasColumnName("expiry_at").IsRequired();
+        builder.Property(x => x.CompletedAt).HasColumnName("completed_at");
+        builder.Property(x => x.TriggeringMetricsJson).HasColumnName("triggering_metrics_json").IsRequired();
+        builder.Property(x => x.DecisionReason).HasColumnName("decision_reason").IsRequired();
+        builder.Property(x => x.ConfidenceScore).HasColumnName("confidence_score").IsRequired();
+        builder.Property(x => x.LinkedChallengeId).HasColumnName("linked_challenge_id");
+        builder.Property(x => x.LinkedSpellingTestId).HasColumnName("linked_spelling_test_id");
+
+        builder.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId);
+        builder.HasOne(x => x.LinkedChallenge).WithMany().HasForeignKey(x => x.LinkedChallengeId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.LinkedSpellingTest).WithMany().HasForeignKey(x => x.LinkedSpellingTestId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => new { x.StudentId, x.Status });
+    }
+}
+
+public class AdaptiveAgentDecisionConfiguration : IEntityTypeConfiguration<AdaptiveAgentDecision>
+{
+    public void Configure(EntityTypeBuilder<AdaptiveAgentDecision> builder)
+    {
+        SyllabusModuleConfiguration.ConfigureBase(builder, "adaptive_agent_decisions");
+        builder.Property(x => x.AgentName).HasColumnName("agent_name").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
+        builder.Property(x => x.EvaluatedAt).HasColumnName("evaluated_at").IsRequired();
+        builder.Property(x => x.IsEligible).HasColumnName("is_eligible").IsRequired();
+        builder.Property(x => x.TriggeringMetricsJson).HasColumnName("triggering_metrics_json").IsRequired();
+        builder.Property(x => x.DecisionReason).HasColumnName("decision_reason").IsRequired();
+        builder.Property(x => x.ConfidenceScore).HasColumnName("confidence_score").IsRequired();
+        builder.Property(x => x.GeneratedDraftId).HasColumnName("generated_draft_id");
+
+        builder.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId);
+        builder.HasOne(x => x.GeneratedDraft).WithMany().HasForeignKey(x => x.GeneratedDraftId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => new { x.StudentId, x.AgentName });
+    }
+}

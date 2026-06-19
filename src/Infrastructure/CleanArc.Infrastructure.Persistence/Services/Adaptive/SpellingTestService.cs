@@ -9,7 +9,8 @@ namespace CleanArc.Infrastructure.Persistence.Services.Adaptive;
 
 public class SpellingTestService(
     ApplicationDbContext dbContext,
-    ILogger<SpellingTestService> logger) : ISpellingTestService
+    ILogger<SpellingTestService> logger,
+    CleanArc.Application.Contracts.AdaptiveLearning.IAdaptiveLearningAgent adaptiveLearningAgent) : ISpellingTestService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan CompletedVisibilityWindow = TimeSpan.FromHours(24);
@@ -425,6 +426,125 @@ public class SpellingTestService(
             Stars: stars));
         await UpdateWordProgressAfterSpellingTestAsync(attempt, results, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Trigger adaptive evaluation after the spelling attempt is safely persisted.
+        try
+        {
+            await adaptiveLearningAgent.EvaluateAndTriggerDraftAsync(
+                attempt.StudentId,
+                attempt.Id,
+                isSpellingTest: true,
+                cancellationToken);
+        }
+        catch
+        {
+            // Non-fatal; the spelling test submission remains authoritative.
+        }
+
+        // Check if this spelling test is linked to an accepted hardcore draft
+        try
+        {
+            var hardcoreDraft = await dbContext.HardcoreChallengeDrafts
+                .FirstOrDefaultAsync(d => d.LinkedSpellingTestId == attempt.SpellingTestId && d.StudentId == attempt.StudentId && d.Status == "ACCEPTED", cancellationToken);
+
+            if (hardcoreDraft != null)
+            {
+                hardcoreDraft.Status = "COMPLETED";
+                hardcoreDraft.CompletedAt = DateTime.UtcNow;
+
+                // Award configurable rewards
+                var user = await dbContext.Users
+                    .FirstOrDefaultAsync(u => u.Id == attempt.StudentId, cancellationToken);
+                if (user != null)
+                {
+                    user.Experience += hardcoreDraft.RewardXp;
+                    user.Diamonds += hardcoreDraft.RewardDiamonds;
+                }
+
+                var userProgress = await dbContext.UserProgresses
+                    .FirstOrDefaultAsync(p => p.UserId == attempt.StudentId, cancellationToken);
+                if (userProgress != null)
+                {
+                    userProgress.TotalXP += hardcoreDraft.RewardXp;
+                    userProgress.ModifiedDate = DateTime.UtcNow;
+
+                    var nextLevel = await dbContext.Levels.AsNoTracking()
+                        .Where(l => l.LevelNumber > userProgress.CurrentLevel && l.RequiredXP <= userProgress.TotalXP)
+                        .OrderByDescending(l => l.LevelNumber)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    if (nextLevel is not null)
+                    {
+                        userProgress.CurrentLevel = nextLevel.LevelNumber;
+                        if (user is not null)
+                        {
+                            user.Level = nextLevel.LevelNumber;
+                        }
+                    }
+                }
+
+                // Unlock limited edition mascot
+                if (hardcoreDraft.MascotEligibility && !string.IsNullOrWhiteSpace(hardcoreDraft.MascotName))
+                {
+                    var mascotItem = await dbContext.ShopItems
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(item => item.Name == hardcoreDraft.MascotName && item.Category == "avatar", cancellationToken);
+
+                    if (mascotItem != null)
+                    {
+                        var alreadyOwned = await dbContext.UserInventoryItems
+                            .AnyAsync(ii => ii.UserId == attempt.StudentId && ii.ShopItemId == mascotItem.Id, cancellationToken);
+                        if (!alreadyOwned)
+                        {
+                            var invItem = new CleanArc.Domain.Entities.Shop.UserInventoryItem
+                            {
+                                UserId = attempt.StudentId,
+                                ShopItemId = mascotItem.Id,
+                                AcquiredAt = DateTime.UtcNow
+                            };
+                            dbContext.UserInventoryItems.Add(invItem);
+                        }
+                    }
+                }
+
+                // Grant exclusive badge progression
+                if (!string.IsNullOrWhiteSpace(hardcoreDraft.BadgeCode))
+                {
+                    var badge = await dbContext.Badges
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(b => b.Code == hardcoreDraft.BadgeCode, cancellationToken);
+
+                    if (badge != null)
+                    {
+                        var progress = await dbContext.UserBadgeProgresses
+                            .FirstOrDefaultAsync(bp => bp.UserId == attempt.StudentId && bp.BadgeId == badge.Id, cancellationToken);
+
+                        if (progress == null)
+                        {
+                            progress = new CleanArc.Domain.Entities.Achievement.UserBadgeProgress
+                            {
+                                UserId = attempt.StudentId,
+                                BadgeId = badge.Id,
+                                ProgressValue = 1,
+                                LastEvaluatedAt = DateTime.UtcNow
+                            };
+                            dbContext.UserBadgeProgresses.Add(progress);
+                        }
+                        else
+                        {
+                            progress.ProgressValue += 1;
+                            progress.LastEvaluatedAt = DateTime.UtcNow;
+                        }
+                    }
+                }
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+        catch
+        {
+            // Safeguard
+        }
     }
 
     public async Task<StudentSpellingTestSummaryDto> DismissModalAsync(int testId, int studentId, CancellationToken cancellationToken)

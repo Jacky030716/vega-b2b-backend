@@ -6,6 +6,7 @@ using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Quiz;
 using Mediator;
 using Microsoft.Extensions.Caching.Memory;
+using System;
 
 namespace CleanArc.Application.Features.Games.Commands;
 
@@ -51,7 +52,8 @@ internal class CreateAttemptCommandHandler(IUnitOfWork unitOfWork)
 internal class CompleteAttemptCommandHandler(
   IUnitOfWork unitOfWork,
   IAchievementTrackingService achievementTrackingService,
-  IMemoryCache cache)
+  IMemoryCache cache,
+  CleanArc.Application.Contracts.AdaptiveLearning.IAdaptiveLearningAgent adaptiveLearningAgent)
     : IRequestHandler<CompleteAttemptCommand, OperationResult<CompleteAttemptDto>>
 {
   private const string RecoverySourceType = "RECOVERY_MISSION";
@@ -269,6 +271,33 @@ internal class CompleteAttemptCommandHandler(
       {
         // Non-fatal — attempt record is authoritative; progress is an aggregate view
       }
+    }
+
+    // Trigger adaptive evaluation after the attempt is safely persisted.
+    try
+    {
+        await adaptiveLearningAgent.EvaluateAndTriggerDraftAsync(
+            attempt.UserId,
+            attempt.Id,
+            isSpellingTest: false,
+            cancellationToken);
+    }
+    catch
+    {
+        // Non-fatal; the attempt completion remains authoritative.
+    }
+
+    // Check if this challenge is linked to a hardcore draft
+    if (string.Equals(challenge?.SourceType, "HARDCORE_DRAFT", StringComparison.OrdinalIgnoreCase) || challenge?.ChallengeMode == "HARDCORE_CHALLENGE")
+    {
+        try
+        {
+            await unitOfWork.ChallengeRepository.CompleteHardcoreChallengeRewardsAsync(attempt.UserId, attempt.ChallengeId, cancellationToken);
+        }
+        catch
+        {
+            // Non-fatal, attempt completed successfully
+        }
     }
 
     return OperationResult<CompleteAttemptDto>.SuccessResult(

@@ -67,6 +67,8 @@ public interface IChallengeRepository
   Task<List<ChallengeProgress>> GetStudentProgressForClassroomAsync(int userId, int classroomId);
 
   Task<bool> IsStudentModuleCompletedAsync(int userId, int classroomId, int moduleId);
+
+  Task CompleteHardcoreChallengeRewardsAsync(int userId, int challengeId, CancellationToken cancellationToken);
 }
 
 public sealed record ChallengeLeaderboardSnapshot(
