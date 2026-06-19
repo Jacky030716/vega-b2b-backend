@@ -9,6 +9,7 @@ using CleanArc.Domain.Entities.Billing;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Institution;
 using CleanArc.Domain.Entities.Mission;
+using CleanArc.Domain.Entities.Notifications;
 using CleanArc.Domain.Entities.Progression;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.Shop;
@@ -67,6 +68,9 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<StudentSpellingTestAttempt> StudentSpellingTestAttempts { get; set; }
     public DbSet<HardcoreChallengeDraft> HardcoreChallengeDrafts { get; set; }
     public DbSet<AdaptiveAgentDecision> AdaptiveAgentDecisions { get; set; }
+
+    // Notifications
+    public DbSet<UserNotification> UserNotifications { get; set; }
 
     // Streak
     public DbSet<DailyCheckIn> DailyCheckIns { get; set; }

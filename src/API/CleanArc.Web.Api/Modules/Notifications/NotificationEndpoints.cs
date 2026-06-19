@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Carter;
 using CleanArc.Application.Contracts.Adaptive;
+using CleanArc.Application.Contracts.Notifications;
 using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.WebExtensions;
 using Microsoft.AspNetCore.Builder;
@@ -35,17 +36,63 @@ public class NotificationEndpoints : ICarterModule
 
         app.MapEndpoint(builder => builder.MapGet(
             "/api/v{version:apiVersion}/notifications",
-            () => Results.Ok(Array.Empty<object>())), Version, "GetNotifications", Tag)
+            async (
+                ClaimsPrincipal user,
+                INotificationInboxService notificationInboxService,
+                CancellationToken cancellationToken) =>
+            {
+                var userId = int.Parse(user.Identity.GetUserId());
+                var notifications = await notificationInboxService.GetLatestAsync(userId, 100, cancellationToken);
+                return Results.Ok(notifications);
+            }), Version, "GetNotifications", Tag)
+            .RequireAuthorization();
+
+        app.MapEndpoint(builder => builder.MapGet(
+            "/api/v{version:apiVersion}/notifications/{alertId}",
+            async (
+                int alertId,
+                ClaimsPrincipal user,
+                INotificationInboxService notificationInboxService,
+                CancellationToken cancellationToken) =>
+            {
+                var userId = int.Parse(user.Identity.GetUserId());
+                var notification = await notificationInboxService.GetByIdAsync(alertId, userId, cancellationToken);
+                return notification is null
+                    ? Results.NotFound(new { message = "Notification not found." })
+                    : Results.Ok(notification);
+            }), Version, "GetNotificationById", Tag)
             .RequireAuthorization();
 
         app.MapEndpoint(builder => builder.MapPatch(
             "/api/v{version:apiVersion}/notifications/{alertId}/read",
-            () => Results.Ok(new { success = true })), Version, "ReadNotification", Tag)
+            async (
+                int alertId,
+                ClaimsPrincipal user,
+                INotificationInboxService notificationInboxService,
+                CancellationToken cancellationToken) =>
+            {
+                var userId = int.Parse(user.Identity.GetUserId());
+                var updated = await notificationInboxService.MarkAsReadAsync(alertId, userId, cancellationToken);
+                return updated
+                    ? Results.Ok(new { success = true })
+                    : Results.NotFound(new { message = "Notification not found." });
+            }), Version, "ReadNotification", Tag)
             .RequireAuthorization();
 
         app.MapEndpoint(builder => builder.MapDelete(
             "/api/v{version:apiVersion}/notifications/{alertId}",
-            () => Results.Ok(new { success = true })), Version, "DeleteNotification", Tag)
+            async (
+                int alertId,
+                ClaimsPrincipal user,
+                INotificationInboxService notificationInboxService,
+                CancellationToken cancellationToken) =>
+            {
+                var userId = int.Parse(user.Identity.GetUserId());
+                var deleted = await notificationInboxService.DeleteAsync(alertId, userId, cancellationToken);
+                return deleted
+                    ? Results.Ok(new { success = true })
+                    : Results.NotFound(new { message = "Notification not found." });
+            }), Version, "DeleteNotification", Tag)
             .RequireAuthorization();
     }
 }

@@ -75,6 +75,7 @@ internal sealed class DoSomethingCommandHandler(IUnitOfWork unitOfWork)
 ```
 
 **Rules:**
+
 - Records are `sealed`. Handlers are `internal sealed`.
 - Inject `IUnitOfWork` (never `ApplicationDbContext` directly).
 - Return `OperationResult<T>` for all Commands. Queries may return the DTO directly.
@@ -110,6 +111,7 @@ public sealed class FooEndpoints : ICarterModule
 ```
 
 **Rules:**
+
 - New endpoints: use `ICarterModule` at API version `1.1`.
 - Always attach `.RequireAuthorization(...)` with explicit roles.
 - User ID is extracted via `user.Identity!.GetUserId()` (extension in `CleanArc.SharedKernel`).
@@ -121,13 +123,13 @@ public sealed class FooEndpoints : ICarterModule
 
 `OperationResult<T>` (`CleanArc.Application.Models.Common`) is the **only** way handlers communicate success/failure.
 
-| Factory method | HTTP mapping |
-|---|---|
-| `SuccessResult(value)` | 200 OK |
-| `FailureResult(message)` | 400 Bad Request |
-| `NotFoundResult(message)` | 404 Not Found |
+| Factory method                | HTTP mapping     |
+| ----------------------------- | ---------------- |
+| `SuccessResult(value)`        | 200 OK           |
+| `FailureResult(message)`      | 400 Bad Request  |
+| `NotFoundResult(message)`     | 404 Not Found    |
 | `UnauthorizedResult(message)` | 401 Unauthorized |
-| `ForbiddenResult(message)` | 403 Forbidden |
+| `ForbiddenResult(message)`    | 403 Forbidden    |
 
 ---
 
@@ -148,6 +150,7 @@ public class Bar : BaseEntity<Guid> { }
 `ITimeModification` (`CreatedTime`, `ModifiedDate`) is auto-populated in `ApplicationDbContext.OnSavingChanges`.
 
 **Rules:**
+
 - No domain entity imports EF Core, Identity, or application namespaces.
 - Entity configurations (`IEntityTypeConfiguration<T>`) go in `Infrastructure/Configuration/`.
 - EF conventions applied globally: pluralized table names, restrict-delete behavior, all `IEntity` types auto-registered.
@@ -157,11 +160,13 @@ public class Bar : BaseEntity<Guid> { }
 ## Authentication & Authorization
 
 ### Educators / Admins
+
 - ASP.NET Core Identity + JWT Bearer tokens.
 - Roles: `"teacher"`, `"admin"`.
 - Token issued by `JwtService`, refreshed via `/Users/RefreshSignIn`.
 
 ### Students
+
 - Visual-sequence login: student submits `loginCode` + `visualSequence` (emoji icon IDs).
 - Backend verifies with `BCrypt` against `StudentCredential.HashedVisualPassword`.
 - Role in JWT: `"student"`.
@@ -185,12 +190,14 @@ Request
 ```
 
 ### AiPromptRegistry rules
+
 - **All prompts live in `AiPromptRegistry.cs`** — never inline prompts in services or handlers.
 - Every prompt must output `PURE JSON ONLY. NO MARKDOWN. NO COMMENTS.`
 - Prompts are keyed by `AiUseCases.*` constants.
 - Adding a new use case: add a `AiUseCases` constant, handle it in the switch, write a unit-testable prompt string.
 
 ### AiUsageLog / AiAuditLog
+
 - Every AI call must be recorded via `AiUsageService` and `AiAuditService`.
 - Do not bypass these services with a direct HTTP call to the AI provider.
 
@@ -201,6 +208,7 @@ Request
 Seeding is handled by `SeedGameData : ISeedGameData` in `Infrastructure.Persistence`.
 
 **Rules:**
+
 - Check existence before inserting: `if (!await _dbContext.Foo.AnyAsync()) { ... }`.
 - For upsert-style seeds (e.g., badges): load existing by key, update fields, set a `hasChanges` flag, save once at the end.
 - `ContentData` on `Challenge` is stored as **camelCase JSON** using the static `_camelCase` `JsonSerializerOptions`. Always serialize with `JsonSerializer.Serialize(obj, _camelCase)`.
