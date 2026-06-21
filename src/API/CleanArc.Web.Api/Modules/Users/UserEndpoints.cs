@@ -6,8 +6,11 @@ using CleanArc.Application.Features.Users.Commands.Create;
 using CleanArc.Application.Features.Users.Commands.ForgotPassword;
 using CleanArc.Application.Features.Users.Commands.RefreshUserTokenCommand;
 using CleanArc.Application.Features.Users.Commands.RequestLogout;
+using CleanArc.Application.Features.Users.Commands.ResetStudentNotificationPreferences;
+using CleanArc.Application.Features.Users.Commands.UpdateStudentNotificationPreferences;
 using CleanArc.Application.Features.Users.Commands.UpdateUserProfile;
 using CleanArc.Application.Features.Users.Queries.GenerateUserToken;
+using CleanArc.Application.Features.Users.Queries.GetStudentNotificationPreferences;
 using CleanArc.Application.Features.Users.Queries.PasswordLogin;
 using CleanArc.Application.Features.Users.Queries.GetUserProfile;
 using CleanArc.Application.Features.Users.Queries.StudentVisualChallenge;
@@ -132,6 +135,50 @@ public class UserEndpoints : ICarterModule
             .RequireAuthorization();
 
         app.MapEndpoint(
+            builder => builder.MapGet($"{_routePrefix}NotificationPreferences", async (
+                ClaimsPrincipal user,
+                ISender sender) =>
+            {
+                var studentId = int.Parse(user.Identity.GetUserId());
+                var result = await sender.Send(new GetStudentNotificationPreferencesQuery(studentId));
+                return result.ToEndpointResult();
+            }), _version, "GetNotificationPreferences", _tag)
+            .RequireAuthorization(builder => builder.RequireRole("student"));
+
+        app.MapEndpoint(
+            builder => builder.MapPut($"{_routePrefix}NotificationPreferences", async (
+                [FromBody] UpdateStudentNotificationPreferencesRequest request,
+                ClaimsPrincipal user,
+                ISender sender) =>
+            {
+                var studentId = int.Parse(user.Identity.GetUserId());
+                var result = await sender.Send(new UpdateStudentNotificationPreferencesCommand(
+                    studentId,
+                    request.InAppNotificationsEnabled,
+                    request.PracticeRemindersEnabled,
+                    request.StreakRemindersEnabled,
+                    request.AchievementAlertsEnabled,
+                    request.WeeklyReportsEnabled,
+                    request.ReminderTimeLocal,
+                    request.QuietHoursStartLocal,
+                    request.QuietHoursEndLocal,
+                    request.NotificationTimezone));
+                return result.ToEndpointResult();
+            }), _version, "UpdateNotificationPreferences", _tag)
+            .RequireAuthorization(builder => builder.RequireRole("student"));
+
+        app.MapEndpoint(
+            builder => builder.MapPost($"{_routePrefix}NotificationPreferences/Reset", async (
+                ClaimsPrincipal user,
+                ISender sender) =>
+            {
+                var studentId = int.Parse(user.Identity.GetUserId());
+                var result = await sender.Send(new ResetStudentNotificationPreferencesCommand(studentId));
+                return result.ToEndpointResult();
+            }), _version, "ResetNotificationPreferences", _tag)
+            .RequireAuthorization(builder => builder.RequireRole("student"));
+
+        app.MapEndpoint(
             builder => builder.MapPost($"{_routePrefix}ForgotPassword", async ([FromBody] RequestPasswordResetCommand model, ISender sender) =>
             {
                 var result = await sender.Send(model);
@@ -146,3 +193,14 @@ public class UserEndpoints : ICarterModule
             }), _version, "ResetPassword", _tag);
     }
 }
+
+public record UpdateStudentNotificationPreferencesRequest(
+    bool InAppNotificationsEnabled,
+    bool PracticeRemindersEnabled,
+    bool StreakRemindersEnabled,
+    bool AchievementAlertsEnabled,
+    bool WeeklyReportsEnabled,
+    string ReminderTimeLocal,
+    string QuietHoursStartLocal,
+    string QuietHoursEndLocal,
+    string NotificationTimezone);

@@ -81,6 +81,41 @@ public class SrsNotificationServiceTests
         Assert.Contains("\"reviewGroups\"", handler.RequestBody);
     }
 
+    [Fact]
+    public async Task SendNotificationIfOverdueAsync_SkipsWhenInAppNotificationsAreDisabled()
+    {
+        using var context = CreateContext();
+        var fixture = await AddOverdueReviewFixtureAsync(context, "disabled-master", null);
+        fixture.Student.InAppNotificationsEnabled = false;
+        await context.SaveChangesAsync();
+
+        var handler = new RecordingHttpMessageHandler();
+        var service = CreateService(context, handler);
+
+        await service.SendNotificationIfOverdueAsync(fixture.Student.Id, CancellationToken.None);
+
+        Assert.Empty(context.UserNotifications);
+        Assert.Equal(0, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task SendNotificationIfOverdueAsync_SkipsBeforeReminderTimeInUserTimezone()
+    {
+        using var context = CreateContext();
+        var fixture = await AddOverdueReviewFixtureAsync(context, "before-time", null);
+        fixture.Student.NotificationTimezone = "UTC";
+        fixture.Student.ReminderTimeLocal = DateTime.UtcNow.AddHours(2).ToString("HH:mm");
+        await context.SaveChangesAsync();
+
+        var handler = new RecordingHttpMessageHandler();
+        var service = CreateService(context, handler);
+
+        await service.SendNotificationIfOverdueAsync(fixture.Student.Id, CancellationToken.None);
+
+        Assert.Empty(context.UserNotifications);
+        Assert.Equal(0, handler.RequestCount);
+    }
+
     private static SrsNotificationService CreateService(
         ApplicationDbContext context,
         RecordingHttpMessageHandler handler) => new(
@@ -108,7 +143,11 @@ public class SrsNotificationServiceTests
         {
             Name = userName,
             UserName = userName,
-            ExpoPushToken = pushToken
+            ExpoPushToken = pushToken,
+            NotificationTimezone = "UTC",
+            ReminderTimeLocal = DateTime.UtcNow.AddHours(-1).ToString("HH:mm"),
+            QuietHoursStartLocal = "00:00",
+            QuietHoursEndLocal = "00:00"
         };
         var teacher = new User
         {

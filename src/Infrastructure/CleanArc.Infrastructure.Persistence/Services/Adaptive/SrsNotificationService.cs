@@ -1,8 +1,10 @@
 using System.Net.Http.Json;
+using System.Globalization;
 using System.Text.Json;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Notifications;
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.User;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -64,6 +66,9 @@ public class SrsNotificationService(
 
         foreach (var student in studentsToNotify)
         {
+            if (!ShouldSendPracticeReminder(student, now))
+                continue;
+
             var overdueCount = await dbContext.WordProgresses.CountAsync(
                 progress => progress.StudentId == student.Id
                     && progress.NextReviewDate.HasValue
@@ -100,6 +105,9 @@ public class SrsNotificationService(
             return;
 
         var now = DateTime.UtcNow;
+        if (!ShouldSendPracticeReminder(user, now))
+            return;
+
         var overdueCount = await dbContext.WordProgresses.CountAsync(
             progress => progress.StudentId == studentId
                 && progress.NextReviewDate.HasValue
@@ -349,6 +357,63 @@ public class SrsNotificationService(
     private static string BuildBody(int overdueCount) => overdueCount == 1
         ? "You have 1 spelling word that is overdue for review. Keep your streak alive!"
         : $"You have {overdueCount} spelling words overdue for review. Keep your streak alive!";
+
+    private static bool ShouldSendPracticeReminder(User user, DateTime utcNow)
+    {
+        if (!user.InAppNotificationsEnabled || !user.PracticeRemindersEnabled)
+            return false;
+
+        var timezoneId = string.IsNullOrWhiteSpace(user.NotificationTimezone)
+            ? StudentNotificationPreferenceDefaults.NotificationTimezone
+            : user.NotificationTimezone;
+
+        DateTime localNow;
+        try
+        {
+            var timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+            localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcNow, DateTimeKind.Utc), timezone);
+        }
+        catch
+        {
+            localNow = utcNow;
+        }
+
+        var reminderTime = ParseTimeOrDefault(
+            user.ReminderTimeLocal,
+            StudentNotificationPreferenceDefaults.ReminderTimeLocal);
+        if (localNow.TimeOfDay < reminderTime.ToTimeSpan())
+            return false;
+
+        var quietHoursStart = ParseTimeOrDefault(
+            user.QuietHoursStartLocal,
+            StudentNotificationPreferenceDefaults.QuietHoursStartLocal);
+        var quietHoursEnd = ParseTimeOrDefault(
+            user.QuietHoursEndLocal,
+            StudentNotificationPreferenceDefaults.QuietHoursEndLocal);
+
+        return !IsWithinQuietHours(localNow.TimeOfDay, quietHoursStart, quietHoursEnd);
+    }
+
+    private static TimeOnly ParseTimeOrDefault(string? rawValue, string fallback)
+    {
+        if (TimeOnly.TryParseExact(rawValue, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            return parsed;
+
+        return TimeOnly.ParseExact(fallback, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None);
+    }
+
+    private static bool IsWithinQuietHours(TimeSpan currentTime, TimeOnly start, TimeOnly end)
+    {
+        if (start == end)
+            return false;
+
+        var startTime = start.ToTimeSpan();
+        var endTime = end.ToTimeSpan();
+
+        return startTime < endTime
+            ? currentTime >= startTime && currentTime < endTime
+            : currentTime >= startTime || currentTime < endTime;
+    }
 
     private sealed record ReviewSnapshot(
         int OverdueCount,

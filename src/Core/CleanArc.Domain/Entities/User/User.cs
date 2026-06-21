@@ -36,6 +36,15 @@ public class User : IdentityUser<int>, IEntity
     public string AvatarUrl { get; set; }
     public bool WeeklyAiInsightsEmail { get; set; } = true;
     public bool InactiveStudentAlerts { get; set; } = true;
+    public bool InAppNotificationsEnabled { get; set; } = StudentNotificationPreferenceDefaults.InAppNotificationsEnabled;
+    public bool PracticeRemindersEnabled { get; set; } = StudentNotificationPreferenceDefaults.PracticeRemindersEnabled;
+    public bool StreakRemindersEnabled { get; set; } = StudentNotificationPreferenceDefaults.StreakRemindersEnabled;
+    public bool AchievementAlertsEnabled { get; set; } = StudentNotificationPreferenceDefaults.AchievementAlertsEnabled;
+    public bool WeeklyReportsEnabled { get; set; } = StudentNotificationPreferenceDefaults.WeeklyReportsEnabled;
+    public string ReminderTimeLocal { get; set; } = StudentNotificationPreferenceDefaults.ReminderTimeLocal;
+    public string QuietHoursStartLocal { get; set; } = StudentNotificationPreferenceDefaults.QuietHoursStartLocal;
+    public string QuietHoursEndLocal { get; set; } = StudentNotificationPreferenceDefaults.QuietHoursEndLocal;
+    public string NotificationTimezone { get; set; } = StudentNotificationPreferenceDefaults.NotificationTimezone;
     public string? ExpoPushToken { get; set; }
     public DateTime? LastSrsNotificationSentAt { get; set; }
 
