@@ -33,6 +33,19 @@ internal sealed class BillingRepository(ApplicationDbContext dbContext)
             .ToListAsync(cancellationToken);
     }
 
+    public Task<PaymentTransaction?> GetPendingCheckoutTransactionAsync(
+        int institutionId,
+        string checkoutSessionId,
+        CancellationToken cancellationToken = default)
+    {
+        return DbContext.PaymentTransactions
+            .FirstOrDefaultAsync(
+                x => x.InstitutionId == institutionId
+                     && x.StripeCheckoutSessionId == checkoutSessionId
+                     && x.Status == CleanArc.Application.Features.Admin.Billing.BillingStatus.Pending,
+                cancellationToken);
+    }
+
     public async Task AddBillingAccountAsync(
         BillingAccount account,
         CancellationToken cancellationToken = default)

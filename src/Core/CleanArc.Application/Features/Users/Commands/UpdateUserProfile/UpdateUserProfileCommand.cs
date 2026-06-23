@@ -34,6 +34,21 @@ public record UpdateUserProfileCommand(int UserId, UpdateUserProfileRequest Prof
         .MaximumLength(100)
         .WithMessage("Family name must be provided and less than 100 characters");
 
+    validator.RuleFor(c => c.Profile.UserName)
+        .NotEmpty()
+        .MaximumLength(100)
+        .WithMessage("Username must be provided and less than 100 characters");
+
+    validator.RuleFor(c => c.Profile.Email)
+        .NotEmpty()
+        .EmailAddress()
+        .MaximumLength(256)
+        .WithMessage("A valid email address must be provided");
+
+    validator.RuleFor(c => c.Profile.PhoneNumber)
+        .MaximumLength(20)
+        .WithMessage("Phone number must be less than 20 characters");
+
     validator.RuleFor(c => c.Profile.AvatarId)
         .MaximumLength(500)
         .WithMessage("Avatar ID must be less than 500 characters");

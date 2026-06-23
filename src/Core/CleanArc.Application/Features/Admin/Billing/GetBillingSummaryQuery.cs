@@ -21,9 +21,14 @@ internal sealed class GetBillingSummaryQueryHandler(
             request.UserId,
             cancellationToken);
 
-        var institutionId = membership?.InstitutionId ?? 1;
-        var institution = membership?.Institution
-            ?? await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(institutionId);
+        if (membership is null)
+        {
+            return OperationResult<BillingSummaryDto>.ForbiddenResult(
+                "Unable to resolve institution membership for this billing action.");
+        }
+
+        var institution = membership.Institution
+            ?? await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(membership.InstitutionId);
 
         if (institution is null)
             return OperationResult<BillingSummaryDto>.NotFoundResult("Institution not found.");

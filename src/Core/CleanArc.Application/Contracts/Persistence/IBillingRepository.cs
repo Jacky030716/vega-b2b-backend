@@ -14,6 +14,11 @@ public interface IBillingRepository
         int count = 10,
         CancellationToken cancellationToken = default);
 
+    Task<PaymentTransaction?> GetPendingCheckoutTransactionAsync(
+        int institutionId,
+        string checkoutSessionId,
+        CancellationToken cancellationToken = default);
+
     Task AddBillingAccountAsync(BillingAccount account, CancellationToken cancellationToken = default);
     Task AddPaymentTransactionAsync(PaymentTransaction transaction, CancellationToken cancellationToken = default);
 }

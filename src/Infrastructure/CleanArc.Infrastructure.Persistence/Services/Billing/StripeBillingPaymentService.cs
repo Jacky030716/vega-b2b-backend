@@ -273,8 +273,11 @@ internal sealed class StripeBillingPaymentService(
             .Select(x => x.InstitutionId)
             .FirstOrDefaultAsync(cancellationToken);
 
+        if (!userInstitutionId.HasValue)
+            return null;
+
         return await dbContext.Institutions
-            .FirstOrDefaultAsync(x => x.Id == (userInstitutionId ?? 1), cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == userInstitutionId.Value, cancellationToken);
     }
 
     private async Task UpdateSessionAsync(

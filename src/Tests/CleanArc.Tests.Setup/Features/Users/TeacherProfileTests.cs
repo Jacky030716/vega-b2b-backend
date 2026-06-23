@@ -34,6 +34,7 @@ public class TeacherProfileTests
 
     var userManager = Substitute.For<IAppUserManager>();
     userManager.GetUserByIdAsync(teacher.Id).Returns(teacher);
+    userManager.GetUserRolesAsync(teacher).Returns(["teacher"]);
 
     var unitOfWork = Substitute.For<IUnitOfWork>();
     unitOfWork.ClassroomRepository.GetTeacherClassroomsAsync(teacher.Id).Returns([classroom]);
@@ -94,6 +95,7 @@ public class TeacherProfileTests
 
     Assert.True(result.IsSuccess);
     Assert.Equal("Ms Vega", result.Result.FullName);
+    Assert.Equal("Teacher", result.Result.RoleLabel);
     Assert.Equal("Vega Primary", result.Result.InstitutionName);
     Assert.Equal("Teacher access", result.Result.AccessScope);
     Assert.Equal(1, result.Result.Stats.ActiveClassrooms);
@@ -105,6 +107,38 @@ public class TeacherProfileTests
     Assert.DoesNotContain(
       result.Result.Stats.GetType().GetProperties().Select(property => property.Name),
       propertyName => propertyName.Contains("Diamond", StringComparison.OrdinalIgnoreCase));
+  }
+
+  [Fact]
+  public async Task GetTeacherProfile_ReturnsAdministratorLabelForAdminRole()
+  {
+    var admin = SetId(new User
+    {
+      UserName = "admin01",
+      Name = "Vega Admin",
+      Email = "admin@school.test"
+    }, 8);
+    var userManager = Substitute.For<IAppUserManager>();
+    userManager.GetUserByIdAsync(admin.Id).Returns(admin);
+    userManager.GetUserRolesAsync(admin).Returns(["admin", "teacher"]);
+
+    var unitOfWork = Substitute.For<IUnitOfWork>();
+    unitOfWork.ClassroomRepository.GetTeacherClassroomsAsync(admin.Id).Returns([]);
+    unitOfWork.InstitutionRepository
+      .GetPrimaryInstitutionForUserAsync(admin.Id, Arg.Any<CancellationToken>())
+      .Returns((InstitutionUser)null);
+
+    var aiUsageService = Substitute.For<IAiUsageService>();
+    aiUsageService
+      .GetRemainingQuotaAsync(admin.Id, AiFeatureTypes.CustomChallengeGeneration, Arg.Any<CancellationToken>())
+      .Returns(new AiQuotaResult(30, 0, 30));
+
+    var handler = new GetTeacherProfileQueryHandler(userManager, unitOfWork, aiUsageService);
+
+    var result = await handler.Handle(new GetTeacherProfileQuery(admin.Id), CancellationToken.None);
+
+    Assert.True(result.IsSuccess);
+    Assert.Equal("Administrator", result.Result.RoleLabel);
   }
 
   [Fact]

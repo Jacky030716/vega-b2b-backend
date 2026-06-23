@@ -32,9 +32,39 @@ internal class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfi
       return OperationResult<UpdateUserProfileResponse>.FailureResult("User not found");
     }
 
-    // Apply profile updates
-    user.Name = request.Profile.Name;
-    user.FamilyName = request.Profile.FamilyName;
+    var userName = request.Profile.UserName.Trim();
+    var email = request.Profile.Email.Trim();
+    var phoneNumber = string.IsNullOrWhiteSpace(request.Profile.PhoneNumber)
+        ? null
+        : request.Profile.PhoneNumber.Trim();
+
+    if (!string.Equals(user.UserName, userName, StringComparison.OrdinalIgnoreCase) &&
+        await _userManager.IsExistUserName(userName))
+    {
+      return OperationResult<UpdateUserProfileResponse>.FailureResult("Username is already in use.");
+    }
+
+    if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+    {
+      var existingEmailUser = await _userManager.FindUserByEmail(email);
+      if (existingEmailUser is not null && existingEmailUser.Id != user.Id)
+      {
+        return OperationResult<UpdateUserProfileResponse>.FailureResult("Email is already in use.");
+      }
+    }
+
+    if (!string.IsNullOrEmpty(phoneNumber) &&
+        !string.Equals(user.PhoneNumber, phoneNumber, StringComparison.Ordinal) &&
+        await _userManager.IsExistUser(phoneNumber))
+    {
+      return OperationResult<UpdateUserProfileResponse>.FailureResult("Phone number is already in use.");
+    }
+
+    user.Name = request.Profile.Name.Trim();
+    user.FamilyName = request.Profile.FamilyName.Trim();
+    user.UserName = userName;
+    user.Email = email;
+    user.PhoneNumber = phoneNumber;
     if (TryNormalizeAvatarItemId(request.Profile.AvatarId, out var normalizedAvatarItemId))
     {
       user.AvatarId = normalizedAvatarItemId;

@@ -21,6 +21,21 @@ internal class EquipItemCommandHandler : IRequestHandler<EquipItemCommand, Opera
 
   public async ValueTask<OperationResult<bool>> Handle(EquipItemCommand request, CancellationToken cancellationToken)
   {
+    var shopItem = await _unitOfWork.ShopRepository.GetShopItemByIdAsync(request.ShopItemId);
+    if (shopItem is null ||
+        !string.Equals(shopItem.Category, request.Category, StringComparison.OrdinalIgnoreCase))
+    {
+      return OperationResult<bool>.FailureResult("The selected shop item is not available for this category.");
+    }
+
+    var inventoryItem = await _unitOfWork.ShopRepository.GetUserInventoryItemAsync(
+      request.UserId,
+      request.ShopItemId);
+    if (inventoryItem is null)
+    {
+      return OperationResult<bool>.FailureResult("The selected shop item is not owned by this user.");
+    }
+
     await _unitOfWork.ShopRepository.EquipItemAsync(request.UserId, request.Category, request.ShopItemId);
 
     if (string.Equals(request.Category, "avatar", StringComparison.OrdinalIgnoreCase))

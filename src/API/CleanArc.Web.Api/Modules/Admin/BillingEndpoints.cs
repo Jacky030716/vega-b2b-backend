@@ -62,6 +62,22 @@ public sealed class BillingEndpoints : ICarterModule
             }), Version, "CreateAdminMockWalletPayment", Tag)
             .RequireAuthorization(b => b.RequireRole(AdminRoles.Split(',')));
 
+        app.MapEndpoint(builder => builder.MapPost(
+            "/api/v{version:apiVersion}/admin/billing/checkout-session/cancel",
+            async (
+                [FromBody] CancelCheckoutSessionRequest request,
+                ClaimsPrincipal user,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var userId = int.Parse(user.Identity!.GetUserId());
+                var result = await sender.Send(new CancelCheckoutSessionCommand(
+                    userId,
+                    request.SessionId), ct);
+                return result.ToEndpointResult();
+            }), Version, "CancelAdminBillingCheckoutSession", Tag)
+            .RequireAuthorization(b => b.RequireRole(AdminRoles.Split(',')));
+
         app.MapPost(
             "/api/stripe/webhook",
             async (HttpRequest request, IBillingPaymentService billingPaymentService, CancellationToken ct) =>
@@ -85,4 +101,6 @@ public sealed class BillingEndpoints : ICarterModule
     public sealed record MockWalletPaymentRequest(
         string PaymentMethod,
         string? PlanId);
+
+    public sealed record CancelCheckoutSessionRequest(string SessionId);
 }

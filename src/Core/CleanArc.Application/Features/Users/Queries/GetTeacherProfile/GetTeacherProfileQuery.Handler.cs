@@ -110,11 +110,12 @@ internal sealed class GetTeacherProfileQueryHandler(
     var fullName = string.IsNullOrWhiteSpace(teacher.Name)
         ? teacher.UserName
         : teacher.Name;
+    var roles = await userManager.GetUserRolesAsync(teacher);
 
     var result = new TeacherProfileDto(
         fullName,
         teacher.Email ?? string.Empty,
-        "Teacher",
+        GetRoleLabel(roles),
         institutionName,
         accessScope,
         avatarUrl,
@@ -130,6 +131,20 @@ internal sealed class GetTeacherProfileQueryHandler(
             teacher.InactiveStudentAlerts));
 
     return OperationResult<TeacherProfileDto>.SuccessResult(result);
+  }
+
+  private static string GetRoleLabel(IList<string> roles)
+  {
+    if (roles.Any(role => string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)))
+      return "Administrator";
+
+    if (roles.Any(role => string.Equals(role, "InstitutionAdmin", StringComparison.OrdinalIgnoreCase)))
+      return "Institution Admin";
+
+    if (roles.Any(role => string.Equals(role, "teacher", StringComparison.OrdinalIgnoreCase)))
+      return "Teacher";
+
+    return "Educator";
   }
 
   private static TeacherStudentSnapshot GetOrCreateSnapshot(

@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace CleanArc.Infrastructure.Persistence.ServiceConfiguration;
@@ -157,6 +158,38 @@ public static class ServiceCollectionExtensions
         await context.Database.MigrateAsync();
     }
 
+    public static async Task ApplyStartupSchemaRepairScriptsAsync(this WebApplication app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetService<ApplicationDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+
+        if (context is null)
+            throw new Exception("Database Context Not Found");
+
+        var scriptPath = ResolveStartupScriptPath(
+            app.Environment.ContentRootPath,
+            "Scripts",
+            "SchemaRepairs",
+            "20260623_EnsureUserNotificationPreferenceColumns.sql");
+
+        if (!File.Exists(scriptPath))
+        {
+            logger.LogWarning("Startup schema repair script was not found at {ScriptPath}", scriptPath);
+            return;
+        }
+
+        var sql = await File.ReadAllTextAsync(scriptPath);
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            logger.LogWarning("Startup schema repair script at {ScriptPath} is empty", scriptPath);
+            return;
+        }
+
+        await context.Database.ExecuteSqlRawAsync(sql);
+        logger.LogInformation("Applied startup schema repair script {ScriptName}", Path.GetFileName(scriptPath));
+    }
+
     public static async Task SeedGameDataAsync(this WebApplication app)
     {
         await using var scope = app.Services.CreateAsyncScope();
@@ -166,5 +199,15 @@ public static class ServiceCollectionExtensions
             throw new Exception("Seed Game Data Service Not Found");
 
         await seedGameData.Seed();
+    }
+
+    private static string ResolveStartupScriptPath(string contentRootPath, params string[] pathParts)
+    {
+        var relativePath = Path.Combine(pathParts);
+        var contentRootCandidate = Path.Combine(contentRootPath, relativePath);
+        if (File.Exists(contentRootCandidate))
+            return contentRootCandidate;
+
+        return Path.Combine(AppContext.BaseDirectory, relativePath);
     }
 }
