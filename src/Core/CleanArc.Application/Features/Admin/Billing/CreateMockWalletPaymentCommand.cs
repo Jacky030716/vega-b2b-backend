@@ -108,7 +108,6 @@ internal sealed class CreateMockWalletPaymentCommandHandler(
         var normalized = paymentMethod?.Trim().ToLowerInvariant();
         return normalized switch
         {
-            "touch-n-go" or "touchngo" or "tng" => "touch-n-go",
             "grabpay" => "grabpay",
             _ => null,
         };

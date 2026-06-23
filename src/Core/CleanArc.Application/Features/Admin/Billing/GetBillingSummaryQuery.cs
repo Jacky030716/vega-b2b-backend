@@ -86,7 +86,8 @@ internal sealed class GetBillingSummaryQueryHandler(
                 x.Currency,
                 x.Status,
                 x.IsDemo,
-                x.CreatedTime)).ToArray());
+                x.CreatedTime,
+                x.StripeCheckoutSessionId)).ToArray());
 
         return OperationResult<BillingSummaryDto>.SuccessResult(dto);
     }

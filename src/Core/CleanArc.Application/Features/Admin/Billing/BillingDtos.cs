@@ -40,7 +40,8 @@ public sealed record PaymentTransactionDto(
     string Currency,
     string Status,
     bool IsDemo,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? StripeCheckoutSessionId = null);
 
 public sealed record CheckoutSessionDto(
     string CheckoutUrl,

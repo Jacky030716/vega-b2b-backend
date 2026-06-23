@@ -78,6 +78,22 @@ public sealed class BillingEndpoints : ICarterModule
             }), Version, "CancelAdminBillingCheckoutSession", Tag)
             .RequireAuthorization(b => b.RequireRole(AdminRoles.Split(',')));
 
+        app.MapEndpoint(builder => builder.MapPost(
+            "/api/v{version:apiVersion}/admin/billing/checkout-session/resume",
+            async (
+                [FromBody] ResumeCheckoutSessionRequest request,
+                ClaimsPrincipal user,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var userId = int.Parse(user.Identity!.GetUserId());
+                var result = await sender.Send(new ResumeCheckoutSessionCommand(
+                    userId,
+                    request.SessionId), ct);
+                return result.ToEndpointResult();
+            }), Version, "ResumeAdminBillingCheckoutSession", Tag)
+            .RequireAuthorization(b => b.RequireRole(AdminRoles.Split(',')));
+
         app.MapPost(
             "/api/stripe/webhook",
             async (HttpRequest request, IBillingPaymentService billingPaymentService, CancellationToken ct) =>
@@ -103,4 +119,6 @@ public sealed class BillingEndpoints : ICarterModule
         string? PlanId);
 
     public sealed record CancelCheckoutSessionRequest(string SessionId);
+
+    public sealed record ResumeCheckoutSessionRequest(string SessionId);
 }

@@ -24,4 +24,8 @@ public interface IBillingPaymentService
     Task<OperationResult<bool>> SyncPendingTransactionsAsync(
         int institutionId,
         CancellationToken cancellationToken = default);
+
+    Task<OperationResult<string>> GetCheckoutSessionUrlAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default);
 }

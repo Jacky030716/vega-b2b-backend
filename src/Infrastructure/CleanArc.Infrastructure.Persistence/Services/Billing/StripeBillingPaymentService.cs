@@ -254,6 +254,40 @@ internal sealed class StripeBillingPaymentService(
         return OperationResult<bool>.SuccessResult(changesMade);
     }
 
+    public async Task<OperationResult<string>> GetCheckoutSessionUrlAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var secretKey = configuration["STRIPE_SECRET_KEY"];
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            return OperationResult<string>.FailureResult(
+                "Stripe test mode is not configured on the server.");
+        }
+
+        StripeConfiguration.ApiKey = secretKey;
+
+        try
+        {
+            // ponytail: simple Stripe SDK session query to resume checkout
+            var session = await new SessionService().GetAsync(sessionId, cancellationToken: cancellationToken);
+            if (session.Status == "expired")
+            {
+                return OperationResult<string>.FailureResult("Stripe checkout session has expired.");
+            }
+            if (session.Status == "complete" || session.PaymentStatus == "paid")
+            {
+                return OperationResult<string>.FailureResult("This payment has already been completed.");
+            }
+
+            return OperationResult<string>.SuccessResult(session.Url);
+        }
+        catch (StripeException ex)
+        {
+            return OperationResult<string>.FailureResult($"Stripe API error: {ex.Message}");
+        }
+    }
+
     private async Task<CleanArc.Domain.Entities.Institution.Institution?> ResolveInstitutionAsync(
         int userId,
         CancellationToken cancellationToken)
