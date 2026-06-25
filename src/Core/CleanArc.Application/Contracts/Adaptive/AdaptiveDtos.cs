@@ -14,7 +14,9 @@ public record SyllabusModuleDto(
     string Title,
     string Description,
     string SourceType,
-    bool IsActive);
+    bool IsActive,
+    string? ModuleType = null,
+    int? CreatedByTeacherId = null);
 
 public record VocabularyItemDto(
     int Id,
@@ -51,7 +53,13 @@ public record CreateSyllabusModuleRequest(
     string? UnitTitle,
     string Title,
     string? Description,
-    string? SourceType);
+    string? SourceType,
+    string? ModuleType = null,
+    int? CreatedByTeacherId = null);
+
+public record UpdateSyllabusModuleRequest(
+    string Title,
+    string? Description);
 
 public record CreateVocabularyItemRequest(
     string Word,
@@ -713,7 +721,8 @@ public record SpellingTestQuestionDto(
     string? EnText,
     string? ZhText,
     string? SyllableText,
-    int DifficultyLevel);
+    int DifficultyLevel,
+    IReadOnlyList<string>? Distractors = null);
 
 public record StudentSpellingTestDetailDto(
     StudentSpellingTestSummaryDto Test,

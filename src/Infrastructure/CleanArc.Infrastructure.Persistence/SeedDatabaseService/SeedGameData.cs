@@ -563,6 +563,51 @@ public class SeedGameData : ISeedGameData
             }
         }
 
+        var enemySeeds = new List<GameEnemy>
+        {
+            new()
+            {
+                Key = "lava_slime",
+                Name = "Lava Slime",
+                ImageRef = "enemies/lava-slime.png",
+                DisplayOrder = 1,
+                IsActive = true
+            },
+            new()
+            {
+                Key = "cyber_drone",
+                Name = "Cyber Drone",
+                ImageRef = "enemies/cyber-drone.png",
+                DisplayOrder = 2,
+                IsActive = true
+            },
+            new()
+            {
+                Key = "forest_golem",
+                Name = "Forest Golem",
+                ImageRef = "enemies/forest-golem.png",
+                DisplayOrder = 3,
+                IsActive = true
+            }
+        };
+
+        var existingGameEnemies = await _dbContext.GameEnemies
+            .ToDictionaryAsync(enemy => enemy.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var seedEnemy in enemySeeds)
+        {
+            if (!existingGameEnemies.TryGetValue(seedEnemy.Key, out var existingEnemy))
+            {
+                await _dbContext.GameEnemies.AddAsync(seedEnemy);
+                continue;
+            }
+
+            existingEnemy.Name = seedEnemy.Name;
+            existingEnemy.ImageRef = seedEnemy.ImageRef;
+            existingEnemy.DisplayOrder = seedEnemy.DisplayOrder;
+            existingEnemy.IsActive = seedEnemy.IsActive;
+        }
+
         await _dbContext.SaveChangesAsync();
 
         if (await _dbContext.SyllabusModules.AnyAsync())

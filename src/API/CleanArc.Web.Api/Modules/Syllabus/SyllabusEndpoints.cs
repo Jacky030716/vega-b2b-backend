@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Carter;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Features.Adaptive.Syllabus;
+using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.WebExtensions;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
@@ -23,10 +25,19 @@ public class SyllabusEndpoints : ICarterModule
         [FromQuery] string? subject,
         [FromQuery] string? language,
         [FromQuery] int? yearLevel,
+        ClaimsPrincipal user,
         ISender sender,
         CancellationToken cancellationToken) =>
       {
-        var result = await sender.Send(new GetSyllabusModulesQuery(subject, language, yearLevel), cancellationToken);
+        int? teacherId = null;
+        if (user.IsInRole("teacher") || user.IsInRole("admin"))
+        {
+          if (int.TryParse(user.Identity?.GetUserId(), out var parsedId))
+          {
+            teacherId = parsedId;
+          }
+        }
+        var result = await sender.Send(new GetSyllabusModulesQuery(subject, language, yearLevel, teacherId), cancellationToken);
         return Results.Ok(result);
       }), Version, "GetSyllabusModules", Tag).RequireAuthorization();
 
@@ -48,11 +59,23 @@ public class SyllabusEndpoints : ICarterModule
 
     app.MapEndpoint(builder => builder.MapPost(
       $"{RoutePrefix}modules",
-      async ([FromBody] CreateSyllabusModuleRequest request, ISender sender, CancellationToken cancellationToken) =>
+      async ([FromBody] CreateSyllabusModuleRequest request, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken) =>
       {
         try
         {
-          var result = await sender.Send(new CreateSyllabusModuleCommand(request), cancellationToken);
+          int? teacherId = null;
+          if (int.TryParse(user.Identity?.GetUserId(), out var parsedId))
+          {
+            teacherId = parsedId;
+          }
+
+          var finalRequest = request;
+          if (user.IsInRole("teacher"))
+          {
+            finalRequest = request with { CreatedByTeacherId = teacherId, ModuleType = "CUSTOM" };
+          }
+
+          var result = await sender.Send(new CreateSyllabusModuleCommand(finalRequest), cancellationToken);
           return Results.Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -60,6 +83,48 @@ public class SyllabusEndpoints : ICarterModule
           return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
         }
       }), Version, "CreateSyllabusModule", Tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapPut(
+      $"{RoutePrefix}modules/{{id:int}}",
+      async (int id, [FromBody] UpdateSyllabusModuleRequest request, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken) =>
+      {
+        try
+        {
+          var userId = int.Parse(user.Identity.GetUserId());
+          var result = await sender.Send(new UpdateSyllabusModuleCommand(id, request, userId), cancellationToken);
+          return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+          return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+          return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+        }
+      }), Version, "UpdateSyllabusModule", Tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapDelete(
+      $"{RoutePrefix}modules/{{id:int}}",
+      async (int id, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken) =>
+      {
+        try
+        {
+          var userId = int.Parse(user.Identity.GetUserId());
+          var result = await sender.Send(new DeleteSyllabusModuleCommand(id, userId), cancellationToken);
+          return result ? Results.Ok(new { success = true }) : Results.NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+          return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+          return Results.Json(new { message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+        }
+      }), Version, "DeleteSyllabusModule", Tag)
       .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
 
     app.MapEndpoint(builder => builder.MapPost(

@@ -12,10 +12,20 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
         string? subject,
         string? language,
         int? yearLevel,
+        int? teacherId,
         CancellationToken cancellationToken)
     {
-        var query = dbContext.SyllabusModules.AsNoTracking()
-            .Where(m => m.IsActive && m.ModuleType == SyllabusModule.PredefinedModuleType);
+        var query = dbContext.SyllabusModules.AsNoTracking().Where(m => m.IsActive);
+        
+        if (teacherId.HasValue)
+        {
+            query = query.Where(m => m.ModuleType == SyllabusModule.PredefinedModuleType || m.CreatedByTeacherId == teacherId.Value);
+        }
+        else
+        {
+            query = query.Where(m => m.ModuleType == SyllabusModule.PredefinedModuleType);
+        }
+
         var normalizedSubject = SyllabusSubjectMapper.NormalizeSubject(subject);
 
         if (!string.IsNullOrWhiteSpace(normalizedSubject))
@@ -27,13 +37,14 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
         if (yearLevel.HasValue)
             query = query.Where(m => m.YearLevel == yearLevel.Value);
 
-        return await query
+        var list = await query
             .OrderBy(m => m.YearLevel)
             .ThenBy(m => m.UnitNumber ?? int.MaxValue)
             .ThenBy(m => m.Week)
             .ThenBy(m => m.Title)
-            .Select(m => ToDto(m))
             .ToListAsync(cancellationToken);
+
+        return list.Select(ToDto).ToList();
     }
 
     public async Task<SyllabusModuleDto?> GetModuleAsync(int moduleId, CancellationToken cancellationToken)
@@ -74,14 +85,64 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
             UnitTitle = request.UnitTitle?.Trim() ?? title,
             Title = title,
             Description = request.Description?.Trim() ?? string.Empty,
-            ModuleType = SyllabusModule.PredefinedModuleType,
+            ModuleType = request.ModuleType?.Trim().ToUpperInvariant() == "CUSTOM" 
+                ? SyllabusModule.CustomModuleType 
+                : SyllabusModule.PredefinedModuleType,
             SourceType = request.SourceType?.Trim() ?? "teacher_created",
+            CreatedByTeacherId = request.CreatedByTeacherId,
             IsActive = true
         };
 
         dbContext.SyllabusModules.Add(module);
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToDto(module);
+    }
+
+    public async Task<SyllabusModuleDto> UpdateModuleAsync(
+        int moduleId,
+        UpdateSyllabusModuleRequest request,
+        int teacherId,
+        CancellationToken cancellationToken)
+    {
+        var module = await dbContext.SyllabusModules
+            .FirstOrDefaultAsync(m => m.Id == moduleId && m.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("Custom module not found");
+
+        if (module.ModuleType != SyllabusModule.CustomModuleType)
+            throw new InvalidOperationException("Predefined syllabus modules cannot be modified");
+
+        if (module.CreatedByTeacherId != teacherId)
+            throw new UnauthorizedAccessException("You do not have permission to modify this custom module");
+
+        module.Title = Require(request.Title, "Title");
+        module.UnitTitle = request.Title;
+        if (request.Description != null)
+            module.Description = request.Description.Trim();
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToDto(module);
+    }
+
+    public async Task<bool> DeleteModuleAsync(
+        int moduleId,
+        int teacherId,
+        CancellationToken cancellationToken)
+    {
+        var module = await dbContext.SyllabusModules
+            .FirstOrDefaultAsync(m => m.Id == moduleId && m.IsActive, cancellationToken);
+
+        if (module == null)
+            return false;
+
+        if (module.ModuleType != SyllabusModule.CustomModuleType)
+            throw new InvalidOperationException("Predefined syllabus modules cannot be deleted");
+
+        if (module.CreatedByTeacherId != teacherId)
+            throw new UnauthorizedAccessException("You do not have permission to delete this custom module");
+
+        module.IsActive = false;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task<VocabularyItemDto> CreateVocabularyItemAsync(
@@ -251,7 +312,9 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
         module.Title,
         module.Description,
         module.SourceType,
-        module.IsActive);
+        module.IsActive,
+        module.ModuleType,
+        module.CreatedByTeacherId);
 
     internal static VocabularyItemDto ToDto(VocabularyItem item)
     {

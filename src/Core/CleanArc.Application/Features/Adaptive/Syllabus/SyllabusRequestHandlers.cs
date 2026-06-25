@@ -13,6 +13,7 @@ internal sealed class GetSyllabusModulesQueryHandler(ISyllabusModuleService syll
             request.Subject,
             request.Language,
             request.YearLevel,
+            request.TeacherId,
             cancellationToken);
 }
 
@@ -77,6 +78,31 @@ internal sealed class DeleteSyllabusVocabularyItemCommandHandler(ISyllabusModule
         => await syllabusModuleService.DeleteVocabularyItemAsync(
             request.ModuleId,
             request.ItemId,
+            cancellationToken);
+}
+
+internal sealed class UpdateSyllabusModuleCommandHandler(ISyllabusModuleService syllabusModuleService)
+    : IRequestHandler<UpdateSyllabusModuleCommand, SyllabusModuleDto>
+{
+    public async ValueTask<SyllabusModuleDto> Handle(
+        UpdateSyllabusModuleCommand request,
+        CancellationToken cancellationToken)
+        => await syllabusModuleService.UpdateModuleAsync(
+            request.ModuleId,
+            request.Request,
+            request.TeacherId,
+            cancellationToken);
+}
+
+internal sealed class DeleteSyllabusModuleCommandHandler(ISyllabusModuleService syllabusModuleService)
+    : IRequestHandler<DeleteSyllabusModuleCommand, bool>
+{
+    public async ValueTask<bool> Handle(
+        DeleteSyllabusModuleCommand request,
+        CancellationToken cancellationToken)
+        => await syllabusModuleService.DeleteModuleAsync(
+            request.ModuleId,
+            request.TeacherId,
             cancellationToken);
 }
 

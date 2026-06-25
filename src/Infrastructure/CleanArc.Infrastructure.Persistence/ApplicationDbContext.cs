@@ -44,6 +44,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
 
     // Quiz & Games
     public DbSet<Game> Games { get; set; }
+    public DbSet<GameEnemy> GameEnemies { get; set; }
     public DbSet<Challenge> Challenges { get; set; }
     public DbSet<Attempt> Attempts { get; set; }
     public DbSet<ChallengeProgress> ChallengeProgresses { get; set; }

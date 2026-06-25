@@ -392,9 +392,7 @@ public class SpellingTestService(
                 continue;
             var answer = answers.LastOrDefault(candidate => candidate.VocabularyItemId == wordId);
             var answerText = answer?.AnswerText ?? string.Empty;
-            var bmText = ChallengeGenerator.GetTranslation(question, "ms");
-            var wasCorrect = NormalizeAnswer(answerText) == NormalizeAnswer(question.Word)
-                             || (!string.IsNullOrEmpty(bmText) && NormalizeAnswer(answerText) == NormalizeAnswer(bmText));
+            var wasCorrect = NormalizeAnswer(answerText) == NormalizeAnswer(question.Word);
             if (wasCorrect) correct++;
             results.Add(new SpellingTestAnswerResultDto(
                 wordId,
@@ -888,7 +886,8 @@ public class SpellingTestService(
                     ChallengeGenerator.GetTranslation(item, "en"),
                     ChallengeGenerator.GetTranslation(item, "zh"),
                     item.SyllableInfo?.SyllableText,
-                    item.DifficultyLevel);
+                    item.DifficultyLevel,
+                    GenerateWordDistractors(item.Word));
             })
             .ToList();
         return new StudentSpellingTestDetailDto(
@@ -1034,6 +1033,62 @@ public class SpellingTestService(
     private static string NormalizeAnswer(string value)
         => new(value.Trim().ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
+    private static List<string> GenerateWordDistractors(string word)
+    {
+        var list = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var len = word.Length;
+
+        if (len > 3)
+        {
+            for (int i = 1; i < len - 1; i++)
+            {
+                var chars = word.ToCharArray();
+                var tmp = chars[i];
+                chars[i] = chars[i + 1];
+                chars[i + 1] = tmp;
+                var w = new string(chars);
+                if (w != word) list.Add(w);
+                if (list.Count >= 3) break;
+            }
+        }
+
+        var vowels = new HashSet<char> { 'a', 'e', 'i', 'o', 'u' };
+        for (int i = 0; i < len; i++)
+        {
+            if (vowels.Contains(char.ToLower(word[i])))
+            {
+                foreach (var v in vowels)
+                {
+                    if (char.ToLower(v) != char.ToLower(word[i]))
+                    {
+                        var w = word.Substring(0, i) + v + word.Substring(i + 1);
+                        list.Add(w);
+                        if (list.Count >= 3) break;
+                    }
+                }
+            }
+            if (list.Count >= 3) break;
+        }
+
+        if (len > 2)
+        {
+            for (int i = 1; i < len; i++)
+            {
+                var w = word.Substring(0, i) + word.Substring(i + 1);
+                list.Add(w);
+                if (list.Count >= 3) break;
+            }
+        }
+
+        int count = 1;
+        while (list.Count < 3)
+        {
+            list.Add(word + count++);
+        }
+
+        return list.Take(3).ToList();
+    }
+
     private static int StableHash(string value)
     {
         var hash = 17;
@@ -1092,6 +1147,12 @@ public class SpellingTestService(
                 .Select(i => i.WasCorrect)
                 .ToListAsync(cancellationToken);
             recentAttempts.Reverse();
+
+            recentAttempts.Add(result.WasCorrect);
+            if (recentAttempts.Count > 10)
+            {
+                recentAttempts.RemoveAt(0);
+            }
 
             // Calculate accuracy, consistency, and mastery score
             double accuracy = AdaptiveAttemptService.CalculateAccuracy(wp.TotalCorrect, wp.TotalAttempts);

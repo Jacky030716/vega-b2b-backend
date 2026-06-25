@@ -2,10 +2,12 @@ namespace CleanArc.Application.Contracts.Adaptive;
 
 public interface ISyllabusModuleService
 {
-    Task<IReadOnlyList<SyllabusModuleDto>> GetModulesAsync(string? subject, string? language, int? yearLevel, CancellationToken cancellationToken);
+    Task<IReadOnlyList<SyllabusModuleDto>> GetModulesAsync(string? subject, string? language, int? yearLevel, int? teacherId, CancellationToken cancellationToken);
     Task<SyllabusModuleDto?> GetModuleAsync(int moduleId, CancellationToken cancellationToken);
     Task<IReadOnlyList<VocabularyItemDto>> GetVocabularyAsync(int moduleId, CancellationToken cancellationToken);
     Task<SyllabusModuleDto> CreateModuleAsync(CreateSyllabusModuleRequest request, CancellationToken cancellationToken);
+    Task<SyllabusModuleDto> UpdateModuleAsync(int moduleId, UpdateSyllabusModuleRequest request, int teacherId, CancellationToken cancellationToken);
+    Task<bool> DeleteModuleAsync(int moduleId, int teacherId, CancellationToken cancellationToken);
     Task<VocabularyItemDto> CreateVocabularyItemAsync(int moduleId, CreateVocabularyItemRequest request, CancellationToken cancellationToken);
     Task<VocabularyItemDto> UpdateVocabularyItemAsync(int moduleId, int itemId, CreateVocabularyItemRequest request, CancellationToken cancellationToken);
     Task<bool> DeleteVocabularyItemAsync(int moduleId, int itemId, CancellationToken cancellationToken);

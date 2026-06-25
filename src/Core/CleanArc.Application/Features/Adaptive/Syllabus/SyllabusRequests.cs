@@ -6,8 +6,20 @@ namespace CleanArc.Application.Features.Adaptive.Syllabus;
 public sealed record GetSyllabusModulesQuery(
     string? Subject,
     string? Language,
-    int? YearLevel)
+    int? YearLevel,
+    int? TeacherId = null)
     : IRequest<IReadOnlyList<SyllabusModuleDto>>;
+
+public sealed record UpdateSyllabusModuleCommand(
+    int ModuleId,
+    UpdateSyllabusModuleRequest Request,
+    int TeacherId)
+    : IRequest<SyllabusModuleDto>;
+
+public sealed record DeleteSyllabusModuleCommand(
+    int ModuleId,
+    int TeacherId)
+    : IRequest<bool>;
 
 public sealed record GetSyllabusModuleByIdQuery(
     int ModuleId)

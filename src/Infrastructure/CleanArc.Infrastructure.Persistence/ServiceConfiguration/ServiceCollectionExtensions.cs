@@ -167,27 +167,39 @@ public static class ServiceCollectionExtensions
         if (context is null)
             throw new Exception("Database Context Not Found");
 
-        var scriptPath = ResolveStartupScriptPath(
+        var scriptsDirectory = ResolveStartupScriptPath(
             app.Environment.ContentRootPath,
             "Scripts",
-            "SchemaRepairs",
-            "20260623_EnsureUserNotificationPreferenceColumns.sql");
+            "SchemaRepairs");
 
-        if (!File.Exists(scriptPath))
+        if (!Directory.Exists(scriptsDirectory))
         {
-            logger.LogWarning("Startup schema repair script was not found at {ScriptPath}", scriptPath);
+            logger.LogWarning("Startup schema repair scripts folder was not found at {ScriptsDirectory}", scriptsDirectory);
             return;
         }
 
-        var sql = await File.ReadAllTextAsync(scriptPath);
-        if (string.IsNullOrWhiteSpace(sql))
+        var scriptPaths = Directory.GetFiles(scriptsDirectory, "*.sql")
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (scriptPaths.Length == 0)
         {
-            logger.LogWarning("Startup schema repair script at {ScriptPath} is empty", scriptPath);
+            logger.LogWarning("No startup schema repair scripts were found in {ScriptsDirectory}", scriptsDirectory);
             return;
         }
 
-        await context.Database.ExecuteSqlRawAsync(sql);
-        logger.LogInformation("Applied startup schema repair script {ScriptName}", Path.GetFileName(scriptPath));
+        foreach (var scriptPath in scriptPaths)
+        {
+            var sql = await File.ReadAllTextAsync(scriptPath);
+            if (string.IsNullOrWhiteSpace(sql))
+            {
+                logger.LogWarning("Startup schema repair script at {ScriptPath} is empty", scriptPath);
+                continue;
+            }
+
+            await context.Database.ExecuteSqlRawAsync(sql);
+            logger.LogInformation("Applied startup schema repair script {ScriptName}", Path.GetFileName(scriptPath));
+        }
     }
 
     public static async Task SeedGameDataAsync(this WebApplication app)
