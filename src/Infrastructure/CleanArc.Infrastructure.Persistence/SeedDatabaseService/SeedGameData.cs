@@ -565,30 +565,26 @@ public class SeedGameData : ISeedGameData
 
         var enemySeeds = new List<GameEnemy>
         {
-            new()
-            {
-                Key = "lava_slime",
-                Name = "Lava Slime",
-                ImageRef = "enemies/lava-slime.png",
-                DisplayOrder = 1,
-                IsActive = true
-            },
-            new()
-            {
-                Key = "cyber_drone",
-                Name = "Cyber Drone",
-                ImageRef = "enemies/cyber-drone.png",
-                DisplayOrder = 2,
-                IsActive = true
-            },
-            new()
-            {
-                Key = "forest_golem",
-                Name = "Forest Golem",
-                ImageRef = "enemies/forest-golem.png",
-                DisplayOrder = 3,
-                IsActive = true
-            }
+            new() { Key = "lava_slime", Name = "Lava Slime", ImageRef = "enemies/lava-slime.png", DisplayOrder = 1, IsActive = true },
+            new() { Key = "cyber_drone", Name = "Cyber Drone", ImageRef = "enemies/cyber-drone.png", DisplayOrder = 2, IsActive = true },
+            new() { Key = "forest_golem", Name = "Forest Golem", ImageRef = "enemies/forest-golem.png", DisplayOrder = 3, IsActive = true },
+            new() { Key = "deepsea_kraken", Name = "Deepsea Kraken", ImageRef = "enemies/deepsea-kraken.png", DisplayOrder = 4, IsActive = true },
+            new() { Key = "sand_scorpion", Name = "Sand Scorpion", ImageRef = "enemies/sand-scorpion.png", DisplayOrder = 5, IsActive = true },
+            new() { Key = "shadow_spectre", Name = "Shadow Spectre", ImageRef = "enemies/shadow-spectre.png", DisplayOrder = 6, IsActive = true },
+            new() { Key = "storm_wyvern", Name = "Storm Wyvern", ImageRef = "enemies/storm-wyvern.png", DisplayOrder = 7, IsActive = true },
+            new() { Key = "frost_yeti", Name = "Frost Yeti", ImageRef = "enemies/frost-yeti.png", DisplayOrder = 8, IsActive = true },
+            new() { Key = "iron_titan", Name = "Iron Titan", ImageRef = "enemies/iron-titan.png", DisplayOrder = 9, IsActive = true },
+            new() { Key = "goblin_thief", Name = "Goblin Thief", ImageRef = "enemies/goblin-thief.png", DisplayOrder = 10, IsActive = true },
+            new() { Key = "vampire_bat", Name = "Vampire Bat", ImageRef = "enemies/vampire-bat.png", DisplayOrder = 11, IsActive = true },
+            new() { Key = "phoenix", Name = "Phoenix", ImageRef = "enemies/phoenix.png", DisplayOrder = 12, IsActive = true },
+            new() { Key = "medusa", Name = "Medusa", ImageRef = "enemies/medusa.png", DisplayOrder = 13, IsActive = true },
+            new() { Key = "griffin", Name = "Griffin", ImageRef = "enemies/griffin.png", DisplayOrder = 14, IsActive = true },
+            new() { Key = "werewolf", Name = "Werewolf", ImageRef = "enemies/werewolf.png", DisplayOrder = 15, IsActive = true },
+            new() { Key = "dragon_emperor", Name = "Dragon Emperor", ImageRef = "enemies/dragon-emperor.png", DisplayOrder = 16, IsActive = true },
+            new() { Key = "titan_king", Name = "Titan King", ImageRef = "enemies/titan-king.png", DisplayOrder = 17, IsActive = true },
+            new() { Key = "omega_mech", Name = "Omega Mech", ImageRef = "enemies/omega-mech.png", DisplayOrder = 18, IsActive = true },
+            new() { Key = "void_overlord", Name = "Void Overlord", ImageRef = "enemies/void-overlord.png", DisplayOrder = 19, IsActive = true },
+            new() { Key = "kraken_monarch", Name = "Kraken Monarch", ImageRef = "enemies/kraken-monarch.png", DisplayOrder = 20, IsActive = true }
         };
 
         var existingGameEnemies = await _dbContext.GameEnemies
