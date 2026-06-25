@@ -168,4 +168,9 @@ public class AppUserManagerImplementation : IAppUserManager
     {
         return await _userManager.ResetPasswordAsync(user, token, newPassword);
     }
+
+    public async Task<IdentityResult> DeleteUserAsync(User user)
+    {
+        return await _userManager.DeleteAsync(user);
+    }
 }

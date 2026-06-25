@@ -36,7 +36,7 @@ public class GoogleAiServiceTests
         var handler = new MockHttpMessageHandler();
         // First request (gemini-3.1-flash-lite) fails
         handler.Responses.Enqueue(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        // Second request (gemini-3.1-flash fallback) succeeds
+        // Second request (gemini-3.5-flash fallback) succeeds
         handler.Responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Fallback success\"}]}}]}")
@@ -62,6 +62,6 @@ public class GoogleAiServiceTests
         Assert.Equal("Fallback success", result.Result.RawResponse);
         Assert.Equal(2, handler.Requests.Count);
         Assert.Contains("models/gemini-3.1-flash-lite:generateContent", handler.Requests[0].RequestUri!.ToString());
-        Assert.Contains("models/gemini-3.1-flash:generateContent", handler.Requests[1].RequestUri!.ToString());
+        Assert.Contains("models/gemini-3.5-flash:generateContent", handler.Requests[1].RequestUri!.ToString());
     }
 }

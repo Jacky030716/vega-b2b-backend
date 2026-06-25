@@ -13,6 +13,7 @@ using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.WebExtensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 
@@ -109,6 +110,21 @@ public class HardcoreChallengeEndpoints : ICarterModule
                     .AsNoTracking()
                     .FirstOrDefaultAsync(cs => cs.UserId == studentId, cancellationToken);
                 int classroomId = studentClass?.ClassroomId ?? 0;
+
+                if (draft.GameType.Equals("ECHO_SEQUENCE", StringComparison.OrdinalIgnoreCase))
+                {
+                    draft.Status = "ACCEPTED";
+                    await dbContext.SaveChangesAsync(cancellationToken);
+
+                    return Results.Ok(new
+                    {
+                        message = "Hardcore challenge accepted successfully.",
+                        draftId = draft.Id,
+                        gameType = draft.GameType,
+                        challengeId = (int?)null,
+                        spellingTestId = (int?)null
+                    });
+                }
 
                 if (draft.GameType.Equals("SPELLING_TEST", StringComparison.OrdinalIgnoreCase))
                 {
@@ -228,5 +244,56 @@ public class HardcoreChallengeEndpoints : ICarterModule
                 return Results.Ok(new { message = "Hardcore challenge draft declined.", draftId = draft.Id });
             }), Version, "DeclineHardcoreChallenge", Tag)
             .RequireAuthorization();
+
+        // POST complete hardcore challenge (e.g. ECHO_SEQUENCE)
+        app.MapEndpoint(builder => builder.MapPost(
+            "/api/v{version:apiVersion}/student/hardcore-challenges/{draftId:int}/complete",
+            async (
+                int draftId,
+                [FromBody] CompleteHardcoreChallengeRequest request,
+                ClaimsPrincipal user,
+                ApplicationDbContext dbContext,
+                CancellationToken cancellationToken) =>
+            {
+                var studentId = int.Parse(user.Identity.GetUserId());
+                var now = DateTime.UtcNow;
+
+                var draft = await dbContext.HardcoreChallengeDrafts
+                    .FirstOrDefaultAsync(d => d.Id == draftId && d.StudentId == studentId, cancellationToken);
+
+                if (draft == null)
+                    return Results.NotFound(new { message = "Hardcore challenge draft not found." });
+
+                if (draft.Status != "ACCEPTED")
+                    return Results.BadRequest(new { message = $"Draft is in status: {draft.Status}. Must be ACCEPTED to complete." });
+
+                draft.Status = "COMPLETED";
+                draft.CompletedAt = now;
+
+                var student = await dbContext.Users
+                    .FirstOrDefaultAsync(u => u.Id == studentId, cancellationToken);
+                
+                if (student != null)
+                {
+                    // ponytail: directly increment diamonds
+                    student.Diamonds += request.DiamondsEarned;
+                }
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                return Results.Ok(new
+                {
+                    message = "Challenge completed and rewards claimed.",
+                    draftId = draft.Id,
+                    diamondsEarned = request.DiamondsEarned,
+                    enemiesKilled = request.EnemiesKilled
+                });
+            }), Version, "CompleteHardcoreChallenge", Tag)
+            .RequireAuthorization();
     }
 }
+
+public record CompleteHardcoreChallengeRequest(
+    int EnemiesKilled,
+    int DiamondsEarned
+);

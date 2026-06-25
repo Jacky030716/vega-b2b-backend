@@ -89,21 +89,25 @@ public class AdaptiveLearningAgent : IAdaptiveLearningAgent
                 return;
             }
 
-            // Select a game type randomly from the four supported types
-            var gameTypes = new[] { "VOICE_BRIDGE", "SYLLABLE_SUSHI", "SPELL_CATCHER", "SPELLING_TEST" };
+            // Select a game type randomly from the five supported types (including ECHO_SEQUENCE)
+            var gameTypes = new[] { "VOICE_BRIDGE", "SYLLABLE_SUSHI", "SPELL_CATCHER", "SPELLING_TEST", "ECHO_SEQUENCE" };
             var random = new Random();
             var chosenGameType = gameTypes[random.Next(gameTypes.Length)];
 
-            var generator = _generators.FirstOrDefault(g => g.GameType.Equals(chosenGameType, StringComparison.OrdinalIgnoreCase));
-            if (generator == null)
+            string contentData = "{}";
+            if (!chosenGameType.Equals("ECHO_SEQUENCE", StringComparison.OrdinalIgnoreCase))
             {
-                var noGenReason = $"Challenge generator for game type {chosenGameType} is not registered.";
-                await SaveDecisionAsync(studentId, false, noGenReason, 0.0, triggeringMetricsJson, null, cancellationToken);
-                return;
-            }
+                var generator = _generators.FirstOrDefault(g => g.GameType.Equals(chosenGameType, StringComparison.OrdinalIgnoreCase));
+                if (generator == null)
+                {
+                    var noGenReason = $"Challenge generator for game type {chosenGameType} is not registered.";
+                    await SaveDecisionAsync(studentId, false, noGenReason, 0.0, triggeringMetricsJson, null, cancellationToken);
+                    return;
+                }
 
-            // Generate content
-            var contentData = await generator.GenerateContentJsonAsync(words, 5, cancellationToken);
+                // Generate content
+                contentData = await generator.GenerateContentJsonAsync(words, 5, cancellationToken);
+            }
 
             // Determine Mascot reward if eligible
             bool awardMascot = random.NextDouble() < _rewardConfig.MascotProbability;

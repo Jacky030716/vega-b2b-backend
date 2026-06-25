@@ -9,6 +9,7 @@ public class GetInstitutionUsersQuery : IRequest<OperationResult<GetInstitutionU
     public string Role { get; set; } = "all";
     public string Tab { get; set; } = "all";
     public string? Search { get; set; }
+    public int UserId { get; set; }
 }
 
 public class GetInstitutionUsersResult

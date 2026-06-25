@@ -5,7 +5,8 @@ using Mediator;
 namespace CleanArc.Application.Features.Admin.Queries.GetAdminUserDetails;
 
 internal sealed class GetAdminUserDetailsQueryHandler(
-    IInstitutionUserReportRepository userReportRepository)
+    IInstitutionUserReportRepository userReportRepository,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<GetAdminUserDetailsQuery, OperationResult<GetAdminUserDetailsResult>>
 {
     public async ValueTask<OperationResult<GetAdminUserDetailsResult>> Handle(
@@ -17,8 +18,21 @@ internal sealed class GetAdminUserDetailsQueryHandler(
             return OperationResult<GetAdminUserDetailsResult>.FailureResult("Invalid user id.");
         }
 
+        // ponytail: derive institution strictly from logged-in admin user to prevent multi-institution bypass
+        var membership = await unitOfWork.InstitutionRepository.GetPrimaryInstitutionForUserAsync(
+            request.AdminUserId,
+            cancellationToken);
+
+        if (membership is null)
+        {
+            return OperationResult<GetAdminUserDetailsResult>.ForbiddenResult(
+                "Unable to resolve institution membership for this billing action.");
+        }
+
+        var institutionId = membership.InstitutionId;
+
         var detail = await userReportRepository.GetUserDetailsAsync(
-            request.InstitutionId <= 0 ? 1 : request.InstitutionId,
+            institutionId,
             request.UserId,
             cancellationToken);
 

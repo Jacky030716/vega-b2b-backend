@@ -21,6 +21,19 @@ internal sealed class BulkCreateUsersCommandHandler(
 
     public async ValueTask<OperationResult<BulkCreateUsersResult>> Handle(BulkCreateUsersCommand request, CancellationToken cancellationToken)
     {
+        // ponytail: derive institution strictly from logged-in admin user to prevent multi-institution bypass
+        var membership = await unitOfWork.InstitutionRepository.GetPrimaryInstitutionForUserAsync(
+            request.UserId,
+            cancellationToken);
+
+        if (membership is null)
+        {
+            return OperationResult<BulkCreateUsersResult>.ForbiddenResult(
+                "Unable to resolve institution membership for this billing action.");
+        }
+
+        var institutionId = membership.InstitutionId;
+
         if (request.Count <= 0 || request.Count > 1000)
             return OperationResult<BulkCreateUsersResult>.FailureResult("Count must be between 1 and 1000.");
 
@@ -43,7 +56,7 @@ internal sealed class BulkCreateUsersCommandHandler(
                 UserName = username,
                 Email = $"{username}@vega.demo",
                 EmailConfirmed = true,
-                InstitutionId = request.InstitutionId,
+                InstitutionId = institutionId,
                 Name = $"Bulk_{role}_{shortId}",
                 FamilyName = "Generated"
             };
@@ -62,7 +75,7 @@ internal sealed class BulkCreateUsersCommandHandler(
             }
 
             await unitOfWork.InstitutionRepository.AssignUserToInstitutionAsync(
-                request.InstitutionId,
+                institutionId,
                 user.Id,
                 role == "teacher" ? "Teacher access" : "Student access",
                 isPrimary: true,

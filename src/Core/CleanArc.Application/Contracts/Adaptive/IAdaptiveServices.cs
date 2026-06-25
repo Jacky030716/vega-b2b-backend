@@ -7,6 +7,8 @@ public interface ISyllabusModuleService
     Task<IReadOnlyList<VocabularyItemDto>> GetVocabularyAsync(int moduleId, CancellationToken cancellationToken);
     Task<SyllabusModuleDto> CreateModuleAsync(CreateSyllabusModuleRequest request, CancellationToken cancellationToken);
     Task<VocabularyItemDto> CreateVocabularyItemAsync(int moduleId, CreateVocabularyItemRequest request, CancellationToken cancellationToken);
+    Task<VocabularyItemDto> UpdateVocabularyItemAsync(int moduleId, int itemId, CreateVocabularyItemRequest request, CancellationToken cancellationToken);
+    Task<bool> DeleteVocabularyItemAsync(int moduleId, int itemId, CancellationToken cancellationToken);
 }
 
 public interface ISyllabusModuleIngestionService

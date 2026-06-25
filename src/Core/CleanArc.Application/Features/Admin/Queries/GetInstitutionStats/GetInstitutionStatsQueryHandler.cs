@@ -8,7 +8,20 @@ internal class GetInstitutionStatsQueryHandler(IUnitOfWork unitOfWork) : IReques
 {
     public async ValueTask<OperationResult<InstitutionStatsDto>> Handle(GetInstitutionStatsQuery request, CancellationToken cancellationToken)
     {
-        var institution = await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(request.InstitutionId);
+        // ponytail: derive institution strictly from logged-in admin user to prevent multi-institution bypass
+        var membership = await unitOfWork.InstitutionRepository.GetPrimaryInstitutionForUserAsync(
+            request.UserId,
+            cancellationToken);
+
+        if (membership is null)
+        {
+            return OperationResult<InstitutionStatsDto>.ForbiddenResult(
+                "Unable to resolve institution membership for this billing action.");
+        }
+
+        var institutionId = membership.InstitutionId;
+
+        var institution = await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(institutionId);
 
         if (institution == null)
         {

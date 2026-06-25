@@ -25,3 +25,15 @@ public sealed record CreateSyllabusVocabularyItemCommand(
     int ModuleId,
     CreateVocabularyItemRequest Request)
     : IRequest<VocabularyItemDto>;
+
+public sealed record UpdateSyllabusVocabularyItemCommand(
+    int ModuleId,
+    int ItemId,
+    CreateVocabularyItemRequest Request)
+    : IRequest<VocabularyItemDto>;
+
+public sealed record DeleteSyllabusVocabularyItemCommand(
+    int ModuleId,
+    int ItemId)
+    : IRequest<bool>;
+

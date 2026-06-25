@@ -66,6 +66,11 @@ public interface IChallengeRepository
   /// </summary>
   Task<List<ChallengeProgress>> GetStudentProgressForClassroomAsync(int userId, int classroomId);
 
+  /// <summary>
+  /// Returns all completed attempts for a list of challenges by a student.
+  /// </summary>
+  Task<List<Attempt>> GetStudentAttemptsForChallengesAsync(int userId, List<int> challengeIds);
+
   Task<bool> IsStudentModuleCompletedAsync(int userId, int classroomId, int moduleId);
 
   Task CompleteHardcoreChallengeRewardsAsync(int userId, int challengeId, CancellationToken cancellationToken);

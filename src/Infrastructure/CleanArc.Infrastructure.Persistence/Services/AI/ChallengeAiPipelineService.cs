@@ -653,7 +653,7 @@ public sealed class ChallengeAiPipelineService(
   }
 
   private static bool IsAdaptiveGameType(string gameType)
-    => gameType is "SPELL_CATCHER" or "SYLLABLE_SUSHI" or "VOICE_BRIDGE" or "TRANSLATION";
+    => gameType is "SPELL_CATCHER" or "SYLLABLE_SUSHI" or "VOICE_BRIDGE" or "TRANSLATION" or "ECHO_SEQUENCE";
 
   private static string ToGameConfigUseCase(string gameType)
     => gameType switch
@@ -662,6 +662,7 @@ public sealed class ChallengeAiPipelineService(
       "SYLLABLE_SUSHI" => AiUseCases.SyllableSushiConfig,
       "VOICE_BRIDGE" => AiUseCases.VoiceBridgeConfig,
       "TRANSLATION" => AiUseCases.TranslationConfig,
+      "ECHO_SEQUENCE" => AiUseCases.SpellCatcherConfig,
       _ => $"{gameType}_CONFIG"
     };
 
@@ -674,6 +675,7 @@ public sealed class ChallengeAiPipelineService(
       "SYLLABLE_SUSHI" or "SYLLABLESUSHI" or "SYLLABLE" => "SYLLABLE_SUSHI",
       "VOICE_BRIDGE" or "VOICEBRIDGE" or "VOICE" or "SPEAKING" => "VOICE_BRIDGE",
       "TRANSLATION" or "TRANSLATION_GAME" => "TRANSLATION",
+      "ECHO_SEQUENCE" or "ECHOSEQUENCE" or "ECHO" => "ECHO_SEQUENCE",
       _ => normalized
     };
   }

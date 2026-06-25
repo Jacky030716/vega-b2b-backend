@@ -439,11 +439,13 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             "SPELL_CATCHER" or "SPELL-CATCHER" => "SPELL_CATCHER",
             "VOICE_BRIDGE" or "VOICE-BRIDGE" or "WORD_BRIDGE" or "WORD-BRIDGE" => "VOICE_BRIDGE",
             "TRANSLATION" or "TRANSLATION-GAME" => "TRANSLATION",
+            "ECHO_SEQUENCE" or "ECHO-SEQUENCE" => "ECHO_SEQUENCE",
             "LEARN" => "LEARN",
             _ when normalized.Contains("SUSHI") => "SYLLABLE_SUSHI",
             _ when normalized.Contains("SPELL") => "SPELL_CATCHER",
             _ when normalized.Contains("VOICE") || normalized.Contains("BRIDGE") => "VOICE_BRIDGE",
             _ when normalized.Contains("TRANS") => "TRANSLATION",
+            _ when normalized.Contains("ECHO") || normalized.Contains("SEQUENCE") => "ECHO_SEQUENCE",
             _ => "LEARN"
         };
     }

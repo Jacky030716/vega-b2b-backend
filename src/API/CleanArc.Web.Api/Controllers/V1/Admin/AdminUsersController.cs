@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using CleanArc.Application.Features.Admin.Commands.UpdateAdminUser;
 using CleanArc.Application.Features.Admin.Queries.GetAdminUserDetails;
+using CleanArc.SharedKernel.Extensions;
 using CleanArc.WebFramework.BaseController;
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
@@ -16,12 +17,13 @@ namespace CleanArc.Web.Api.Controllers.V1.Admin;
 public class AdminUsersController(ISender sender) : BaseController
 {
     [HttpGet("{id:int}/details")]
-    public async Task<IActionResult> GetUserDetails([FromRoute] int id, [FromQuery] int institutionId = 1)
+    public async Task<IActionResult> GetUserDetails([FromRoute] int id)
     {
+        var adminUserId = int.Parse(User.Identity!.GetUserId());
         var result = await sender.Send(new GetAdminUserDetailsQuery
         {
             UserId = id,
-            InstitutionId = institutionId <= 0 ? 1 : institutionId
+            AdminUserId = adminUserId
         });
 
         return base.OperationResult(result);
@@ -30,8 +32,9 @@ public class AdminUsersController(ISender sender) : BaseController
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateUser([FromRoute] int id, [FromBody] UpdateAdminUserCommand command)
     {
+        var adminUserId = int.Parse(User.Identity!.GetUserId());
         command.UserId = id;
-        if (command.InstitutionId <= 0) command.InstitutionId = 1;
+        command.AdminUserId = adminUserId;
 
         var result = await sender.Send(command);
         return base.OperationResult(result);

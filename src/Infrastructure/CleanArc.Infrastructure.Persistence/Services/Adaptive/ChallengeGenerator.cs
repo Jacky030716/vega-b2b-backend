@@ -983,11 +983,11 @@ public class ChallengeGenerator(
             .ToList();
     }
 
-   internal static string NormalizeTemplateCode(string? preferred, string? objective, string? focus)
-   {
-     var candidate = preferred?.Trim().ToUpperInvariant();
-     if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI" or "TRANSLATION")
-       return candidate;
+    private static string NormalizeTemplateCode(string? preferredCode, string? objective, string? focus)
+    {
+      var candidate = preferredCode?.Trim().ToUpperInvariant() ?? string.Empty;
+      if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI" or "TRANSLATION" or "ECHO_SEQUENCE")
+        return candidate;
  
          var signal = $"{objective} {focus}".ToLowerInvariant();
      if (signal.Contains("syllable")) return "SYLLABLE_SUSHI";
@@ -1002,6 +1002,7 @@ public class ChallengeGenerator(
        "VOICE_BRIDGE" => "voice_bridge",
        "SYLLABLE_SUSHI" => "syllable_sushi",
        "TRANSLATION" => "translation",
+       "ECHO_SEQUENCE" => "echo_sequence",
        _ => templateCode.ToLowerInvariant()
    };
  
@@ -1011,6 +1012,7 @@ public class ChallengeGenerator(
        "SYLLABLE_SUSHI" => "STRUCTURE",
        "SPELL_CATCHER" => "RECALL",
        "TRANSLATION" => "RECALL",
+       "ECHO_SEQUENCE" => "RECALL",
        _ => "RECALL"
    };
 

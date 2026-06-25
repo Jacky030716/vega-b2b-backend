@@ -77,5 +77,37 @@ public class SyllabusEndpoints : ICarterModule
         }
       }), Version, "CreateSyllabusModuleVocabulary", Tag)
       .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapPut(
+      $"{RoutePrefix}modules/{{id:int}}/vocabulary/{{itemId:int}}",
+      async (int id, int itemId, [FromBody] CreateVocabularyItemRequest request, ISender sender, CancellationToken cancellationToken) =>
+      {
+        try
+        {
+          var result = await sender.Send(new UpdateSyllabusVocabularyItemCommand(id, itemId, request), cancellationToken);
+          return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+          return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
+        }
+      }), Version, "UpdateSyllabusModuleVocabulary", Tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
+
+    app.MapEndpoint(builder => builder.MapDelete(
+      $"{RoutePrefix}modules/{{id:int}}/vocabulary/{{itemId:int}}",
+      async (int id, int itemId, ISender sender, CancellationToken cancellationToken) =>
+      {
+        try
+        {
+          var result = await sender.Send(new DeleteSyllabusVocabularyItemCommand(id, itemId), cancellationToken);
+          return result ? Results.Ok(new { success = true }) : Results.NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+          return Results.BadRequest(new Dictionary<string, List<string>> { { "GeneralError", new() { ex.Message } } });
+        }
+      }), Version, "DeleteSyllabusModuleVocabulary", Tag)
+      .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));
   }
 }

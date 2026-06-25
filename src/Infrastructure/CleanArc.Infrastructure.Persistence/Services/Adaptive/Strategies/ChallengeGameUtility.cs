@@ -559,13 +559,14 @@ internal static class ChallengeGameUtility
     public static string NormalizeTemplateCode(string? preferred, string? objective, string? focus)
     {
         var candidate = preferred?.Trim().ToUpperInvariant();
-        if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI" or "TRANSLATION")
+        if (candidate is "SPELL_CATCHER" or "VOICE_BRIDGE" or "SYLLABLE_SUSHI" or "TRANSLATION" or "ECHO_SEQUENCE")
             return candidate;
 
         var signal = $"{objective} {focus}".ToLowerInvariant();
         if (signal.Contains("syllable")) return "SYLLABLE_SUSHI";
         if (signal.Contains("voice") || signal.Contains("pronunciation") || signal.Contains("oral")) return "VOICE_BRIDGE";
         if (signal.Contains("translate") || signal.Contains("translation")) return "TRANSLATION";
+        if (signal.Contains("echo") || signal.Contains("sequence")) return "ECHO_SEQUENCE";
         return "SPELL_CATCHER";
     }
 
@@ -575,6 +576,7 @@ internal static class ChallengeGameUtility
         "VOICE_BRIDGE" => "voice_bridge",
         "SYLLABLE_SUSHI" => "syllable_sushi",
         "TRANSLATION" => "translation",
+        "ECHO_SEQUENCE" => "echo_sequence",
         _ => templateCode.ToLowerInvariant()
     };
 
@@ -584,6 +586,7 @@ internal static class ChallengeGameUtility
         "SYLLABLE_SUSHI" => "STRUCTURE",
         "SPELL_CATCHER" => "RECALL",
         "TRANSLATION" => "RECALL",
+        "ECHO_SEQUENCE" => "RECALL",
         _ => "RECALL"
     };
 

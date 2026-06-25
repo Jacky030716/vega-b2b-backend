@@ -6,6 +6,7 @@ namespace CleanArc.Application.Features.Admin.Queries.GetInstitutionStats;
 public class GetInstitutionStatsQuery : IRequest<OperationResult<InstitutionStatsDto>>
 {
     public int InstitutionId { get; set; }
+    public int UserId { get; set; }
 }
 
 public class InstitutionStatsDto

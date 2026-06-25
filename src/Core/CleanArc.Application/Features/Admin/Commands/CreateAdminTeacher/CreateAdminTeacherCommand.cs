@@ -5,18 +5,18 @@ using CleanArc.Domain.Entities.User;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
-namespace CleanArc.Application.Features.Admin.Commands.CreateAdminStudent;
+namespace CleanArc.Application.Features.Admin.Commands.CreateAdminTeacher;
 
-public sealed record CreateAdminStudentCommand(
+public sealed record CreateAdminTeacherCommand(
     int InstitutionId,
     string FirstName,
     string LastName,
     string Email,
     string UserName,
     string TemporaryPassword,
-    int UserId = 0) : IRequest<OperationResult<CreateAdminStudentResult>>;
+    int UserId = 0) : IRequest<OperationResult<CreateAdminTeacherResult>>;
 
-public sealed record CreateAdminStudentResult(
+public sealed record CreateAdminTeacherResult(
     int Id,
     string FirstName,
     string LastName,
@@ -25,14 +25,14 @@ public sealed record CreateAdminStudentResult(
     string Role,
     bool IsActive);
 
-internal sealed class CreateAdminStudentCommandHandler(
+internal sealed class CreateAdminTeacherCommandHandler(
     IAppUserManager userManager,
     IUnitOfWork unitOfWork,
-    ILogger<CreateAdminStudentCommandHandler> logger)
-    : IRequestHandler<CreateAdminStudentCommand, OperationResult<CreateAdminStudentResult>>
+    ILogger<CreateAdminTeacherCommandHandler> logger)
+    : IRequestHandler<CreateAdminTeacherCommand, OperationResult<CreateAdminTeacherResult>>
 {
-    public async ValueTask<OperationResult<CreateAdminStudentResult>> Handle(
-        CreateAdminStudentCommand request,
+    public async ValueTask<OperationResult<CreateAdminTeacherResult>> Handle(
+        CreateAdminTeacherCommand request,
         CancellationToken cancellationToken)
     {
         // ponytail: derive institution strictly from logged-in admin user to prevent multi-institution bypass
@@ -42,7 +42,7 @@ internal sealed class CreateAdminStudentCommandHandler(
 
         if (membership is null)
         {
-            return OperationResult<CreateAdminStudentResult>.ForbiddenResult(
+            return OperationResult<CreateAdminTeacherResult>.ForbiddenResult(
                 "Unable to resolve institution membership for this billing action.");
         }
 
@@ -54,8 +54,8 @@ internal sealed class CreateAdminStudentCommandHandler(
             string.IsNullOrWhiteSpace(request.UserName) ||
             string.IsNullOrWhiteSpace(request.TemporaryPassword))
         {
-            return OperationResult<CreateAdminStudentResult>.FailureResult(
-                "Student details, username, and temporary password are required.");
+            return OperationResult<CreateAdminTeacherResult>.FailureResult(
+                "Teacher details, username, and temporary password are required.");
         }
 
         var userName = request.UserName.Trim();
@@ -63,18 +63,18 @@ internal sealed class CreateAdminStudentCommandHandler(
 
         if (await userManager.IsExistUserName(userName))
         {
-            return OperationResult<CreateAdminStudentResult>.FailureResult("Username already exists.");
+            return OperationResult<CreateAdminTeacherResult>.FailureResult("Username already exists.");
         }
 
         if (await userManager.FindUserByEmail(email) is not null)
         {
-            return OperationResult<CreateAdminStudentResult>.FailureResult("Email already exists.");
+            return OperationResult<CreateAdminTeacherResult>.FailureResult("Email already exists.");
         }
 
         var institution = await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(institutionId);
         if (institution is null)
         {
-            return OperationResult<CreateAdminStudentResult>.NotFoundResult("Institution not found.");
+            return OperationResult<CreateAdminTeacherResult>.NotFoundResult("Institution not found.");
         }
 
         var user = new User
@@ -90,36 +90,36 @@ internal sealed class CreateAdminStudentCommandHandler(
         var createResult = await userManager.CreateUserWithPasswordAsync(user, request.TemporaryPassword);
         if (!createResult.Succeeded)
         {
-            var message = createResult.Errors.FirstOrDefault()?.Description ?? "Failed to create student.";
-            return OperationResult<CreateAdminStudentResult>.FailureResult(message);
+            var message = createResult.Errors.FirstOrDefault()?.Description ?? "Failed to create teacher.";
+            return OperationResult<CreateAdminTeacherResult>.FailureResult(message);
         }
 
-        var roleResult = await userManager.AddUserToRoleAsync(user, "student");
+        var roleResult = await userManager.AddUserToRoleAsync(user, "teacher");
         if (!roleResult.Succeeded)
         {
-            logger.LogError("Failed to assign the student role to new user {UserId}.", user.Id);
-            return OperationResult<CreateAdminStudentResult>.FailureResult("Failed to assign student access.");
+            logger.LogError("Failed to assign the teacher role to new user {UserId}.", user.Id);
+            return OperationResult<CreateAdminTeacherResult>.FailureResult("Failed to assign teacher access.");
         }
 
         await unitOfWork.InstitutionRepository.AssignUserToInstitutionAsync(
             institutionId,
             user.Id,
-            "Student access",
+            "Teacher access",
             isPrimary: true,
             cancellationToken);
 
         logger.LogInformation(
-            "Institution {InstitutionId} created student user {UserId}.",
+            "Institution {InstitutionId} created teacher user {UserId}.",
             institutionId,
             user.Id);
 
-        return OperationResult<CreateAdminStudentResult>.SuccessResult(new CreateAdminStudentResult(
+        return OperationResult<CreateAdminTeacherResult>.SuccessResult(new CreateAdminTeacherResult(
             user.Id,
             user.Name,
             user.FamilyName,
             user.Email,
             user.UserName,
-            "student",
+            "teacher",
             true));
     }
 }

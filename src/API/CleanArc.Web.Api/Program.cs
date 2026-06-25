@@ -1,8 +1,9 @@
-using System.Diagnostics;
+using System.Diagnostics;
 using System.Text.Json;
 using Carter;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.EntityFrameworkCore;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Models.Common;
 using CleanArc.Application.ServiceConfiguration;
@@ -105,6 +106,8 @@ await app.ApplyMigrationsAsync();
 await app.ApplyStartupSchemaRepairScriptsAsync();
 await app.SeedDefaultUsersAsync();
 await app.SeedGameDataAsync();
+
+
 
 if (args.Length >= 2 && args[0].Equals("--seed-syllabus", StringComparison.OrdinalIgnoreCase))
 {

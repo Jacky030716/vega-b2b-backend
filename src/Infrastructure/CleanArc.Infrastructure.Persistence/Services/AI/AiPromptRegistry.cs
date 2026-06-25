@@ -147,6 +147,35 @@ RULES:
     var gameKey = variant?.Trim() ?? string.Empty;
     return gameKey switch
     {
+      "echo_sequence" => new AiPromptDefinition(
+        AiUseCases.CustomChallengeExtraction,
+        Version,
+        "Convert teacher input into Echo Sequence custom challenge content.",
+        """
+SYSTEM: You are a structural data converter for custom challenge content.
+OUTPUT: PURE JSON ONLY. NO MARKDOWN. NO COMMENTS. NO CHAT.
+
+SCHEMA:
+{
+  "title": "string",
+  "description": "string",
+  "content": {
+    "items": [
+      {
+        "word": "string",
+        "meaningText": "string",
+        "difficultyLevel": 1
+      }
+    ]
+  }
+}
+
+RULES:
+1. Use only the provided context and teacher request.
+2. "items" must have at least 3 values.
+3. Keep the items child-friendly and classroom-safe.
+""",
+        "echo_sequence_custom_draft"),
       "spell_catcher" => new AiPromptDefinition(
         AiUseCases.CustomChallengeExtraction,
         Version,

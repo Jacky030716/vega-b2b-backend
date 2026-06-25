@@ -13,6 +13,7 @@ public class UpdateAdminUserCommand : IRequest<OperationResult<UpdateAdminUserRe
     public bool IsActive { get; set; }
     public string? Password { get; set; }
     public string? PicturePassword { get; set; }
+    public int AdminUserId { get; set; }
 }
 
 public class UpdateAdminUserResult

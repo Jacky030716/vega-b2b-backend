@@ -142,6 +142,101 @@ public class SyllabusModuleService(ApplicationDbContext dbContext) : ISyllabusMo
         return ToDto(item);
     }
 
+    public async Task<VocabularyItemDto> UpdateVocabularyItemAsync(
+        int moduleId,
+        int itemId,
+        CreateVocabularyItemRequest request,
+        CancellationToken cancellationToken)
+    {
+        var item = await dbContext.VocabularyItems
+            .Include(v => v.Translations)
+            .Include(v => v.SyllableInfo)
+            .FirstOrDefaultAsync(v => v.Id == itemId && v.ModuleId == moduleId, cancellationToken)
+            ?? throw new InvalidOperationException("Vocabulary item not found");
+
+        var word = Require(request.Word, "Word");
+        var bmText = string.IsNullOrWhiteSpace(request.BmText) ? word : request.BmText.Trim();
+
+        item.Word = word;
+        item.NormalizedWord = NormalizeWord(word);
+        item.Language = request.Language?.Trim() ?? item.Language;
+        item.Subject = request.Subject?.Trim() ?? item.Subject;
+        item.YearLevel = request.YearLevel ?? item.YearLevel;
+        item.ItemType = string.IsNullOrWhiteSpace(request.ItemType) ? "WORD" : request.ItemType.Trim().ToUpperInvariant();
+        item.DisplayOrder = Math.Max(0, request.DisplayOrder ?? 0);
+        item.PhoneticHint = request.PhoneticHint?.Trim();
+        item.PronunciationText = request.PronunciationText?.Trim();
+        item.DifficultyLevel = Math.Clamp(request.DifficultyLevel ?? 1, 1, 5);
+        item.MeaningText = request.MeaningText?.Trim();
+        item.ExampleSentence = request.ExampleSentence?.Trim();
+        item.ImageUrl = request.ImageUrl?.Trim();
+
+        // Clear and rebuild translations
+        foreach (var translation in item.Translations.ToList())
+        {
+            dbContext.Remove(translation);
+        }
+        item.Translations.Clear();
+
+        if (!string.IsNullOrWhiteSpace(bmText))
+        {
+            item.Translations.Add(new VocabularyTranslation { LanguageCode = "ms", TranslationText = bmText });
+        }
+        if (!string.IsNullOrWhiteSpace(request.ZhText))
+        {
+            item.Translations.Add(new VocabularyTranslation { LanguageCode = "zh", TranslationText = request.ZhText.Trim() });
+        }
+        if (!string.IsNullOrWhiteSpace(request.EnText))
+        {
+            item.Translations.Add(new VocabularyTranslation { LanguageCode = "en", TranslationText = request.EnText.Trim() });
+        }
+
+        var syllablesJson = EnsureJsonArray(request.SyllablesJson);
+        var syllableText = request.SyllableText?.Trim();
+        if (syllablesJson != "[]" || !string.IsNullOrWhiteSpace(syllableText))
+        {
+            if (item.SyllableInfo == null)
+            {
+                item.SyllableInfo = new VocabularySyllableInfo
+                {
+                    VocabularyItemId = item.Id,
+                    SyllablesJson = syllablesJson,
+                    SyllableText = syllableText
+                };
+            }
+            else
+            {
+                item.SyllableInfo.SyllablesJson = syllablesJson;
+                item.SyllableInfo.SyllableText = syllableText;
+            }
+        }
+        else if (item.SyllableInfo != null)
+        {
+            dbContext.Remove(item.SyllableInfo);
+            item.SyllableInfo = null;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToDto(item);
+    }
+
+    public async Task<bool> DeleteVocabularyItemAsync(
+        int moduleId,
+        int itemId,
+        CancellationToken cancellationToken)
+    {
+        var item = await dbContext.VocabularyItems
+            .FirstOrDefaultAsync(v => v.Id == itemId && v.ModuleId == moduleId, cancellationToken);
+
+        if (item == null)
+            return false;
+
+        item.IsActive = false;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+
     internal static SyllabusModuleDto ToDto(SyllabusModule module) => new(
         module.Id,
         module.PublicId,

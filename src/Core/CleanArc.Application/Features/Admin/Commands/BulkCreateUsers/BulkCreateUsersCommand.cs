@@ -8,6 +8,7 @@ public class BulkCreateUsersCommand : IRequest<OperationResult<BulkCreateUsersRe
     public int Count { get; set; }
     public string Role { get; set; } // "student" or "teacher"
     public int InstitutionId { get; set; }
+    public int UserId { get; set; }
 }
 
 public class BulkCreateUsersResult

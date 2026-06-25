@@ -109,7 +109,7 @@ public class GameEndpoints : ICarterModule
         {
           var userId = int.Parse(user.Identity!.GetUserId());
 
-          if (gameKey is not ("spell_catcher" or "syllable_sushi" or "voice_bridge" or "translation"))
+          if (gameKey is not ("spell_catcher" or "syllable_sushi" or "voice_bridge" or "translation" or "echo_sequence"))
               return Results.BadRequest(new { message = "Unsupported game key for AI generation." });
 
           var classroom = await unitOfWork.ClassroomRepository.GetClassroomByIdAsync(request.ClassroomId);

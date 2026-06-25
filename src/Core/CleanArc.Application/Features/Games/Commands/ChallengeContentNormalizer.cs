@@ -23,6 +23,7 @@ internal static class ChallengeContentNormalizer
         "syllable_sushi" => NormalizeAdaptiveWordItems(rawContentData, "SYLLABLE_SUSHI"),
         "voice_bridge" => NormalizeAdaptiveWordItems(rawContentData, "VOICE_BRIDGE"),
         "translation" => NormalizeAdaptiveWordItems(rawContentData, "TRANSLATION"),
+        "echo_sequence" => NormalizeAdaptiveWordItems(rawContentData, "ECHO_SEQUENCE"),
         _ => NormalizationResult.Fail($"Unsupported game key '{gameKey}'")
       };
     }

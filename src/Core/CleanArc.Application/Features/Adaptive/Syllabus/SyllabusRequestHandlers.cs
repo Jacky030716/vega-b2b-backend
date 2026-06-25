@@ -54,3 +54,29 @@ internal sealed class CreateSyllabusVocabularyItemCommandHandler(ISyllabusModule
             request.Request,
             cancellationToken);
 }
+
+internal sealed class UpdateSyllabusVocabularyItemCommandHandler(ISyllabusModuleService syllabusModuleService)
+    : IRequestHandler<UpdateSyllabusVocabularyItemCommand, VocabularyItemDto>
+{
+    public async ValueTask<VocabularyItemDto> Handle(
+        UpdateSyllabusVocabularyItemCommand request,
+        CancellationToken cancellationToken)
+        => await syllabusModuleService.UpdateVocabularyItemAsync(
+            request.ModuleId,
+            request.ItemId,
+            request.Request,
+            cancellationToken);
+}
+
+internal sealed class DeleteSyllabusVocabularyItemCommandHandler(ISyllabusModuleService syllabusModuleService)
+    : IRequestHandler<DeleteSyllabusVocabularyItemCommand, bool>
+{
+    public async ValueTask<bool> Handle(
+        DeleteSyllabusVocabularyItemCommand request,
+        CancellationToken cancellationToken)
+        => await syllabusModuleService.DeleteVocabularyItemAsync(
+            request.ModuleId,
+            request.ItemId,
+            cancellationToken);
+}
+

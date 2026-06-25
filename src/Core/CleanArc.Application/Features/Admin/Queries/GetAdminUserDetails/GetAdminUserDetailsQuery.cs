@@ -7,6 +7,7 @@ public class GetAdminUserDetailsQuery : IRequest<OperationResult<GetAdminUserDet
 {
     public int InstitutionId { get; set; } = 1;
     public int UserId { get; set; }
+    public int AdminUserId { get; set; }
 }
 
 public class GetAdminUserDetailsResult

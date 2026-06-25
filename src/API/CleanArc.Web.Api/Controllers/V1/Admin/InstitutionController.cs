@@ -25,9 +25,7 @@ public class InstitutionController(
     [HttpPost("users/bulk-generate")]
     public async Task<IActionResult> BulkGenerateUsers([FromBody] BulkCreateUsersCommand command)
     {
-        // Here we could extract InstitutionId from the logged-in admin's claims
-        // but for now, we'll allow the command to specify it, or default to 1 if not provided.
-        if (command.InstitutionId == 0) command.InstitutionId = 1;
+        command.UserId = int.Parse(User.Identity!.GetUserId());
 
         var result = await sender.Send(command);
 
@@ -44,7 +42,7 @@ public class InstitutionController(
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers([FromQuery] GetInstitutionUsersQuery query)
     {
-        if (query.InstitutionId == 0) query.InstitutionId = 1;
+        query.UserId = int.Parse(User.Identity!.GetUserId());
         var result = await sender.Send(query);
         return base.OperationResult(result);
     }
@@ -52,7 +50,7 @@ public class InstitutionController(
     [HttpGet("users/export")]
     public async Task<IActionResult> ExportUsers([FromQuery] GetInstitutionUsersQuery query, CancellationToken cancellationToken)
     {
-        if (query.InstitutionId == 0) query.InstitutionId = 1;
+        query.UserId = int.Parse(User.Identity!.GetUserId());
 
         var result = await sender.Send(query);
         if (!result.IsSuccess)
@@ -66,9 +64,10 @@ public class InstitutionController(
     }
 
     [HttpGet("stats")]
-    public async Task<IActionResult> GetStats([FromQuery] int institutionId = 1)
+    public async Task<IActionResult> GetStats()
     {
-        var result = await sender.Send(new GetInstitutionStatsQuery { InstitutionId = institutionId });
+        var adminUserId = int.Parse(User.Identity!.GetUserId());
+        var result = await sender.Send(new GetInstitutionStatsQuery { UserId = adminUserId });
         return base.OperationResult(result);
     }
 

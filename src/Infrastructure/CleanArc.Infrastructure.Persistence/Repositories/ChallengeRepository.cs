@@ -231,6 +231,12 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
             .Where(cp => cp.UserId == userId && cp.ClassroomId == classroomId)
             .ToListAsync();
 
+    public async Task<List<Attempt>> GetStudentAttemptsForChallengesAsync(int userId, List<int> challengeIds)
+        => await DbContext.Attempts.AsNoTracking()
+            .Where(a => a.UserId == userId && challengeIds.Contains(a.ChallengeId) && a.IsCompleted)
+            .OrderBy(a => a.CompletedAt)
+            .ToListAsync();
+
     public async Task<bool> IsStudentModuleCompletedAsync(int userId, int classroomId, int moduleId)
     {
         var challengeIds = await DbContext.Challenges.AsNoTracking()

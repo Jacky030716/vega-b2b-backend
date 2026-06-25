@@ -29,8 +29,21 @@ internal sealed class UpdateAdminUserCommandHandler(
             return OperationResult<UpdateAdminUserResult>.FailureResult("First name, last name, and email are required.");
         }
 
+        // ponytail: derive institution strictly from logged-in admin user to prevent multi-institution bypass
+        var membership = await unitOfWork.InstitutionRepository.GetPrimaryInstitutionForUserAsync(
+            request.AdminUserId,
+            cancellationToken);
+
+        if (membership is null)
+        {
+            return OperationResult<UpdateAdminUserResult>.ForbiddenResult(
+                "Unable to resolve institution membership for this billing action.");
+        }
+
+        var institutionId = membership.InstitutionId;
+
         var isAllowedUser = await userReportRepository.IsInstitutionTeacherOrStudentUserAsync(
-            request.InstitutionId <= 0 ? 1 : request.InstitutionId,
+            institutionId,
             request.UserId,
             cancellationToken);
 

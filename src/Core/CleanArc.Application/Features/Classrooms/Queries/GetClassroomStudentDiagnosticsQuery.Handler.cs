@@ -42,15 +42,10 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
     var userBadges = await unitOfWork.BadgeRepository.GetUserBadgesAsync(request.StudentId);
     var recentActivities = await unitOfWork.ActivityLogRepository.GetRecentActivityAsync(request.StudentId, 5);
 
-    // ── Radar metrics: served from cache, recalculated only on new attempts ────
-    var cacheKey = CacheKey(request.StudentId, request.ClassroomId);
-    if (!cache.TryGetValue(cacheKey, out RadarMetrics? metrics))
-    {
-      metrics = await BuildMetricsAsync(request.StudentId, request.ClassroomId);
-      cache.Set(cacheKey, metrics, CacheTtl);
-    }
+    // ponytail: disabled caching to ensure real-time updates as per educator diagnostics requirements
+    var metrics = await BuildMetricsAsync(request.StudentId, request.ClassroomId);
 
-    var level = Math.Max(metrics!.UserProgress?.CurrentLevel ?? student.Level, student.Level);
+    var level = Math.Max(metrics.UserProgress?.CurrentLevel ?? student.Level, student.Level);
     var quizzesTaken = Math.Max(metrics.UserProgress?.TotalQuizzesTaken ?? 0, metrics.CompletedCount);
 
     var avatarSource = string.IsNullOrWhiteSpace(student.AvatarUrl)
@@ -142,9 +137,13 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
 
     var userProgress = await unitOfWork.ProgressionRepository.GetUserProgressAsync(studentId);
 
-    // Iterate over classroom challenges (preserving original logic) but look up progress from
-    // the pre-loaded dictionary instead of querying per-challenge.
     var classroomChallenges = await unitOfWork.ClassroomRepository.GetClassroomChallengesAsync(classroomId);
+    var challengeIds = classroomChallenges.Select(c => c.Id).ToList();
+
+    // Query all individual completed attempts for these challenges to calculate average metrics
+    var allAttempts = await unitOfWork.ChallengeRepository.GetStudentAttemptsForChallengesAsync(studentId, challengeIds);
+    var challengesMap = classroomChallenges.ToDictionary(c => c.Id);
+
     var recentClassroomPerformances = new List<ClassroomPerformanceItemDto>();
 
     foreach (var challenge in classroomChallenges)
@@ -152,7 +151,7 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
       if (!progressByChallenge.TryGetValue(challenge.Id, out var progressRow) || !progressRow.HasCompleted)
         continue;
 
-      // Convert BestScore to a true percentage via MaxStars, same as the original handler.
+      // Convert BestScore to a true percentage via MaxStars
       var estimatedTotal = challenge.MaxStars * 100;
       var scorePercent = progressRow.BestAccuracy.HasValue
           ? (double)progressRow.BestAccuracy.Value
@@ -160,9 +159,10 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
               ? Math.Round((double)progressRow.BestScore / estimatedTotal * 100.0, 1)
               : 0);
 
+      // ponytail: use progressRow.LastAttemptAt to ensure latest completion time is used
       recentClassroomPerformances.Add(new ClassroomPerformanceItemDto(
           challenge.Id.ToString(),
-          progressRow.FirstCompletedAt ?? progressRow.LastAttemptAt,
+          progressRow.LastAttemptAt,
           scorePercent,
           progressRow.BestScore,
           estimatedTotal,
@@ -173,39 +173,63 @@ internal class GetClassroomStudentDiagnosticsQueryHandler(
         .OrderByDescending(p => p.CompletedAt)
         .FirstOrDefault();
 
-    var averageScore = recentClassroomPerformances.Count > 0
-        ? recentClassroomPerformances.Average(p => p.ScorePercentage)
+    // ponytail: aggregate all attempts (poorer/older ones included) for average score, accuracy, and mastery calculations
+    var attemptScores = new List<double>();
+    foreach (var attempt in allAttempts)
+    {
+      if (challengesMap.TryGetValue(attempt.ChallengeId, out var challenge))
+      {
+        var estimatedTotal = challenge.MaxStars * 100;
+        var scorePercent = estimatedTotal > 0
+            ? Math.Round((double)attempt.Score / estimatedTotal * 100.0, 1)
+            : 0;
+        attemptScores.Add(scorePercent);
+      }
+    }
+
+    var averageScore = attemptScores.Count > 0
+        ? attemptScores.Average()
         : 0;
+
     var averageTimeSpent = recentClassroomPerformances.Count > 0
         ? recentClassroomPerformances.Average(p => p.TimeSpent)
         : 0;
 
-    // ── Accuracy: average of BestAccuracy (or derived %) across ALL completed challenges ─────
-    var accuracyValue = recentClassroomPerformances.Count > 0
-        ? Math.Min(100, Math.Round(recentClassroomPerformances.Average(p => p.ScorePercentage)))
+    // ── Accuracy: average accuracy across all attempts ─────
+    var accuracyValue = attemptScores.Count > 0
+        ? Math.Min(100, Math.Round(attemptScores.Average()))
         : 0;
 
-    // ── Consistency: inverse of score spread among recent performances ────────────────────────
-    // Take the last 5 by completion date for the spread calculation.
-    var recentFive = recentClassroomPerformances
-        .OrderByDescending(p => p.CompletedAt)
+    // ── Consistency: score spread of the last 5 individual attempts ────────────────────────
+    var recentFiveAttempts = allAttempts
+        .OrderByDescending(a => a.CompletedAt)
         .Take(5)
+        .Select(a =>
+        {
+          if (challengesMap.TryGetValue(a.ChallengeId, out var challenge))
+          {
+            var estimatedTotal = challenge.MaxStars * 100;
+            return estimatedTotal > 0
+                ? Math.Round((double)a.Score / estimatedTotal * 100.0, 1)
+                : 0;
+          }
+          return 0.0;
+        })
         .ToList();
 
-    var consistencyValue = recentFive.Count > 1
+    var consistencyValue = recentFiveAttempts.Count > 1
         ? Math.Min(100, Math.Max(0,
-            100 - (recentFive.Max(p => p.ScorePercentage) -
-            recentFive.Min(p => p.ScorePercentage))))
+            100 - (recentFiveAttempts.Max() - recentFiveAttempts.Min())))
         : Math.Round(averageScore);
 
-    // ── Speed: based on average duration of recent performances ──────────────────────────────
+    // ── Speed: based on average duration, defaulting to 0 (N/A) if no duration is available ──
     var speedValue = averageTimeSpent > 0
         ? Math.Max(20, Math.Min(100, Math.Round(100 - (averageTimeSpent / 6.0))))
-        : 50;
+        : 0;
 
-    // ── Mastery: average accuracy across all completed challenges ─────────────────────────────
-    var masteryValue = recentClassroomPerformances.Count > 0
-        ? Math.Min(100, Math.Round(recentClassroomPerformances.Average(p => p.ScorePercentage)))
+    // ── Mastery: average accuracy across all attempts ─────────────────────────────
+    var masteryValue = attemptScores.Count > 0
+        ? Math.Min(100, Math.Round(attemptScores.Average()))
         : 0;
 
     return new RadarMetrics(

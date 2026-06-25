@@ -534,7 +534,8 @@ public class SeedGameData : ISeedGameData
             new GameTemplate { Code = "SPELL_CATCHER", Category = "RECALL", Name = "Spell Catcher", Description = "Catch and order letters to recall full spelling.", SupportsAdaptiveDifficulty = true, IsActive = true },
             new GameTemplate { Code = "VOICE_BRIDGE", Category = "SPEAKING", Name = "Voice Bridge", Description = "Speak target words and receive pronunciation recall feedback.", SupportsAdaptiveDifficulty = true, IsActive = true },
             new GameTemplate { Code = "SYLLABLE_SUSHI", Category = "STRUCTURE", Name = "Syllable Sushi", Description = "Assemble words from syllable chunks.", SupportsAdaptiveDifficulty = true, IsActive = true },
-            new GameTemplate { Code = "TRANSLATION", Category = "RECALL", Name = "Translation", Description = "Translate phrases or words between languages.", SupportsAdaptiveDifficulty = true, IsActive = true }
+            new GameTemplate { Code = "TRANSLATION", Category = "RECALL", Name = "Translation", Description = "Translate phrases or words between languages.", SupportsAdaptiveDifficulty = true, IsActive = true },
+            new GameTemplate { Code = "ECHO_SEQUENCE", Category = "RECALL", Name = "Echo Sequence", Description = "Auditory serial recall memory combat training.", SupportsAdaptiveDifficulty = true, IsActive = true }
         };
 
         foreach (var template in templates)
@@ -550,7 +551,8 @@ public class SeedGameData : ISeedGameData
             new Game { Key = "spell_catcher", Name = "Spell Catcher", Description = "Catch letters and spell syllabus words.", ImageUrl = string.Empty, Category = "RECALL", SkillsTaught = "spelling recall" },
             new Game { Key = "voice_bridge", Name = "Voice Bridge", Description = "Practice oral recall and pronunciation.", ImageUrl = string.Empty, Category = "SPEAKING", SkillsTaught = "pronunciation recall" },
             new Game { Key = "syllable_sushi", Name = "Syllable Sushi", Description = "Build words from syllables.", ImageUrl = string.Empty, Category = "STRUCTURE", SkillsTaught = "syllable assembly" },
-            new Game { Key = "translation", Name = "Translation", Description = "Translate syllabus words.", ImageUrl = string.Empty, Category = "RECALL", SkillsTaught = "word translation" }
+            new Game { Key = "translation", Name = "Translation", Description = "Translate syllabus words.", ImageUrl = string.Empty, Category = "RECALL", SkillsTaught = "word translation" },
+            new Game { Key = "echo_sequence", Name = "Echo Sequence", Description = "Auditory serial recall memory combat training.", ImageUrl = string.Empty, Category = "RECALL", SkillsTaught = "auditory memory recall" }
         };
 
         foreach (var game in adaptiveGames)

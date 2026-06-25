@@ -36,4 +36,6 @@ public interface IAppUserManager
     Task<User> FindUserByEmail(string email);
     Task<string> GeneratePasswordResetToken(User user);
     Task<IdentityResult> ResetPassword(User user, string token, string newPassword);
+
+    Task<IdentityResult> DeleteUserAsync(User user);
 }
