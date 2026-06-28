@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\CleanArc.Infrastructure.Identity\CleanArc.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\..\Infrastructure\CleanArc.Infrastructure.Persistence\CleanArc.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\..\API\CleanArc.WebFramework\CleanArc.WebFramework.csproj" />
   </ItemGroup>
 
   <ItemGroup>

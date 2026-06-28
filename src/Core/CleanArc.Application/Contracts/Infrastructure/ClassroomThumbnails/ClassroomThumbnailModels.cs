@@ -5,8 +5,6 @@ namespace CleanArc.Application.Contracts.Infrastructure.ClassroomThumbnails;
 public record ClassroomThumbnailGenerationRequest(
   int TeacherId,
   string ClassroomName,
-  int YearLevel,
-  IReadOnlyList<string> Subjects,
   string? Description,
   string ThumbnailPrompt);
 

@@ -72,6 +72,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
 
     // Notifications
     public DbSet<UserNotification> UserNotifications { get; set; }
+    public DbSet<PushNotificationAttempt> PushNotificationAttempts { get; set; }
 
     // Streak
     public DbSet<DailyCheckIn> DailyCheckIns { get; set; }

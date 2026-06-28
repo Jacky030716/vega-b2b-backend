@@ -7,8 +7,6 @@ public record GenerateClassroomThumbnailJobCommand(
     int AuditLogId,
     int UserId,
     string ClassroomName,
-    int YearLevel,
-    string[] Subjects,
     string? Description,
     string ThumbnailPrompt)
     : IRequest<OperationResult<bool>>;

@@ -19,7 +19,8 @@ public class WordProgressMasteryTests
         new SpellCatcherGameStrategy(),
         new SyllableSushiGameStrategy(),
         new VoiceBridgeGameStrategy(),
-        new TranslationGameStrategy()
+        new TranslationGameStrategy(),
+        new EchoSequenceGameStrategy()
     };
     private static ApplicationDbContext CreateContext()
     {

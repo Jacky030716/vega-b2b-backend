@@ -189,9 +189,7 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             return subjects;
         }
 
-        return string.IsNullOrWhiteSpace(classroom.Subject)
-            ? Array.Empty<string>()
-            : new[] { classroom.Subject.Trim() };
+        return Array.Empty<string>();
     }
 
     public async Task<StudentModuleProgressionDto> GetModuleProgressionAsync(
@@ -307,11 +305,6 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
             .Select(subject => subject.Subject)
             .ToListAsync(cancellationToken);
 
-        if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
-        {
-            subjects.Add(classroom.Subject.Trim());
-        }
-
         subjects = subjects
             .Where(subject => !string.IsNullOrWhiteSpace(subject))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -339,7 +332,6 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
         var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
             .Where(module => module.IsActive
                              && module.ModuleType == SyllabusModule.PredefinedModuleType
-                             && module.YearLevel == classroom.YearLevel
                              && subjects.Contains(module.Subject))
             .Select(module => module.Id)
             .ToListAsync(cancellationToken);
@@ -370,9 +362,9 @@ public class StudentModuleProgressionService(ApplicationDbContext dbContext) : I
                 Module = new SyllabusModule
                 {
                     ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
-                    Subject = string.IsNullOrWhiteSpace(classroom.Subject) ? "Custom" : classroom.Subject.Trim(),
+                    Subject = "Custom",
                     Language = "ms",
-                    YearLevel = classroom.YearLevel,
+                    YearLevel = 1,
                     Term = string.Empty,
                     UnitTitle = "Custom Module",
                     Title = "Custom Module",

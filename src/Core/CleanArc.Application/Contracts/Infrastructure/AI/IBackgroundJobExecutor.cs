@@ -21,8 +21,6 @@ public interface IBackgroundJobExecutor
         int auditLogId, 
         int userId, 
         string classroomName, 
-        int yearLevel, 
-        string[] subjects, 
         string? description, 
         string thumbnailPrompt);
 }

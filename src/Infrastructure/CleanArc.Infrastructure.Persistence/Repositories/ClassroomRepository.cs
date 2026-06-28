@@ -138,17 +138,10 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     }
 
     var normalizedSubjects = NormalizeSubjects(subjects);
-    if (normalizedSubjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
-    {
-      normalizedSubjects.Add(classroom.Subject.Trim());
-    }
-
     if (normalizedSubjects.Count == 0)
     {
       return;
     }
-
-    classroom.Subject = normalizedSubjects[0];
 
     var existingSubjects = classroom.Subjects
         .Select(s => s.Subject)
@@ -168,7 +161,6 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     var matchingModuleIds = await DbContext.SyllabusModules.AsNoTracking()
         .Where(m => m.IsActive
                     && m.ModuleType == SyllabusModule.PredefinedModuleType
-                    && m.YearLevel == classroom.YearLevel
                     && normalizedSubjects.Contains(m.Subject))
         .Select(m => m.Id)
         .ToListAsync();
@@ -219,14 +211,7 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
       return subjects;
     }
 
-    var legacySubject = await DbContext.Classrooms.AsNoTracking()
-        .Where(c => c.Id == classroomId && c.IsActive && !c.IsDeleted)
-        .Select(c => c.Subject)
-        .FirstOrDefaultAsync();
-
-    return string.IsNullOrWhiteSpace(legacySubject)
-        ? Array.Empty<string>()
-        : new[] { legacySubject.Trim() };
+    return Array.Empty<string>();
   }
 
   public async Task ReplaceClassroomSubjectsAndModulesAsync(int classroomId, IEnumerable<string> subjects, int teacherId)
@@ -246,8 +231,6 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     {
       throw new InvalidOperationException("At least one subject is required");
     }
-
-    classroom.Subject = normalizedSubjects[0];
 
     var subjectSet = normalizedSubjects.ToHashSet(StringComparer.OrdinalIgnoreCase);
     var subjectsToRemove = classroom.Subjects
@@ -271,7 +254,6 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
     var desiredModuleIds = await DbContext.SyllabusModules.AsNoTracking()
         .Where(module => module.IsActive
                          && module.ModuleType == SyllabusModule.PredefinedModuleType
-                         && module.YearLevel == classroom.YearLevel
                          && normalizedSubjects.Contains(module.Subject))
         .Select(module => module.Id)
         .ToListAsync();
@@ -635,9 +617,9 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
   private static SyllabusModule CreateCustomLearningModule(Classroom classroom, int teacherId) => new()
   {
     ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
-    Subject = string.IsNullOrWhiteSpace(classroom.Subject) ? "Custom" : classroom.Subject.Trim(),
+    Subject = "Custom",
     Language = "ms",
-    YearLevel = classroom.YearLevel,
+    YearLevel = 1,
     Term = string.Empty,
     UnitTitle = "Custom Module",
     Title = "Custom Module",

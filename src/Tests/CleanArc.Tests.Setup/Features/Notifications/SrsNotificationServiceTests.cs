@@ -3,6 +3,7 @@ using System.Text.Json;
 using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.User;
+using CleanArc.Domain.Entities.Notifications;
 using CleanArc.Infrastructure.Persistence;
 using CleanArc.Infrastructure.Persistence.Services.Adaptive;
 using CleanArc.Infrastructure.Persistence.Services.Notifications;
@@ -118,11 +119,29 @@ public class SrsNotificationServiceTests
 
     private static SrsNotificationService CreateService(
         ApplicationDbContext context,
-        RecordingHttpMessageHandler handler) => new(
-        context,
-        new HttpClient(handler),
-        new NotificationInboxService(context),
-        NullLogger<SrsNotificationService>.Instance);
+        RecordingHttpMessageHandler handler)
+    {
+        var fakeJobManager = new FakeBackgroundJobManager();
+        var service = new SrsNotificationService(
+            context,
+            new HttpClient(handler),
+            new NotificationInboxService(context),
+            new NotificationValidationService(),
+            fakeJobManager,
+            NullLogger<SrsNotificationService>.Instance);
+        fakeJobManager.Service = service;
+        return service;
+    }
+
+    private class FakeBackgroundJobManager : CleanArc.Application.Contracts.Notifications.IBackgroundJobManager
+    {
+        public SrsNotificationService Service { get; set; } = null!;
+
+        public void EnqueuePushNotification(int attemptId)
+        {
+            Service.ProcessPushNotificationAttemptAsync(attemptId, CancellationToken.None).GetAwaiter().GetResult();
+        }
+    }
 
     private static ApplicationDbContext CreateContext()
     {
@@ -269,6 +288,38 @@ public class SrsNotificationServiceTests
         return item;
     }
 
+    [Fact]
+    public async Task ProcessPushNotificationAttemptAsync_WhenAlreadySent_SkipsProcessingAndHttpCall()
+    {
+        using var context = CreateContext();
+        var fixture = await AddOverdueReviewFixtureAsync(context, "already-sent", "ExponentPushToken[test]");
+        
+        // Add an attempt with status "Sent"
+        var attempt = new PushNotificationAttempt
+        {
+            UserId = fixture.Student.Id,
+            PushToken = fixture.Student.ExpoPushToken,
+            AlertId = 1, // Mock alert ID
+            Status = "Sent",
+            CreatedTime = DateTime.UtcNow,
+            ModifiedDate = DateTime.UtcNow
+        };
+        context.PushNotificationAttempts.Add(attempt);
+        await context.SaveChangesAsync();
+
+        var handler = new RecordingHttpMessageHandler();
+        var service = CreateService(context, handler);
+
+        await service.ProcessPushNotificationAttemptAsync(attempt.Id, CancellationToken.None);
+
+        // Verify no HTTP request was sent
+        Assert.Equal(0, handler.RequestCount);
+
+        // Verify status remains "Sent"
+        var updatedAttempt = await context.PushNotificationAttempts.FindAsync(attempt.Id);
+        Assert.Equal("Sent", updatedAttempt!.Status);
+    }
+
     private sealed record OverdueReviewFixture(
         User Student,
         Classroom FirstClassroom,
@@ -289,7 +340,10 @@ public class SrsNotificationServiceTests
             RequestBody = request.Content is null
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(HttpStatusCode.OK);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"data\":[{\"status\":\"ok\"}]}", System.Text.Encoding.UTF8, "application/json")
+            };
         }
     }
 }

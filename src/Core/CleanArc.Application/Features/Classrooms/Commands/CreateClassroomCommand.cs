@@ -7,9 +7,6 @@ public record CreateClassroomCommand(
     int TeacherId,
     string Name,
     string Description,
-    string Subject,
-    IReadOnlyCollection<string>? Subjects,
     string? Thumbnail,
-    int YearLevel = 1,
     ClassroomThumbnailRequest? ThumbnailInfo = null)
     : IRequest<OperationResult<int>>;

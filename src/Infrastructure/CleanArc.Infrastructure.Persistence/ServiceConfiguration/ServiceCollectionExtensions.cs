@@ -47,6 +47,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProgressionRepository, ProgressionRepository>();
         services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
         services.AddScoped<INotificationInboxService, NotificationInboxService>();
+        services.AddScoped<INotificationValidationService, NotificationValidationService>();
+        services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IChallengeRepository, ChallengeRepository>();
         services.AddScoped<IBillingRepository, BillingRepository>();
         services.AddScoped<IStickerRepository, StickerRepository>();
@@ -70,6 +72,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGameStrategy, SyllableSushiGameStrategy>();
         services.AddScoped<IGameStrategy, VoiceBridgeGameStrategy>();
         services.AddScoped<IGameStrategy, TranslationGameStrategy>();
+        services.AddScoped<IGameStrategy, EchoSequenceGameStrategy>();
         services.AddScoped<IClassroomModuleManagementService, ClassroomModuleManagementService>();
         services.AddScoped<IStudentModuleProgressionService, StudentModuleProgressionService>();
         services.AddScoped<IRecoveryMissionService, RecoveryMissionService>();
@@ -96,6 +99,7 @@ public static class ServiceCollectionExtensions
         services.Configure<FirebaseStorageOptions>(configuration.GetSection(FirebaseStorageOptions.SectionName));
         services.Configure<OllamaChallengeOptions>(configuration.GetSection(OllamaChallengeOptions.SectionName));
         services.Configure<GoogleAiOptions>(configuration.GetSection(GoogleAiOptions.SectionName));
+        services.Configure<MailSettings>(configuration.GetSection(MailSettings.SectionName));
         services.Configure<RagVectorStoreOptions>(configuration.GetSection(RagVectorStoreOptions.SectionName));
 
         services.AddHttpClient<IAiGenerationService, GoogleAiService>((serviceProvider, client) =>

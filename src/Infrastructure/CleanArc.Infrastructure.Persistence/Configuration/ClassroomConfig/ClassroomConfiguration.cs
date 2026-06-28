@@ -9,8 +9,8 @@ public class ClassroomConfiguration : IEntityTypeConfiguration<Classroom>
   public void Configure(EntityTypeBuilder<Classroom> builder)
   {
     builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
-    builder.Property(c => c.Subject).IsRequired().HasMaxLength(100);
-    builder.Property(c => c.YearLevel).HasColumnName("year_level").HasDefaultValue(1);
+    builder.Ignore(c => c.Subject);
+    builder.Ignore(c => c.YearLevel);
     builder.Property(c => c.Thumbnail).HasColumnName("Thumbnail").HasDefaultValue(string.Empty);
     builder.Property(c => c.ThumbnailType).HasColumnName("thumbnail_type").HasMaxLength(24).HasDefaultValue("DEFAULT");
     builder.Property(c => c.ThumbnailUrl).HasColumnName("thumbnail_url");

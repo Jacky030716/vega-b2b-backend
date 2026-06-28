@@ -49,16 +49,11 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
         CancellationToken cancellationToken) =>
       {
         var userId = int.Parse(user.Identity!.GetUserId());
-        var subjects = request.Subjects?.Where(subject => !string.IsNullOrWhiteSpace(subject)).Select(subject => subject.Trim()).ToArray()
-          ?? Array.Empty<string>();
         if (string.IsNullOrWhiteSpace(request.ClassroomName))
           return Results.BadRequest(new { message = "Classroom name is required." });
 
         if (request.ClassroomName.Length > 200)
           return Results.BadRequest(new { message = "Classroom name must be 200 characters or fewer." });
-
-        if (request.YearLevel is < 1 or > 6)
-          return Results.BadRequest(new { message = "Year level must be between 1 and 6." });
 
         if (string.IsNullOrWhiteSpace(request.ThumbnailPrompt))
           return Results.BadRequest(new { message = "Thumbnail description is required." });
@@ -99,8 +94,6 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
             auditLogId,
             userId,
             request.ClassroomName,
-            request.YearLevel,
-            subjects,
             request.Description,
             request.ThumbnailPrompt));
 
@@ -112,17 +105,14 @@ public sealed class ClassroomThumbnailAiEndpoints : ICarterModule
 
   private static string BuildPrompt(ClassroomThumbnailGenerationDto request)
   {
-    var subjectText = request.Subjects?.Count > 0 ? string.Join(", ", request.Subjects) : "classroom learning";
     var description = string.IsNullOrWhiteSpace(request.Description) ? string.Empty : $" The classroom description is: {request.Description.Trim()}";
 
     return
-      $"Create a child-safe classroom thumbnail for a Malaysian primary school learning app. Teacher request: {request.ThumbnailPrompt.Trim()}. Classroom: {request.ClassroomName.Trim()}, Year {request.YearLevel}, subjects: {subjectText}.{description} Use a playful educational illustration style with books, learning icons, friendly colors, a 1:1 square composition, a transparent background, centered and fully visible subjects, no cropping, no truncation, no cut off edges, and no text overlay.";
+      $"Create a child-safe classroom thumbnail for a learning app. Teacher request: {request.ThumbnailPrompt.Trim()}. Classroom: {request.ClassroomName.Trim()}.{description} Use a playful educational illustration style with books, learning icons, friendly colors, a 1:1 square composition, a transparent background, centered and fully visible subjects, no cropping, no truncation, no cut off edges, and no text overlay.";
   }
 }
 
 public sealed record ClassroomThumbnailGenerationDto(
   string ClassroomName,
-  int YearLevel,
-  IReadOnlyList<string> Subjects,
   string? Description,
   string ThumbnailPrompt);

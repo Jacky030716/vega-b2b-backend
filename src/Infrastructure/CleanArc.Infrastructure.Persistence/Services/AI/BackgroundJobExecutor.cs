@@ -31,11 +31,9 @@ public sealed class BackgroundJobExecutor(ISender sender) : IBackgroundJobExecut
         int auditLogId, 
         int userId, 
         string classroomName, 
-        int yearLevel, 
-        string[] subjects, 
         string? description, 
         string thumbnailPrompt)
     {
-        await sender.Send(new GenerateClassroomThumbnailJobCommand(auditLogId, userId, classroomName, yearLevel, subjects, description, thumbnailPrompt));
+        await sender.Send(new GenerateClassroomThumbnailJobCommand(auditLogId, userId, classroomName, description, thumbnailPrompt));
     }
 }

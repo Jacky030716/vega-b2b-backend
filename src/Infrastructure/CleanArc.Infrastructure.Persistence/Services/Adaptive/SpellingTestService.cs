@@ -64,15 +64,6 @@ public class SpellingTestService(
                 request,
                 moduleIds,
                 modules.Select(module => $"{module.Id}:{module.Subject}:Y{module.YearLevel}").ToList());
-        if (modules.Any(module => module.YearLevel != classroom.YearLevel))
-            throw CreateSpellingTestFailure(
-                "Selected modules must match the classroom year level.",
-                classroomId,
-                teacherId,
-                request,
-                moduleIds,
-                modules.Select(module => $"{module.Id}:{module.Subject}:Y{module.YearLevel}").ToList());
-
         var config = NormalizeConfig(request.Config);
         var words = await SelectWordsAsync(classroomId, moduleIds, config, title, cancellationToken);
         if (words.Count == 0)
@@ -663,11 +654,6 @@ public class SpellingTestService(
             .Select(subject => subject.Subject)
             .ToListAsync(cancellationToken);
 
-        if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
-        {
-            subjects.Add(classroom.Subject.Trim());
-        }
-
         subjects = subjects
             .Where(subject => !string.IsNullOrWhiteSpace(subject))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -696,7 +682,6 @@ public class SpellingTestService(
         var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
             .Where(module => module.IsActive
                              && module.ModuleType == SyllabusModule.PredefinedModuleType
-                             && module.YearLevel == classroom.YearLevel
                              && subjects.Contains(module.Subject)
                              && dbContext.VocabularyItems.Any(vocabulary => vocabulary.ModuleId == module.Id && vocabulary.IsActive))
             .Select(module => module.Id)

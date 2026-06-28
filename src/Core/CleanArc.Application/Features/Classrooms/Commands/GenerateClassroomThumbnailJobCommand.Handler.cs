@@ -29,8 +29,6 @@ internal sealed class GenerateClassroomThumbnailJobCommandHandler(
                 new ClassroomThumbnailGenerationRequest(
                     request.UserId,
                     request.ClassroomName,
-                    request.YearLevel,
-                    request.Subjects,
                     request.Description,
                     request.ThumbnailPrompt.Trim()),
                 cancellationToken);
@@ -83,10 +81,9 @@ internal sealed class GenerateClassroomThumbnailJobCommandHandler(
 
     private static string BuildPrompt(GenerateClassroomThumbnailJobCommand request)
     {
-        var subjectText = request.Subjects?.Length > 0 ? string.Join(", ", request.Subjects) : "classroom learning";
         var description = string.IsNullOrWhiteSpace(request.Description) ? string.Empty : $" The classroom description is: {request.Description.Trim()}";
 
         return
-            $"Create a child-safe classroom thumbnail for a Malaysian primary school learning app. Teacher request: {request.ThumbnailPrompt.Trim()}. Classroom: {request.ClassroomName.Trim()}, Year {request.YearLevel}, subjects: {subjectText}.{description} Use a playful educational illustration style with books, learning icons, friendly colors, a 1:1 square composition, a transparent background, centered and fully visible subjects, no cropping, no truncation, no cut off edges, and no text overlay.";
+            $"Create a child-safe classroom thumbnail for a learning app. Teacher request: {request.ThumbnailPrompt.Trim()}. Classroom: {request.ClassroomName.Trim()}.{description} Use a playful educational illustration style with books, learning icons, friendly colors, a 1:1 square composition, a transparent background, centered and fully visible subjects, no cropping, no truncation, no cut off edges, and no text overlay.";
     }
 }

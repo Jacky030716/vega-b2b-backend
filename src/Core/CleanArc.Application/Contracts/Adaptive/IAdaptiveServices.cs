@@ -105,4 +105,8 @@ public interface ISrsNotificationService
     Task RegisterPushTokenAsync(int studentId, string token, CancellationToken cancellationToken);
     Task SendMasteryDecayNotificationsAsync(CancellationToken cancellationToken);
     Task SendNotificationIfOverdueAsync(int studentId, CancellationToken cancellationToken);
+    Task SendStreakReminderNudgeAsync(int studentId, CancellationToken cancellationToken);
+    Task SendWeeklyReportNotificationAsync(int studentId, string reportTitle, string reportLink, CancellationToken cancellationToken);
+    Task SendAchievementAlertNotificationAsync(int studentId, string badgeName, string badgeDescription, CancellationToken cancellationToken);
+    Task ProcessPushNotificationAttemptAsync(int attemptId, CancellationToken cancellationToken);
 }

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using CleanArc.Application.Contracts.Identity;
+using CleanArc.Application.Contracts.Notifications;
 using CleanArc.Application.Models.Common;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -10,13 +11,16 @@ namespace CleanArc.Application.Features.Users.Commands.ForgotPassword;
 internal class RequestPasswordResetCommandHandler : IRequestHandler<RequestPasswordResetCommand, OperationResult<bool>>
 {
   private readonly IAppUserManager _userManager;
+  private readonly IEmailService _emailService;
   private readonly ILogger<RequestPasswordResetCommandHandler> _logger;
 
   public RequestPasswordResetCommandHandler(
       IAppUserManager userManager,
+      IEmailService emailService,
       ILogger<RequestPasswordResetCommandHandler> logger)
   {
     _userManager = userManager;
+    _emailService = emailService;
     _logger = logger;
   }
 
@@ -49,9 +53,32 @@ internal class RequestPasswordResetCommandHandler : IRequestHandler<RequestPassw
       return OperationResult<bool>.FailureResult("Failed to initiate password reset");
     }
 
-    // TODO: Send email with reset link and token
-    // Format: https://yourapp.com/reset-password?token={resetToken}&email={email}
-    // NOTE: Logging raw tokens is only acceptable in non-production environments.
+    // Send email with reset link and token
+    var userEmail = user.Email ?? request.Email;
+    var resetLink = $"https://yourapp.com/reset-password?token={System.Uri.EscapeDataString(resetToken)}&email={System.Uri.EscapeDataString(userEmail)}";
+    var emailSubject = "Vega Platform - Password Reset Request";
+    var emailBody = $@"
+        <h2>Password Reset Request</h2>
+        <p>Hello,</p>
+        <p>You requested a password reset for your Vega account. Please click the link below to reset your password:</p>
+        <p>
+          <a href='{resetLink}' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;'>Reset Password</a>
+        </p>
+        <p>If the button above does not work, copy and paste the following URL into your browser:</p>
+        <p><a href='{resetLink}'>{resetLink}</a></p>
+        <p>This link is valid for 24 hours.</p>
+        <p>If you did not request a password reset, please ignore this email.</p>
+        <p>Best regards,<br>The Vega Team</p>";
+
+    try
+    {
+        await _emailService.SendEmailAsync(userEmail, emailSubject, emailBody, isHtml: true);
+    }
+    catch (System.Exception ex)
+    {
+        _logger.LogError(ex, $"Failed to send password reset email to: {userEmail}");
+    }
+
     _logger.LogInformation($"Password reset token generated for user: {user.Email}. Token: {resetToken} (expires at {user.PasswordResetTokenExpiresAt})");
 
     return OperationResult<bool>.SuccessResult(true);

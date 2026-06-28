@@ -5,6 +5,7 @@ using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Notifications;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.User;
+using CleanArc.Domain.Entities.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,8 @@ public class SrsNotificationService(
     ApplicationDbContext dbContext,
     HttpClient httpClient,
     INotificationInboxService notificationInboxService,
+    INotificationValidationService notificationValidationService,
+    IBackgroundJobManager backgroundJobManager,
     ILogger<SrsNotificationService> logger) : ISrsNotificationService
 {
     private const string AlertType = "ACADEMIC_CRITICAL";
@@ -66,7 +69,7 @@ public class SrsNotificationService(
 
         foreach (var student in studentsToNotify)
         {
-            if (!ShouldSendPracticeReminder(student, now))
+            if (!notificationValidationService.ShouldSendNotification(student, NotificationCategories.PracticeReminder, now))
                 continue;
 
             var overdueCount = await dbContext.WordProgresses.CountAsync(
@@ -83,7 +86,21 @@ public class SrsNotificationService(
                 continue;
 
             if (!string.IsNullOrEmpty(student.ExpoPushToken))
-                await SendPushNotificationAsync(student.ExpoPushToken, notification.Id, notification, cancellationToken);
+            {
+                var payloadStr = notification.Payload.ValueKind == JsonValueKind.Undefined
+                    ? "{}"
+                    : notification.Payload.GetRawText();
+
+                await EnqueuePushNotificationAsync(
+                    student.Id,
+                    student.ExpoPushToken,
+                    notification.Id,
+                    notification.Type,
+                    notification.Title,
+                    notification.Body,
+                    payloadStr,
+                    cancellationToken);
+            }
 
             student.LastSrsNotificationSentAt = now;
         }
@@ -105,7 +122,7 @@ public class SrsNotificationService(
             return;
 
         var now = DateTime.UtcNow;
-        if (!ShouldSendPracticeReminder(user, now))
+        if (!notificationValidationService.ShouldSendNotification(user, NotificationCategories.PracticeReminder, now))
             return;
 
         var overdueCount = await dbContext.WordProgresses.CountAsync(
@@ -127,10 +144,284 @@ public class SrsNotificationService(
             return;
 
         if (!string.IsNullOrEmpty(user.ExpoPushToken))
-            await SendPushNotificationAsync(user.ExpoPushToken, notification.Id, notification, cancellationToken);
+        {
+            var payloadStr = notification.Payload.ValueKind == JsonValueKind.Undefined
+                ? "{}"
+                : notification.Payload.GetRawText();
+
+            await EnqueuePushNotificationAsync(
+                studentId,
+                user.ExpoPushToken,
+                notification.Id,
+                notification.Type,
+                notification.Title,
+                notification.Body,
+                payloadStr,
+                cancellationToken);
+        }
 
         user.LastSrsNotificationSentAt = now;
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SendStreakReminderNudgeAsync(int studentId, CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users.FindAsync(new object[] { studentId }, cancellationToken);
+        if (user == null)
+            return;
+
+        if (!notificationValidationService.ShouldSendNotification(user, NotificationCategories.StreakNudge, DateTime.UtcNow))
+        {
+            logger.LogInformation("Streak nudge skipped for user {UserId} due to preferences, timezone, or quiet hours.", studentId);
+            return;
+        }
+
+        var notification = await notificationInboxService.CreateAsync(
+            new CreateNotificationRequest(
+                studentId,
+                "Streak Nudge",
+                "Keep your streak alive! Practice today.",
+                "STREAK_NUDGE",
+                "{}",
+                $"streak-nudge:{DateTime.UtcNow.Date:yyyyMMdd}"),
+            cancellationToken);
+
+        if (!string.IsNullOrEmpty(user.ExpoPushToken))
+        {
+            await EnqueuePushNotificationAsync(
+                studentId,
+                user.ExpoPushToken,
+                notification.Id,
+                notification.Type,
+                notification.Title,
+                notification.Body,
+                "{}",
+                cancellationToken);
+        }
+    }
+
+    public async Task SendWeeklyReportNotificationAsync(int studentId, string reportTitle, string reportLink, CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users.FindAsync(new object[] { studentId }, cancellationToken);
+        if (user == null)
+            return;
+
+        if (!notificationValidationService.ShouldSendNotification(user, NotificationCategories.WeeklyReport, DateTime.UtcNow))
+        {
+            logger.LogInformation("Weekly report notification skipped for user {UserId} due to preferences, timezone, or quiet hours.", studentId);
+            return;
+        }
+
+        var payloadJson = JsonSerializer.Serialize(new { link = reportLink }, WebJsonOptions);
+
+        var notification = await notificationInboxService.CreateAsync(
+            new CreateNotificationRequest(
+                studentId,
+                reportTitle,
+                "Your weekly progress report is ready. Check out how you performed!",
+                "WEEKLY_REPORT",
+                payloadJson,
+                $"weekly-report:{DateTime.UtcNow.Date:yyyyMMdd}"),
+            cancellationToken);
+
+        if (!string.IsNullOrEmpty(user.ExpoPushToken))
+        {
+            await EnqueuePushNotificationAsync(
+                studentId,
+                user.ExpoPushToken,
+                notification.Id,
+                notification.Type,
+                notification.Title,
+                notification.Body,
+                payloadJson,
+                cancellationToken);
+        }
+    }
+
+    public async Task SendAchievementAlertNotificationAsync(int studentId, string badgeName, string badgeDescription, CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users.FindAsync(new object[] { studentId }, cancellationToken);
+        if (user == null)
+            return;
+
+        if (!notificationValidationService.ShouldSendNotification(user, NotificationCategories.AchievementAlert, DateTime.UtcNow))
+        {
+            logger.LogInformation("Achievement alert skipped for user {UserId} due to preferences, timezone, or quiet hours.", studentId);
+            return;
+        }
+
+        var payloadJson = JsonSerializer.Serialize(new { badgeName, badgeDescription }, WebJsonOptions);
+
+        var notification = await notificationInboxService.CreateAsync(
+            new CreateNotificationRequest(
+                studentId,
+                "New Achievement Unlocked!",
+                $"Congratulations! You earned the {badgeName} badge: {badgeDescription}",
+                "ACHIEVEMENT_ALERT",
+                payloadJson,
+                $"achievement-unlocked:{badgeName}:{studentId}"),
+            cancellationToken);
+
+        if (!string.IsNullOrEmpty(user.ExpoPushToken))
+        {
+            await EnqueuePushNotificationAsync(
+                studentId,
+                user.ExpoPushToken,
+                notification.Id,
+                notification.Type,
+                notification.Title,
+                notification.Body,
+                payloadJson,
+                cancellationToken);
+        }
+    }
+
+    public async Task ProcessPushNotificationAttemptAsync(int attemptId, CancellationToken cancellationToken)
+    {
+        var attempt = await dbContext.PushNotificationAttempts
+            .Include(a => a.User)
+            .FirstOrDefaultAsync(a => a.Id == attemptId, cancellationToken);
+
+        if (attempt is null)
+        {
+            logger.LogWarning("Push notification attempt {AttemptId} not found.", attemptId);
+            return;
+        }
+
+        if (attempt.Status == "Sent")
+        {
+            logger.LogInformation("Push notification attempt {AttemptId} has already been sent successfully. Skipping to prevent duplicate delivery.", attemptId);
+            return;
+        }
+
+        // Verify user still has this token
+        if (attempt.User.ExpoPushToken != attempt.PushToken || string.IsNullOrEmpty(attempt.PushToken))
+        {
+            attempt.Status = "DeliveryFailed";
+            attempt.ErrorMessage = "Token mismatch or empty.";
+            attempt.ModifiedDate = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var notification = await dbContext.UserNotifications.FindAsync(new object[] { attempt.AlertId }, cancellationToken);
+        if (notification is null)
+        {
+            attempt.Status = "DeliveryFailed";
+            attempt.ErrorMessage = "Associated UserNotification not found.";
+            attempt.ModifiedDate = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        try
+        {
+            var reviewRoute = $"/(student)/notification-review/{notification.Id}";
+            var payload = new
+            {
+                to = attempt.PushToken,
+                sound = "default",
+                title = notification.Title,
+                body = notification.Body,
+                data = new
+                {
+                    alertId = notification.Id,
+                    screen = notification.AlertType == "ACADEMIC_CRITICAL" ? "NotificationReview" : "Notifications",
+                    link = reviewRoute,
+                    alertType = notification.AlertType,
+                    overdueCount = ExtractOverdueCount(notification.PayloadJson),
+                    moduleCount = ExtractModuleCount(notification.PayloadJson),
+                    reviewGroups = ExtractReviewGroups(notification.PayloadJson)
+                }
+            };
+
+            var response = await httpClient.PostAsJsonAsync(
+                "https://exp.host/--/api/v2/push/send",
+                payload,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new Exception($"Expo API returned non-success status code {response.StatusCode}. Content: {content}");
+            }
+
+            var responseBody = await response.Content.ReadFromJsonAsync<ExpoPushResponse>(cancellationToken: cancellationToken);
+            if (responseBody?.Data == null || responseBody.Data.Count == 0)
+            {
+                throw new Exception("Expo API returned an empty or invalid response.");
+            }
+
+            var ticket = responseBody.Data[0];
+            if (ticket.Status == "ok")
+            {
+                attempt.Status = "Sent";
+                attempt.ErrorMessage = null;
+                attempt.ModifiedDate = DateTime.UtcNow;
+                await dbContext.SaveChangesAsync(cancellationToken);
+                logger.LogInformation("Successfully sent push notification for attempt {AttemptId}.", attemptId);
+            }
+            else
+            {
+                var isPermanent = ticket.Details?.Error == "DeviceNotRegistered" || ticket.Details?.Error == "InvalidCredentials";
+                attempt.ErrorMessage = ticket.Message ?? ticket.Details?.Error ?? "Unknown Expo Error";
+                attempt.Status = "DeliveryFailed";
+                attempt.ModifiedDate = DateTime.UtcNow;
+
+                if (isPermanent)
+                {
+                    // Clear user's push token
+                    attempt.User.ExpoPushToken = null;
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    logger.LogWarning("Permanent push failure for user {UserId}. Cleared invalid token. Message: {Message}", attempt.UserId, attempt.ErrorMessage);
+                }
+                else
+                {
+                    attempt.RetryCount++;
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    throw new Exception($"Temporary Expo Error (Attempt {attempt.RetryCount}): {attempt.ErrorMessage}");
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            attempt.Status = "DeliveryFailed";
+            attempt.ErrorMessage = ex.Message;
+            attempt.RetryCount++;
+            attempt.ModifiedDate = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            logger.LogError(ex, "Error processing push notification attempt {AttemptId}.", attemptId);
+            throw;
+        }
+    }
+
+    private async Task EnqueuePushNotificationAsync(
+        int userId,
+        string pushToken,
+        int alertId,
+        string alertType,
+        string title,
+        string body,
+        string payloadJson,
+        CancellationToken cancellationToken)
+    {
+        var attempt = new PushNotificationAttempt
+        {
+            UserId = userId,
+            PushToken = pushToken,
+            AlertId = alertId,
+            Status = "DeviceTokenSelected",
+            RetryCount = 0,
+            ErrorMessage = null,
+            CreatedTime = DateTime.UtcNow,
+            ModifiedDate = DateTime.UtcNow
+        };
+
+        dbContext.PushNotificationAttempts.Add(attempt);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        backgroundJobManager.EnqueuePushNotification(attempt.Id);
     }
 
     private async Task<NotificationDto?> CreateInboxNotificationAsync(
@@ -158,60 +449,6 @@ public class SrsNotificationService(
         await UpdateStoredNotificationPayloadAsync(created.Id, snapshot, cancellationToken);
 
         return await notificationInboxService.GetByIdAsync(created.Id, studentId, cancellationToken) ?? created;
-    }
-
-    private async Task SendPushNotificationAsync(
-        string pushToken,
-        int alertId,
-        NotificationDto notification,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var reviewRoute = $"/(student)/notification-review/{alertId}";
-            var payload = new
-            {
-                to = pushToken,
-                sound = "default",
-                title = AlertTitle,
-                body = notification.Body,
-                data = new
-                {
-                    alertId,
-                    screen = "NotificationReview",
-                    link = reviewRoute,
-                    alertType = AlertType,
-                    overdueCount = ExtractOverdueCount(notification.Payload),
-                    moduleCount = ExtractModuleCount(notification.Payload),
-                    reviewGroups = ExtractReviewGroups(notification.Payload)
-                }
-            };
-
-            var response = await httpClient.PostAsJsonAsync(
-                "https://exp.host/--/api/v2/push/send",
-                payload,
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError(
-                    "Failed to send Expo push notification. Status: {Status}, Content: {Content}",
-                    response.StatusCode,
-                    content);
-            }
-            else
-            {
-                logger.LogInformation(
-                    "Successfully sent decay notification for alert {AlertId} and {Count} words.",
-                    alertId,
-                    ExtractOverdueCount(notification.Payload));
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error occurred while sending push notification for alert {AlertId}.", alertId);
-        }
     }
 
     private async Task UpdateStoredNotificationPayloadAsync(
@@ -354,66 +591,39 @@ public class SrsNotificationService(
             : EmptyReviewGroups;
     }
 
+    private static int ExtractOverdueCount(string payloadJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            return ExtractOverdueCount(doc.RootElement);
+        }
+        catch { return 0; }
+    }
+
+    private static int ExtractModuleCount(string payloadJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            return ExtractModuleCount(doc.RootElement);
+        }
+        catch { return 0; }
+    }
+
+    private static JsonElement ExtractReviewGroups(string payloadJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            return ExtractReviewGroups(doc.RootElement).Clone();
+        }
+        catch { return EmptyReviewGroups; }
+    }
+
     private static string BuildBody(int overdueCount) => overdueCount == 1
         ? "You have 1 spelling word that is overdue for review. Keep your streak alive!"
         : $"You have {overdueCount} spelling words overdue for review. Keep your streak alive!";
-
-    private static bool ShouldSendPracticeReminder(User user, DateTime utcNow)
-    {
-        if (!user.InAppNotificationsEnabled || !user.PracticeRemindersEnabled)
-            return false;
-
-        var timezoneId = string.IsNullOrWhiteSpace(user.NotificationTimezone)
-            ? StudentNotificationPreferenceDefaults.NotificationTimezone
-            : user.NotificationTimezone;
-
-        DateTime localNow;
-        try
-        {
-            var timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
-            localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcNow, DateTimeKind.Utc), timezone);
-        }
-        catch
-        {
-            localNow = utcNow;
-        }
-
-        var reminderTime = ParseTimeOrDefault(
-            user.ReminderTimeLocal,
-            StudentNotificationPreferenceDefaults.ReminderTimeLocal);
-        if (localNow.TimeOfDay < reminderTime.ToTimeSpan())
-            return false;
-
-        var quietHoursStart = ParseTimeOrDefault(
-            user.QuietHoursStartLocal,
-            StudentNotificationPreferenceDefaults.QuietHoursStartLocal);
-        var quietHoursEnd = ParseTimeOrDefault(
-            user.QuietHoursEndLocal,
-            StudentNotificationPreferenceDefaults.QuietHoursEndLocal);
-
-        return !IsWithinQuietHours(localNow.TimeOfDay, quietHoursStart, quietHoursEnd);
-    }
-
-    private static TimeOnly ParseTimeOrDefault(string? rawValue, string fallback)
-    {
-        if (TimeOnly.TryParseExact(rawValue, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
-            return parsed;
-
-        return TimeOnly.ParseExact(fallback, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None);
-    }
-
-    private static bool IsWithinQuietHours(TimeSpan currentTime, TimeOnly start, TimeOnly end)
-    {
-        if (start == end)
-            return false;
-
-        var startTime = start.ToTimeSpan();
-        var endTime = end.ToTimeSpan();
-
-        return startTime < endTime
-            ? currentTime >= startTime && currentTime < endTime
-            : currentTime >= startTime || currentTime < endTime;
-    }
 
     private sealed record ReviewSnapshot(
         int OverdueCount,
@@ -432,4 +642,22 @@ public class SrsNotificationService(
         int WordId,
         string Word,
         DateTime? NextReviewDate);
+
+    public class ExpoPushResponse
+    {
+        public List<ExpoPushTicket> Data { get; set; } = new();
+    }
+
+    public class ExpoPushTicket
+    {
+        public string Status { get; set; } = string.Empty; // "ok" or "error"
+        public string? Id { get; set; }
+        public string? Message { get; set; }
+        public ExpoPushDetails? Details { get; set; }
+    }
+
+    public class ExpoPushDetails
+    {
+        public string? Error { get; set; } // e.g. "DeviceNotRegistered"
+    }
 }

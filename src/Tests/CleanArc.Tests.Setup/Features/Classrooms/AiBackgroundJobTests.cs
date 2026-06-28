@@ -168,7 +168,7 @@ public class AiBackgroundJobTests
 
 
         var result = await handler.Handle(
-            new GenerateClassroomThumbnailJobCommand(111, 10, "Class A", 1, new[] { "Maths" }, "Desc", "A simple illustration of books"),
+            new GenerateClassroomThumbnailJobCommand(111, 10, "Class A", "Desc", "A simple illustration of books"),
             CancellationToken.None
         );
 

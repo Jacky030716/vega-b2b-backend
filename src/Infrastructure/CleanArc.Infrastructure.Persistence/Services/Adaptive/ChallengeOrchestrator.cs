@@ -51,7 +51,7 @@ public class ChallengeOrchestrator(
             Title = preview.Title,
             Description = preview.Description,
             DifficultyLevel = preview.DifficultyLevel,
-            ContentData = string.Empty,
+            ContentData = string.IsNullOrWhiteSpace(preview.ContentData) ? "{}" : preview.ContentData,
             OrderIndex = nextOrderIndex + 1,
             MaxStars = 3,
             CreatedById = request.CreatedByTeacherId,

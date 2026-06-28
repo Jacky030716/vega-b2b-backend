@@ -1,10 +1,11 @@
-using System.Diagnostics;
+using System.Diagnostics;
 using System.Text.Json;
 using Carter;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using CleanArc.Application.Contracts.Adaptive;
+using CleanArc.Application.Contracts.Notifications;
 using CleanArc.Application.Models.Common;
 using CleanArc.Application.ServiceConfiguration;
 using CleanArc.Domain.Entities.User;
@@ -13,6 +14,7 @@ using CleanArc.Infrastructure.Identity.Identity.Dtos;
 using CleanArc.Infrastructure.Identity.Jwt;
 using CleanArc.Infrastructure.Identity.ServiceConfiguration;
 using CleanArc.Infrastructure.Persistence.ServiceConfiguration;
+using CleanArc.Web.Api;
 using CleanArc.Web.Api.Configuration;
 using CleanArc.SharedKernel.Extensions;
 using CleanArc.Web.Api.Controllers.V1.UserManagement;
@@ -82,6 +84,7 @@ builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(configuration.GetConnectionString("PostgreSQL"))));
 builder.Services.AddHangfireServer();
 
+builder.Services.AddScoped<IBackgroundJobManager, BackgroundJobManager>();
 
 builder.Services.AddMemoryCache();
 builder.Services.RegisterValidatorsAsServices();

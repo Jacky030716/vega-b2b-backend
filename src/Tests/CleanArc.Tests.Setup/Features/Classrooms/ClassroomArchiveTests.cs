@@ -1,6 +1,5 @@
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Features.Classrooms.Commands;
-using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Persistence;
@@ -42,15 +41,11 @@ public class ClassroomArchiveTests
         teacher.Id,
         false,
         "New classroom name",
-        "Bahasa Melayu",
-        null,
-        1,
         "Updated description",
         null), CancellationToken.None);
 
     Assert.True(result.IsSuccess);
     Assert.Equal("New classroom name", result.Result.Name);
-    Assert.Equal("Bahasa Melayu", result.Result.Subject);
     Assert.Equal("Updated description", result.Result.Description);
   }
 
@@ -70,9 +65,6 @@ public class ClassroomArchiveTests
         teacher.Id,
         false,
         " ",
-        "Science",
-        null,
-        1,
         null,
         null), CancellationToken.None);
 
@@ -97,59 +89,11 @@ public class ClassroomArchiveTests
         otherTeacher.Id,
         false,
         "New Name",
-        "Science",
-        null,
-        1,
         null,
         null), CancellationToken.None);
 
     Assert.False(result.IsSuccess);
     Assert.True(result.IsForbidden);
-  }
-
-  [Fact]
-  public async Task UpdateClassroom_RejectsYearLevelChangeAfterCustomModuleExists()
-  {
-    await using var context = CreateContext();
-    var repo = new ClassroomRepository(context);
-    var unitOfWork = Substitute.For<IUnitOfWork>();
-    unitOfWork.ClassroomRepository.Returns(repo);
-    var teacher = await AddUserAsync(context, "teacher-module");
-    var classroom = await AddClassroomAsync(context, teacher.Id, "Class Name");
-    context.ClassroomModules.Add(new ClassroomModule
-    {
-      ClassroomId = classroom.Id,
-      Module = new SyllabusModule
-      {
-        ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
-        Subject = classroom.Subject,
-        Language = "ms",
-        YearLevel = 1,
-        Term = string.Empty,
-        UnitTitle = "Custom Module",
-        Title = "Custom Module",
-        Description = "Teacher-created learning module.",
-        ModuleType = SyllabusModule.CustomModuleType,
-        SourceType = "teacher_created",
-        CreatedByTeacherId = teacher.Id
-      }
-    });
-    await context.SaveChangesAsync();
-    var handler = new UpdateClassroomCommandHandler(unitOfWork);
-
-    var result = await handler.Handle(new UpdateClassroomCommand(
-        classroom.Id,
-        teacher.Id,
-        false,
-        "Class Name",
-        "Science",
-        null,
-        2,
-        null,
-        null), CancellationToken.None);
-
-    Assert.False(result.IsSuccess);
-    Assert.Equal("Year level cannot be changed after modules or challenges have been created.", result.ErrorMessage);
   }
 
   [Fact]

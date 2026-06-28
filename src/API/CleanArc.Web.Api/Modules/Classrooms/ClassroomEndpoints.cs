@@ -378,10 +378,7 @@ public class ClassroomEndpoints : ICarterModule
         userId,
         request.Name,
         request.Description,
-        request.Subject,
-        request.Subjects,
         thumbnailInfo?.Url,
-        request.YearLevel ?? 1,
         thumbnailInfo));
       return result.ToEndpointResult();
     }), _version, "CreateClassroom", _tag).RequireAuthorization();
@@ -433,9 +430,6 @@ public class ClassroomEndpoints : ICarterModule
           userId,
           user.IsInRole("admin"),
           request.Name,
-          request.Subject,
-          request.Subjects,
-          request.YearLevel,
           request.Description,
           thumbnailInfo));
       return result.ToEndpointResult();

@@ -233,9 +233,6 @@ public class ClassroomModuleManagementService(
             .FirstOrDefaultAsync(m => m.Id == moduleId && m.IsActive && m.ModuleType == SyllabusModule.PredefinedModuleType, cancellationToken)
             ?? throw new InvalidOperationException("Syllabus module not found");
 
-        if (module.YearLevel != classroom.YearLevel)
-            throw new InvalidOperationException("Module year level does not match classroom year level");
-
         await EnsureClassroomModuleLinksAsync(classroom, teacherId, cancellationToken);
         await EnsureModuleAttachedAsync(classroom.Id, moduleId, cancellationToken);
         await EnsureModuleChallengeCapacityAsync(classroom.Id, module.Id, cancellationToken);
@@ -582,9 +579,9 @@ public class ClassroomModuleManagementService(
         var customModule = new SyllabusModule
         {
             ModuleCode = $"CUSTOM-{classroom.Id}-{Guid.NewGuid():N}",
-            Subject = string.IsNullOrWhiteSpace(classroom.Subject) ? "Custom" : classroom.Subject.Trim(),
+            Subject = "Custom",
             Language = "ms",
-            YearLevel = classroom.YearLevel,
+            YearLevel = 1,
             Term = string.Empty,
             UnitTitle = "Custom Module",
             Title = "Custom Module",
@@ -609,11 +606,6 @@ public class ClassroomModuleManagementService(
             .Where(subject => subject.ClassroomId == classroom.Id)
             .Select(subject => subject.Subject)
             .ToListAsync(cancellationToken);
-
-        if (subjects.Count == 0 && !string.IsNullOrWhiteSpace(classroom.Subject))
-        {
-            subjects.Add(classroom.Subject.Trim());
-        }
 
         subjects = subjects
             .Where(subject => !string.IsNullOrWhiteSpace(subject))
@@ -642,7 +634,6 @@ public class ClassroomModuleManagementService(
         var matchingModuleIds = await dbContext.SyllabusModules.AsNoTracking()
             .Where(module => module.IsActive
                              && module.ModuleType == SyllabusModule.PredefinedModuleType
-                             && module.YearLevel == classroom.YearLevel
                              && subjects.Contains(module.Subject)
                              && dbContext.VocabularyItems.Any(vocabulary => vocabulary.ModuleId == module.Id && vocabulary.IsActive))
             .Select(module => module.Id)

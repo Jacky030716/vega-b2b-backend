@@ -6,6 +6,7 @@ using Google.Cloud.Storage.V1;
 using CleanArc.Application.Contracts.Infrastructure.Stickers;
 using CleanArc.Application.Models.Common;
 using CleanArc.Infrastructure.Persistence.Settings;
+using CleanArc.Infrastructure.Persistence.Services.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -61,7 +62,9 @@ public sealed class FirebaseStickerImageStorageService : IStickerImageStorageSer
 
           using var ms = new MemoryStream(imageBytes);
           var obj = await storage.UploadObjectAsync(bucketName, imageRef, imageFormat.ContentType, ms, cancellationToken: cancellationToken);
-          return OperationResult<StickerUploadResult>.SuccessResult(new StickerUploadResult(imageRef));
+          return OperationResult<StickerUploadResult>.SuccessResult(
+            new StickerUploadResult(
+              FirebaseStorageReference.Require(imageRef, nameof(imageRef))));
         }
         catch (Exception ex)
         {
@@ -94,7 +97,9 @@ public sealed class FirebaseStickerImageStorageService : IStickerImageStorageSer
         return OperationResult<StickerUploadResult>.FailureResult("Sticker upload failed. Please try again.");
       }
 
-      return OperationResult<StickerUploadResult>.SuccessResult(new StickerUploadResult(imageRef));
+      return OperationResult<StickerUploadResult>.SuccessResult(
+        new StickerUploadResult(
+          FirebaseStorageReference.Require(imageRef, nameof(imageRef))));
     }
     catch (Exception ex)
     {

@@ -3,6 +3,7 @@ using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
 using CleanArc.Domain.Entities.User;
+using CleanArc.Infrastructure.Persistence.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanArc.Infrastructure.Persistence.SeedDatabaseService;
@@ -323,6 +324,9 @@ public class SeedGameData : ISeedGameData
             seedBadge.Code = string.IsNullOrWhiteSpace(seedBadge.Code)
                 ? ToAchievementCode(seedBadge.Name)
                 : seedBadge.Code.Trim().ToUpperInvariant();
+            seedBadge.ImageRef = FirebaseStorageReference.Require(
+                seedBadge.ImageRef,
+                nameof(seedBadge.ImageRef));
             seedBadge.IsActive = true;
         }
 
@@ -352,7 +356,9 @@ public class SeedGameData : ISeedGameData
             existingBadge.Code = seedBadge.Code;
             existingBadge.Name = seedBadge.Name;
             existingBadge.Description = seedBadge.Description;
-            existingBadge.ImageRef = seedBadge.ImageRef;
+            existingBadge.ImageRef = FirebaseStorageReference.Require(
+                seedBadge.ImageRef,
+                nameof(seedBadge.ImageRef));
             existingBadge.Category = seedBadge.Category;
             existingBadge.Rarity = seedBadge.Rarity;
             existingBadge.Requirement = seedBadge.Requirement;
