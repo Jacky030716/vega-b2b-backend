@@ -30,9 +30,9 @@ public sealed class GoogleAiService(
         "Google AI API key is not configured.");
     }
 
-    var modelId = string.IsNullOrWhiteSpace(request.Model)
-      ? _options.ModelId
-      : request.Model.Trim();
+    var modelId = string.IsNullOrWhiteSpace(_options.ModelId)
+      ? GoogleAiModelIds.Primary
+      : _options.ModelId.Trim();
 
     if (string.IsNullOrWhiteSpace(modelId))
     {
@@ -43,17 +43,17 @@ public sealed class GoogleAiService(
     var result = await TryGenerateWithModelAsync(modelId, request);
     if (!result.IsSuccess)
     {
-      var fallbackModel = string.Equals(modelId, "gemini-3.5-flash", StringComparison.OrdinalIgnoreCase)
-        ? "gemini-3.1-flash-lite"
-        : "gemini-3.5-flash";
+      var fallbackModel = string.Equals(modelId, GoogleAiModelIds.Fallback, StringComparison.OrdinalIgnoreCase)
+        ? GoogleAiModelIds.Primary
+        : GoogleAiModelIds.Fallback;
 
       _logger.LogWarning("Google AI generation with model {ModelId} failed. Retrying with fallback model {FallbackModel}. Error: {Error}", modelId, fallbackModel, result.ErrorMessage);
       result = await TryGenerateWithModelAsync(fallbackModel, request);
 
-      if (!result.IsSuccess && !string.Equals(fallbackModel, "gemini-3.1-flash-lite", StringComparison.OrdinalIgnoreCase))
+      if (!result.IsSuccess && !string.Equals(fallbackModel, GoogleAiModelIds.Primary, StringComparison.OrdinalIgnoreCase))
       {
-        _logger.LogWarning("Google AI generation with fallback model {FallbackModel} failed. Retrying with ultimate fallback model gemini-3.1-flash-lite. Error: {Error}", fallbackModel, result.ErrorMessage);
-        result = await TryGenerateWithModelAsync("gemini-3.1-flash-lite", request);
+        _logger.LogWarning("Google AI generation with fallback model {FallbackModel} failed. Retrying with ultimate fallback model {PrimaryModel}. Error: {Error}", fallbackModel, GoogleAiModelIds.Primary, result.ErrorMessage);
+        result = await TryGenerateWithModelAsync(GoogleAiModelIds.Primary, request);
       }
     }
 

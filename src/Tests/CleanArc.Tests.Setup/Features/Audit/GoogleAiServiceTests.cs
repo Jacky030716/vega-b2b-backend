@@ -34,20 +34,19 @@ public class GoogleAiServiceTests
     {
         // Arrange
         var handler = new MockHttpMessageHandler();
-        // First request (gemini-3.1-flash-lite) fails
+        // First request (primary model) fails
         handler.Responses.Enqueue(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        // Second request (gemini-3.5-flash fallback) succeeds
+        // Second request (fallback model) succeeds
         handler.Responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Fallback success\"}]}}]}")
         });
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://generativelanguage.googleapis.com/v1beta/") };
-        var options = Options.Create(new GoogleAiOptions { ApiKey = "fake-api-key", ModelId = "gemini-3.1-flash-lite" });
+        var options = Options.Create(new GoogleAiOptions { ApiKey = "fake-api-key", ModelId = GoogleAiModelIds.Primary });
         var service = new GoogleAiService(httpClient, options, NullLogger<GoogleAiService>.Instance);
 
         var request = new ChallengeGenerationRequest(
-            Model: "gemini-3.1-flash-lite",
             SystemPrompt: "System prompt",
             UserPrompt: "User prompt",
             Temperature: 0.7,
@@ -61,7 +60,7 @@ public class GoogleAiServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal("Fallback success", result.Result.RawResponse);
         Assert.Equal(2, handler.Requests.Count);
-        Assert.Contains("models/gemini-3.1-flash-lite:generateContent", handler.Requests[0].RequestUri!.ToString());
-        Assert.Contains("models/gemini-3.5-flash:generateContent", handler.Requests[1].RequestUri!.ToString());
+        Assert.Contains($"models/{GoogleAiModelIds.Primary}:generateContent", handler.Requests[0].RequestUri!.ToString());
+        Assert.Contains($"models/{GoogleAiModelIds.Fallback}:generateContent", handler.Requests[1].RequestUri!.ToString());
     }
 }

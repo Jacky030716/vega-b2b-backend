@@ -9,11 +9,16 @@ namespace CleanArc.Application.Contracts.Infrastructure.AI;
 /// Input payload for a JSON-only challenge draft generation call.
 /// </summary>
 public record ChallengeGenerationRequest(
-  string Model,
   string SystemPrompt,
   string UserPrompt,
   double Temperature,
   bool JsonMode);
+
+public static class GoogleAiModelIds
+{
+  public const string Primary = "gemini-3.1-flash-lite";
+  public const string Fallback = "gemini-3.5-flash";
+}
 
 /// <summary>
 /// Output payload from the AI orchestrator generation call.
@@ -159,7 +164,9 @@ public record GameConfigGenerationRequest(
   string SourceType,
   string GameType,
   int DifficultyLevel,
-  IReadOnlyList<AdaptiveChallengeItemDto> Words);
+  IReadOnlyList<AdaptiveChallengeItemDto> Words,
+  string? SourceLanguage = null,
+  string? TargetLanguage = null);
 
 public interface IChallengeAiPipelineService
 {

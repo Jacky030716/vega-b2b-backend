@@ -281,7 +281,6 @@ public sealed class ChallengeAiPipelineService(
   {
     var result = await aiGenerationService.GenerateJsonAsync(
       new ChallengeGenerationRequest(
-        Model: "gemini-3.1-flash-lite",
         SystemPrompt: systemPrompt,
         UserPrompt: userPrompt,
         Temperature: temperature,
