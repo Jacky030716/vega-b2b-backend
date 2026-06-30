@@ -5,10 +5,12 @@ public sealed class AiUsageLimitOptions
   public int StandardImageMonthlyLimit { get; set; } = 2;
   public int PlusImageMonthlyLimit { get; set; } = 10;
   public int PremiumImageMonthlyLimit { get; set; } = 30;
+  public int AdminImageMonthlyLimit { get; set; } = 60;
 
   public int StandardTextMonthlyLimit { get; set; } = 20;
   public int PlusTextMonthlyLimit { get; set; } = 100;
   public int PremiumTextMonthlyLimit { get; set; } = 300;
+  public int AdminTextMonthlyLimit { get; set; } = 600;
 
   public int DefaultImageMonthlyLimit { get; set; } = 2;
   public int DefaultTextMonthlyLimit { get; set; } = 20;

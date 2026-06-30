@@ -1,5 +1,6 @@
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Domain.Entities.AI;
+using CleanArc.Domain.Entities.User;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -54,7 +55,7 @@ public sealed class AiUsageService(
 
   public async Task<AiQuotaResult> GetRemainingQuotaAsync(int userId, string featureType, CancellationToken cancellationToken)
   {
-    var tier = await GetSubscriptionTierAsync(userId, cancellationToken);
+    var tier = await GetQuotaTierAsync(userId, cancellationToken);
     var monthlyLimit = GetMonthlyLimit(tier, featureType);
 
     var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -67,14 +68,26 @@ public sealed class AiUsageService(
     return new AiQuotaResult(monthlyLimit, used, remaining);
   }
 
-  private async Task<string> GetSubscriptionTierAsync(int userId, CancellationToken cancellationToken)
+  private async Task<string> GetQuotaTierAsync(int userId, CancellationToken cancellationToken)
   {
     var user = await dbContext.Users
       .AsNoTracking()
       .Include(x => x.Institution)
+      .Include(x => x.UserRoles)
+        .ThenInclude(x => x.Role)
       .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
 
-    return user?.Institution?.SubscriptionTier ?? "Standard";
+    if (user is null)
+    {
+      return "Standard";
+    }
+
+    if (HasAdminRole(user))
+    {
+      return "Admin";
+    }
+
+    return user.Institution?.SubscriptionTier ?? "Standard";
   }
 
   private int GetMonthlyLimit(string tier, string featureType)
@@ -84,10 +97,21 @@ public sealed class AiUsageService(
 
     return normalizedTier.ToUpperInvariant() switch
     {
+      "ADMIN" => imageFeature ? _options.AdminImageMonthlyLimit : _options.AdminTextMonthlyLimit,
       "PLUS" => imageFeature ? _options.PlusImageMonthlyLimit : _options.PlusTextMonthlyLimit,
       "PREMIUM" => imageFeature ? _options.PremiumImageMonthlyLimit : _options.PremiumTextMonthlyLimit,
       _ => imageFeature ? _options.StandardImageMonthlyLimit : _options.StandardTextMonthlyLimit,
     };
+  }
+
+  private static bool HasAdminRole(User user)
+  {
+    return user.UserRoles?.Any(userRole =>
+      userRole.Role is not null
+      && (
+        string.Equals(userRole.Role.Name, "admin", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(userRole.Role.Name, "InstitutionAdmin", StringComparison.OrdinalIgnoreCase)
+      )) == true;
   }
 
   private static bool IsImageFeature(string featureType)
