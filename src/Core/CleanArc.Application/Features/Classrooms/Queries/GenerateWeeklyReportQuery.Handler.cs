@@ -142,7 +142,7 @@ Format the report using clean, modern markdown (use titles, lists, bold text, an
             var userPrompt = $"Analyze the following classroom performance metrics and generate the Weekly Report:\n\n{sbContext}";
 
             var aiRequest = new ChallengeGenerationRequest(
-                Model: "gemini-3.5-flash",
+                Model: "gemini-3.1-flash-lite",
                 SystemPrompt: systemPrompt,
                 UserPrompt: userPrompt,
                 Temperature: 0.7,

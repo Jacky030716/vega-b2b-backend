@@ -281,7 +281,7 @@ public sealed class ChallengeAiPipelineService(
   {
     var result = await aiGenerationService.GenerateJsonAsync(
       new ChallengeGenerationRequest(
-        Model: "gemini-3.5-flash",
+        Model: "gemini-3.1-flash-lite",
         SystemPrompt: systemPrompt,
         UserPrompt: userPrompt,
         Temperature: temperature,
@@ -407,6 +407,8 @@ public sealed class ChallengeAiPipelineService(
       category,
       objective = request.Mode,
       moduleId = request.ModuleId,
+      sourceLanguage = request.SourceLanguage,
+      targetLanguage = request.TargetLanguage,
       spellCatcherSpec = primarySpellCatcherSpec,
       spellCatcherSpecs,
       syllableSushiSpec = primarySyllableSushiSpec,
@@ -462,6 +464,8 @@ public sealed class ChallengeAiPipelineService(
         objective = request.Mode,
         sourceType = request.SourceType,
         learningFocus = request.Mode.Replace('_', ' '),
+        sourceLanguage = request.SourceLanguage,
+        targetLanguage = request.TargetLanguage,
         configPipeline = "rule_based"
       }, ChallengeGenerator.JsonOptions),
       items,

@@ -43,7 +43,7 @@ public class GoogleAiServiceTests
         });
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://generativelanguage.googleapis.com/v1beta/") };
-        var options = Options.Create(new GoogleAiOptions { ApiKey = "fake-api-key", ModelId = "gemini-3.5-flash" });
+        var options = Options.Create(new GoogleAiOptions { ApiKey = "fake-api-key", ModelId = "gemini-3.1-flash-lite" });
         var service = new GoogleAiService(httpClient, options, NullLogger<GoogleAiService>.Instance);
 
         var request = new ChallengeGenerationRequest(
