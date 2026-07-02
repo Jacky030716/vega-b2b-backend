@@ -107,7 +107,6 @@ var app = builder.Build();
 
 await app.ApplyMigrationsAsync();
 await app.ApplyStartupSchemaRepairScriptsAsync();
-await app.SeedDefaultUsersAsync();
 await app.SeedGameDataAsync();
 
 

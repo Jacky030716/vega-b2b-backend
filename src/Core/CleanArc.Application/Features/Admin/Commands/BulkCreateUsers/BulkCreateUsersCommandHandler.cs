@@ -37,6 +37,17 @@ internal sealed class BulkCreateUsersCommandHandler(
         if (request.Count <= 0 || request.Count > 1000)
             return OperationResult<BulkCreateUsersResult>.FailureResult("Count must be between 1 and 1000.");
 
+        var institution = await unitOfWork.InstitutionRepository.GetInstitutionWithStatsAsync(institutionId);
+        if (institution is null)
+            return OperationResult<BulkCreateUsersResult>.NotFoundResult("Institution not found.");
+
+        var seatsUsed = institution.UserMemberships.Count;
+        if (seatsUsed + request.Count > institution.MaxSeats)
+        {
+            return OperationResult<BulkCreateUsersResult>.FailureResult(
+                $"Generating {request.Count} users would exceed your institution's maximum seat capacity of {institution.MaxSeats} (currently using {seatsUsed} seats). Please upgrade or request a smaller count.");
+        }
+
         var role = request.Role?.ToLowerInvariant();
         if (role != "student" && role != "teacher")
             return OperationResult<BulkCreateUsersResult>.FailureResult("Role must be 'student' or 'teacher'.");

@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CleanArc.Web.Api.Contracts.Requests.Classrooms;
 
-public record CreateClassroomRequest(string Name, string Description, JsonElement? Thumbnail);
+public record CreateClassroomRequest(string Name, string Description, JsonElement? Thumbnail, int? TeacherId = null);
 
-public record UpdateClassroomRequest(string Name, string? Description, JsonElement? Thumbnail = null);
+public record UpdateClassroomRequest(string Name, string? Description, JsonElement? Thumbnail = null, int? TeacherId = null);
 
 public record JoinClassroomRequest(string JoinCode);
 

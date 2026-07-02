@@ -179,6 +179,8 @@ public class ChallengeGenerator(
             sourceType = request.SourceType,
             learningFocus = request.LearningFocus,
             studentId = request.StudentId,
+            sourceLanguage = request.SourceLanguage,
+            targetLanguage = request.TargetLanguage,
             weaknesses = weaknesses
         }, JsonOptions);
 
@@ -213,7 +215,9 @@ public class ChallengeGenerator(
                 request.TargetType,
                 request.Objective,
                 request.SourceType,
-                request.LearningFocus
+                request.LearningFocus,
+                request.SourceLanguage,
+                request.TargetLanguage
             }, JsonOptions),
             items,
             primarySyllableSushiSpec,

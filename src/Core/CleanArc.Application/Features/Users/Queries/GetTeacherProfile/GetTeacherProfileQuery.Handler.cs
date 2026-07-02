@@ -135,13 +135,13 @@ internal sealed class GetTeacherProfileQueryHandler(
 
   private static string GetRoleLabel(IList<string> roles)
   {
-    if (roles.Any(role => string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)))
+    if (roles.Any(RoleNames.IsAdmin))
       return "Administrator";
 
-    if (roles.Any(role => string.Equals(role, "InstitutionAdmin", StringComparison.OrdinalIgnoreCase)))
+    if (roles.Any(RoleNames.IsInstitutionAdmin))
       return "Institution Admin";
 
-    if (roles.Any(role => string.Equals(role, "teacher", StringComparison.OrdinalIgnoreCase)))
+    if (roles.Any(role => string.Equals(role, RoleNames.Teacher, StringComparison.OrdinalIgnoreCase)))
       return "Teacher";
 
     return "Educator";

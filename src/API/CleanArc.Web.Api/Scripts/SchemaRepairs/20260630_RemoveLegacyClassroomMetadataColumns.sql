@@ -1,0 +1,3 @@
+ALTER TABLE "Classrooms" DROP COLUMN IF EXISTS "Subject";
+ALTER TABLE "Classrooms" DROP COLUMN IF EXISTS "YearLevel";
+ALTER TABLE "Classrooms" DROP COLUMN IF EXISTS year_level;

@@ -300,6 +300,15 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
         .AnyAsync(m => m.ClassroomId == classroomId && m.ModuleId == moduleId);
   }
 
+  public async Task<string?> GetAttachedModuleTypeAsync(int classroomId, int moduleId)
+  {
+    return await DbContext.ClassroomModules.AsNoTracking()
+        .Include(m => m.Module)
+        .Where(m => m.ClassroomId == classroomId && m.ModuleId == moduleId)
+        .Select(m => m.Module.ModuleType)
+        .FirstOrDefaultAsync();
+  }
+
   public async Task<int?> ResolveChallengeModuleIdAsync(int classroomId)
   {
     var modules = await DbContext.ClassroomModules.AsNoTracking()

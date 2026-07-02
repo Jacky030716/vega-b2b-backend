@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CleanArc.Application.Contracts.Identity;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.User;
@@ -61,15 +61,20 @@ internal class UserCreateCommandHandler : IRequestHandler<UserCreateCommand, Ope
         }
 
         // Assign role
-        var role = new CleanArc.Domain.Entities.User.Role { Name = request.Role };
+        var assignedRoleName = request.Role;
+        if (assignedRoleName.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        {
+            assignedRoleName = RoleNames.InstitutionAdmin;
+        }
+        var role = new CleanArc.Domain.Entities.User.Role { Name = assignedRoleName };
         var addRoleResult = await _userManager.AddUserToRoleAsync(user, role);
 
         if (!addRoleResult.Succeeded)
         {
-            _logger.LogError($"Failed to assign role {request.Role} to user {user.UserName}");
+            _logger.LogError($"Failed to assign role {assignedRoleName} to user {user.UserName}");
         }
 
-        _logger.LogInformation($"User {user.UserName} created successfully with role {request.Role}");
+        _logger.LogInformation($"User {user.UserName} created successfully with role {assignedRoleName}");
 
         return OperationResult<UserCreateCommandResult>.SuccessResult(new UserCreateCommandResult { UserGeneratedKey = user.Id.ToString() });
     }

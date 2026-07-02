@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using CleanArc.Application.Models.Common;
 using CleanArc.Application.Profiles;
 using CleanArc.Domain.Entities.User;
@@ -54,11 +54,11 @@ public record UserCreateCommand
             .NotEmpty()
             .NotNull().WithMessage("Role is required.")
             .Must(r =>
-                r.Equals("student", StringComparison.OrdinalIgnoreCase)
-                || r.Equals("teacher", StringComparison.OrdinalIgnoreCase)
-                || r.Equals("admin", StringComparison.OrdinalIgnoreCase)
-                || r.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Role must be one of 'student', 'teacher', 'admin', or 'InstitutionAdmin'.");
+                r.Equals(CleanArc.Application.Contracts.Identity.RoleNames.Student, StringComparison.OrdinalIgnoreCase)
+                || r.Equals(CleanArc.Application.Contracts.Identity.RoleNames.Teacher, StringComparison.OrdinalIgnoreCase)
+                || r.Equals(CleanArc.Application.Contracts.Identity.RoleNames.InstitutionAdmin, StringComparison.OrdinalIgnoreCase)
+                || r.Equals("admin", StringComparison.OrdinalIgnoreCase))
+            .WithMessage($"Role must be one of '{CleanArc.Application.Contracts.Identity.RoleNames.Student}', '{CleanArc.Application.Contracts.Identity.RoleNames.Teacher}', or '{CleanArc.Application.Contracts.Identity.RoleNames.InstitutionAdmin}'.");
 
         validator.RuleFor(c => c.PhoneNumber)
             .Must(phone => string.IsNullOrEmpty(phone) || Regex.IsMatch(phone, @"^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$"))

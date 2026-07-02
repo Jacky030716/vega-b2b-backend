@@ -27,6 +27,11 @@ internal class UpdateClassroomCommandHandler(IUnitOfWork unitOfWork)
     classroom.Description = request.Description?.Trim() ?? string.Empty;
     ApplyThumbnail(classroom, request.ThumbnailInfo);
 
+    if (request.IsAdmin && request.TeacherId.HasValue)
+    {
+      classroom.TeacherId = request.TeacherId.Value;
+    }
+
     await unitOfWork.ClassroomRepository.UpdateClassroomAsync(classroom);
 
     return OperationResult<UpdatedClassroomDto>.SuccessResult(new UpdatedClassroomDto(

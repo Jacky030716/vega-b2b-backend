@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 
 namespace CleanArc.Infrastructure.Identity.Identity.PermissionManager;
 
@@ -6,7 +6,7 @@ public class DynamicPermissionService : IDynamicPermissionService
 {
     public bool CanAccess(ClaimsPrincipal user, string area, string controller, string action)
     {
-        if (user.IsInRole("admin"))
+        if (user.IsInRole(CleanArc.Application.Contracts.Identity.RoleNames.InstitutionAdmin))
         {
             return true;
         }

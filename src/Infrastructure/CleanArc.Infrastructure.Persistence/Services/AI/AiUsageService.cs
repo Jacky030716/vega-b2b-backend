@@ -1,3 +1,4 @@
+using CleanArc.Application.Contracts.Identity;
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Domain.Entities.AI;
 using CleanArc.Domain.Entities.User;
@@ -108,10 +109,7 @@ public sealed class AiUsageService(
   {
     return user.UserRoles?.Any(userRole =>
       userRole.Role is not null
-      && (
-        string.Equals(userRole.Role.Name, "admin", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(userRole.Role.Name, "InstitutionAdmin", StringComparison.OrdinalIgnoreCase)
-      )) == true;
+      && RoleNames.IsAdmin(userRole.Role.Name)) == true;
   }
 
   private static bool IsImageFeature(string featureType)

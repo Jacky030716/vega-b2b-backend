@@ -17,7 +17,7 @@ internal static class ChallengeContentNormalizer
 
     try
     {
-      return gameKey switch
+      var result = gameKey switch
       {
         "spell_catcher" => NormalizeAdaptiveWordItems(rawContentData, "SPELL_CATCHER"),
         "syllable_sushi" => NormalizeAdaptiveWordItems(rawContentData, "SYLLABLE_SUSHI"),
@@ -26,9 +26,17 @@ internal static class ChallengeContentNormalizer
         "echo_sequence" => NormalizeAdaptiveWordItems(rawContentData, "ECHO_SEQUENCE"),
         _ => NormalizationResult.Fail($"Unsupported game key '{gameKey}'")
       };
+
+      if (!result.IsSuccess)
+      {
+        System.Console.WriteLine($"[ChallengeContentNormalizer Warning] validation failed for gameKey: {gameKey}, Error: {result.ErrorMessage}, Content: {rawContentData}");
+      }
+
+      return result;
     }
-    catch (JsonException)
+    catch (JsonException ex)
     {
+      System.Console.WriteLine($"[ChallengeContentNormalizer Error] JSON parsing failed for gameKey: {gameKey}, Content: {rawContentData}, Exception: {ex}");
       return NormalizationResult.Fail("ContentData is not valid JSON");
     }
   }
@@ -50,7 +58,13 @@ internal static class ChallengeContentNormalizer
       if (itemNode is not JsonObject item)
         return NormalizationResult.Fail($"{expectedTemplateCode} items must be objects");
 
-      var word = item["word"]?.GetValue<string>()?.Trim();
+      var word = item["word"]?.GetValue<string>()?.Trim()
+                 ?? item["translation"]?.GetValue<string>()?.Trim()
+                 ?? item["targetWord"]?.GetValue<string>()?.Trim()
+                 ?? item["translatedWord"]?.GetValue<string>()?.Trim()
+                 ?? item["text"]?.GetValue<string>()?.Trim()
+                 ?? item["meaningText"]?.GetValue<string>()?.Trim();
+
       if (string.IsNullOrWhiteSpace(word))
         return NormalizationResult.Fail($"{expectedTemplateCode} item.word is required");
 

@@ -77,6 +77,13 @@ internal sealed class CreateAdminTeacherCommandHandler(
             return OperationResult<CreateAdminTeacherResult>.NotFoundResult("Institution not found.");
         }
 
+        var seatsUsed = institution.UserMemberships.Count;
+        if (seatsUsed >= institution.MaxSeats)
+        {
+            return OperationResult<CreateAdminTeacherResult>.FailureResult(
+                $"Your institution has reached the maximum seat capacity of {institution.MaxSeats} allowed on your current subscription. Please upgrade to add more teachers.");
+        }
+
         var user = new User
         {
             UserName = userName,

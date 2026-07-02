@@ -1,3 +1,4 @@
+using CleanArc.Application.Contracts.Identity;
 using CleanArc.Domain.Entities.Institution;
 using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Identity.Identity.Manager;
@@ -29,24 +30,12 @@ public class SeedDataBase : ISeedDataBase
 
     public async Task Seed()
     {
-        // Seed admin role
-        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.Equals("admin")))
-        {
-            var role = new Role
-            {
-                Name = "admin",
-                DisplayName = "Administrator",
-                CreatedDate = DateTime.UtcNow
-            };
-            await _roleManager.CreateAsync(role);
-        }
-
         // Seed student role
-        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.Equals("student")))
+        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.ToLower() == RoleNames.Student.ToLower()))
         {
             var role = new Role
             {
-                Name = "student",
+                Name = RoleNames.Student,
                 DisplayName = "Student",
                 CreatedDate = DateTime.UtcNow
             };
@@ -54,11 +43,11 @@ public class SeedDataBase : ISeedDataBase
         }
 
         // Seed teacher role
-        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.Equals("teacher")))
+        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.ToLower() == RoleNames.Teacher.ToLower()))
         {
             var role = new Role
             {
-                Name = "teacher",
+                Name = RoleNames.Teacher,
                 DisplayName = "Teacher",
                 CreatedDate = DateTime.UtcNow
             };
@@ -66,11 +55,11 @@ public class SeedDataBase : ISeedDataBase
         }
 
         // Seed institution admin role
-        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.Equals("InstitutionAdmin")))
+        if (!_roleManager.Roles.AsNoTracking().Any(r => r.Name.ToLower() == RoleNames.InstitutionAdmin.ToLower()))
         {
             var role = new Role
             {
-                Name = "InstitutionAdmin",
+                Name = RoleNames.InstitutionAdmin,
                 DisplayName = "Institution Admin",
                 CreatedDate = DateTime.UtcNow
             };
@@ -134,10 +123,18 @@ public class SeedDataBase : ISeedDataBase
 
         // Link existing default users (admin, teacher_test, inst_admin) to this institution if they exist
         var adminUser = await _userManager.Users.FirstOrDefaultAsync(u => u.UserName == "admin");
-        if (adminUser is not null && (!adminUser.InstitutionId.HasValue || adminUser.InstitutionId != existingInstitution.Id))
+        if (adminUser is not null)
         {
-            adminUser.InstitutionId = existingInstitution.Id;
-            await _userManager.UpdateAsync(adminUser);
+            if (!adminUser.InstitutionId.HasValue || adminUser.InstitutionId != existingInstitution.Id)
+            {
+                adminUser.InstitutionId = existingInstitution.Id;
+                await _userManager.UpdateAsync(adminUser);
+            }
+
+            if (!await _userManager.IsInRoleAsync(adminUser, RoleNames.InstitutionAdmin))
+            {
+                await _userManager.AddToRoleAsync(adminUser, RoleNames.InstitutionAdmin);
+            }
 
             var exists = await _dbContext.InstitutionUsers.AnyAsync(x => x.UserId == adminUser.Id && x.InstitutionId == existingInstitution.Id);
             if (!exists)
@@ -223,9 +220,9 @@ public class SeedDataBase : ISeedDataBase
             await _userManager.UpdateAsync(user);
         }
 
-        if (!await _userManager.IsInRoleAsync(user, "InstitutionAdmin"))
+        if (!await _userManager.IsInRoleAsync(user, RoleNames.InstitutionAdmin))
         {
-            await _userManager.AddToRoleAsync(user, "InstitutionAdmin");
+            await _userManager.AddToRoleAsync(user, RoleNames.InstitutionAdmin);
         }
 
         var membership = await _dbContext.InstitutionUsers

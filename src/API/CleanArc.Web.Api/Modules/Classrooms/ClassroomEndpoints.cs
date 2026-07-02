@@ -374,8 +374,16 @@ public class ClassroomEndpoints : ICarterModule
     {
       var userId = int.Parse(user.Identity.GetUserId());
       var thumbnailInfo = ParseThumbnail(request.Thumbnail);
+      
+      // If user is admin/institution admin and teacherId is provided, use it
+      var targetTeacherId = userId;
+      if (request.TeacherId.HasValue && (user.IsInRole("admin") || user.IsInRole("Admin") || user.IsInRole("InstitutionAdmin")))
+      {
+        targetTeacherId = request.TeacherId.Value;
+      }
+
       var result = await sender.Send(new CreateClassroomCommand(
-        userId,
+        targetTeacherId,
         request.Name,
         request.Description,
         thumbnailInfo?.Url,
@@ -428,10 +436,11 @@ public class ClassroomEndpoints : ICarterModule
       var result = await sender.Send(new UpdateClassroomCommand(
           classroomId,
           userId,
-          user.IsInRole("admin"),
+          user.IsInRole("admin") || user.IsInRole("Admin") || user.IsInRole("InstitutionAdmin"),
           request.Name,
           request.Description,
-          thumbnailInfo));
+          thumbnailInfo,
+          request.TeacherId));
       return result.ToEndpointResult();
     }), _version, "UpdateClassroom", _tag)
     .RequireAuthorization(builder => builder.RequireRole("teacher", "admin"));

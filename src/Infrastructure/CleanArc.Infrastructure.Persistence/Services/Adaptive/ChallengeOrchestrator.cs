@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Domain.Entities.Adaptive;
+using CleanArc.Domain.Entities.Classroom;
 using CleanArc.Domain.Entities.Quiz;
 using Microsoft.EntityFrameworkCore;
 
@@ -123,8 +124,19 @@ public class ChallengeOrchestrator(
         {
             var isAttached = await dbContext.ClassroomModules.AsNoTracking()
                 .AnyAsync(link => link.ClassroomId == classroomId && link.ModuleId == requestedModuleId.Value, cancellationToken);
-            if (!isAttached)
-                throw new InvalidOperationException("Module is not attached to this classroom");
+            if (isAttached)
+                return requestedModuleId;
+
+            var moduleExists = await dbContext.SyllabusModules.AsNoTracking()
+                .AnyAsync(module => module.Id == requestedModuleId.Value && module.IsActive, cancellationToken);
+            if (!moduleExists)
+                throw new InvalidOperationException("Module not found");
+
+            dbContext.ClassroomModules.Add(new ClassroomModule
+            {
+                ClassroomId = classroomId,
+                ModuleId = requestedModuleId.Value
+            });
 
             return requestedModuleId;
         }

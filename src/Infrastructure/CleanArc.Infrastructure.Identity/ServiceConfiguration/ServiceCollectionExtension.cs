@@ -144,6 +144,28 @@ public static class ServiceCollectionExtension
                     if (claimsIdentity.Claims?.Any() != true)
                         context.Fail("This token has no claims.");
 
+                    // Map admin and institution_admin roles dynamically to avoid 403 rejections
+                    var roleClaims = claimsIdentity.FindAll(ClaimTypes.Role).ToList();
+                    foreach (var claim in roleClaims)
+                    {
+                        if (claim.Value.Equals("admin", StringComparison.OrdinalIgnoreCase) || 
+                            claim.Value.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!claimsIdentity.HasClaim(ClaimTypes.Role, "institution_admin"))
+                            {
+                                claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, "institution_admin"));
+                            }
+                        }
+                        else if (claim.Value.Equals("institution_admin", StringComparison.OrdinalIgnoreCase) || 
+                                 claim.Value.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!claimsIdentity.HasClaim(ClaimTypes.Role, "admin"))
+                            {
+                                claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, "admin"));
+                            }
+                        }
+                    }
+
                     var securityStamp =
                         claimsIdentity.FindFirstValue(new ClaimsIdentityOptions().SecurityStampClaimType);
                     if (!securityStamp.HasValue())

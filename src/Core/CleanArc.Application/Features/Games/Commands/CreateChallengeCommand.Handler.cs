@@ -1,6 +1,7 @@
 using CleanArc.Application.Contracts.Infrastructure.AI;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
+using CleanArc.Domain.Entities.Adaptive;
 using CleanArc.Domain.Entities.Quiz;
 using Mediator;
 
@@ -52,11 +53,17 @@ internal sealed class CreateChallengeCommandHandler(IUnitOfWork unitOfWork, IAiA
       if (!isAttached)
         return OperationResult<CreateChallengeDto>.FailureResult("Module is not attached to this classroom");
 
-      var existingCount = await unitOfWork.ChallengeRepository.CountActiveModuleChallengesAsync(
+      var moduleType = await unitOfWork.ClassroomRepository.GetAttachedModuleTypeAsync(
         request.ClassroomId.Value,
         moduleId.Value);
-      if (existingCount >= 3)
-        return OperationResult<CreateChallengeDto>.FailureResult("Each module can have up to 3 game challenges");
+      if (moduleType == SyllabusModule.PredefinedModuleType)
+      {
+        var existingCount = await unitOfWork.ChallengeRepository.CountActiveModuleChallengesAsync(
+          request.ClassroomId.Value,
+          moduleId.Value);
+        if (existingCount >= 3)
+          return OperationResult<CreateChallengeDto>.FailureResult("Each module can have up to 3 game challenges");
+      }
     }
 
     var challenge = await unitOfWork.ChallengeRepository.CreateChallengeAsync(new Challenge

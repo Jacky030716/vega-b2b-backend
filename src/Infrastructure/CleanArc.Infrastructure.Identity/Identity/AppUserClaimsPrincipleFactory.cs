@@ -27,12 +27,21 @@ public class AppUserClaimsPrincipleFactory:UserClaimsPrincipalFactory<User,Role>
             claimsIdentity.AddClaim(new Claim("InstitutionId", user.InstitutionId.Value.ToString()));
         }
 
-        foreach (var roles in userRoles)
+        foreach (var role in userRoles)
         {
-            claimsIdentity.AddClaim(new Claim(ClaimTypes.Role,roles));
-        }
+            claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, role));
 
-        //claimsIdentity.AddClaim(new Claim(ClaimTypes.Role,RoleManager.GetRoleNameAsync(user.Roles)));
+            if (role.Equals("admin", StringComparison.OrdinalIgnoreCase) || 
+                role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, "institution_admin"));
+            }
+            else if (role.Equals("institution_admin", StringComparison.OrdinalIgnoreCase) || 
+                     role.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase))
+            {
+                claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, "admin"));
+            }
+        }
 
         return claimsIdentity;
     }

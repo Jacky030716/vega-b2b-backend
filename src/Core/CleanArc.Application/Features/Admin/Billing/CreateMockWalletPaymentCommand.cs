@@ -109,6 +109,7 @@ internal sealed class CreateMockWalletPaymentCommandHandler(
         return normalized switch
         {
             "grabpay" => "grabpay",
+            "touch-n-go" or "tng" => "touch-n-go",
             _ => null,
         };
     }

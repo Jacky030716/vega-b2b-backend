@@ -229,7 +229,9 @@ public record GenerateAdaptiveChallengeRequest(
     string? LearningFocus,
     IReadOnlyList<string>? ManualWords,
     string? AiPrompt,
-    string? SourceText);
+    string? SourceText,
+    string? SourceLanguage = null,
+    string? TargetLanguage = null);
 
 public record GeneratedAdaptiveChallengePreviewDto(
     string Title,
@@ -508,7 +510,10 @@ public record GenerateModuleChallengeRequest(
     int ClassroomId,
     string GameType,
     string Mode,
-    int? StudentId = null);
+    int? StudentId = null,
+    string? Language = null,
+    string? SourceLanguage = null,
+    string? TargetLanguage = null);
 
 public record ActiveStudentChallengeDto(
     int ChallengeId,

@@ -250,6 +250,7 @@ public class ClassroomModuleManagementService(
 
         var weakness = await GetModuleWeaknessAsync(classroom.Id, module.Id, request.StudentId, cancellationToken);
         var moduleTitle = string.IsNullOrWhiteSpace(module.UnitTitle) ? module.Title : module.UnitTitle;
+        var (sourceLanguage, targetLanguage) = ResolveTranslationLanguages(request);
         var aiPlan = await challengeAiPipelineService.GenerateModuleChallengePlanAsync(
             new ModuleChallengePlanRequest(
                 module.Id,
@@ -278,7 +279,9 @@ public class ClassroomModuleManagementService(
                     "PREDEFINED_MODULE",
                     aiPlan.Result.RecommendedGameType,
                     aiPlan.Result.DifficultyLevel,
-                    selectedItems.Select(ToAdaptiveItem).ToList()),
+                    selectedItems.Select(ToAdaptiveItem).ToList(),
+                    sourceLanguage,
+                    targetLanguage),
                 cancellationToken);
 
             if (config.IsSuccess)
@@ -335,9 +338,10 @@ public class ClassroomModuleManagementService(
         bool fallbackUsed,
         CancellationToken cancellationToken)
     {
+        var (sourceLanguage, targetLanguage) = ResolveTranslationLanguages(request);
         var preview = await challengeOrchestrator.GenerateAsync(new GenerateAdaptiveChallengeRequest(
             request.StudentId.HasValue ? "student" : "class", request.StudentId, classroomId, request.Mode, "PREDEFINED_MODULE", module.Id,
-            request.GameType, request.Mode.Replace('_', ' '), null, null, null), cancellationToken);
+            request.GameType, request.Mode.Replace('_', ' '), null, null, null, sourceLanguage, targetLanguage), cancellationToken);
 
         var assigned = await challengeOrchestrator.AssignAsync(new AssignAdaptiveChallengeRequest(
             teacherId, request.StudentId, classroomId, null,
@@ -1009,6 +1013,30 @@ public class ClassroomModuleManagementService(
                 : provider;
 
         return challenge.IsAIGenerated ? "Gemini" : "Rule-based";
+    }
+
+    private static (string? SourceLanguage, string? TargetLanguage) ResolveTranslationLanguages(
+        GenerateModuleChallengeRequest request)
+    {
+        if (!string.Equals(request.GameType, "TRANSLATION", StringComparison.OrdinalIgnoreCase))
+            return (null, null);
+
+        var sourceLanguage = string.IsNullOrWhiteSpace(request.SourceLanguage)
+            ? request.Language?.Trim()
+            : request.SourceLanguage.Trim();
+        var targetLanguage = string.IsNullOrWhiteSpace(request.TargetLanguage)
+            ? "en"
+            : request.TargetLanguage.Trim();
+
+        if (string.IsNullOrWhiteSpace(sourceLanguage))
+            sourceLanguage = "ms";
+
+        if (string.Equals(sourceLanguage, targetLanguage, StringComparison.OrdinalIgnoreCase))
+            targetLanguage = string.Equals(sourceLanguage, "ms", StringComparison.OrdinalIgnoreCase)
+                ? "en"
+                : "ms";
+
+        return (sourceLanguage, targetLanguage);
     }
 
     private sealed record ModuleChallengePlanDisplay(

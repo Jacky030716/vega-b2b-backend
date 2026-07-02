@@ -20,6 +20,15 @@ internal class JoinClassroomCommandHandler : IRequestHandler<JoinClassroomComman
   public async ValueTask<OperationResult<int>> Handle(JoinClassroomCommand request, CancellationToken cancellationToken)
   {
     var normalizedJoinCode = request.JoinCode?.Trim().ToUpperInvariant() ?? string.Empty;
+
+    var user = await _userManager.GetUserByIdAsync(request.UserId);
+    if (user is null)
+      return OperationResult<int>.UnauthorizedResult("Authenticated user was not found");
+
+    var roles = await _userManager.GetUserRolesAsync(user);
+    if (!roles.Any(role => string.Equals(role, "student", StringComparison.OrdinalIgnoreCase)))
+      return OperationResult<int>.ForbiddenResult("Only students can join classrooms using a join code.");
+
     var classroom = await _unitOfWork.ClassroomRepository.GetClassroomByJoinCodeAsync(normalizedJoinCode);
     if (classroom == null)
       return OperationResult<int>.NotFoundResult("Invalid join code or classroom not found");

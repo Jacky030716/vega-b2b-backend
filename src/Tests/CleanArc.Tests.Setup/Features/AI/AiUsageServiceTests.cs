@@ -84,4 +84,40 @@ public class AiUsageServiceTests
     Assert.Equal(300, quota.MonthlyLimit);
     Assert.Equal(300, quota.Remaining);
   }
+
+  [Fact]
+  public async Task GetRemainingQuotaAsync_UsesInstitutionPremium_ForInstitutionAdminRole()
+  {
+    using var connection = new SqliteConnection("DataSource=:memory:");
+    await connection.OpenAsync();
+
+    await using var context = CreateContext(connection);
+    var institution = new Institution { Name = "Vega Primary", SubscriptionTier = "Premium" };
+    var institutionAdminRole = new Role { Name = CleanArc.Application.Contracts.Identity.RoleNames.InstitutionAdmin, NormalizedName = "INSTITUTIONADMIN", DisplayName = "Institution Admin" };
+    var user = new User { UserName = "instadmin01", Name = "Institution Admin", Institution = institution };
+
+    context.Institutions.Add(institution);
+    context.Roles.Add(institutionAdminRole);
+    context.Users.Add(user);
+    await context.SaveChangesAsync();
+
+    context.UserRoles.Add(new UserRole
+    {
+      UserId = user.Id,
+      RoleId = institutionAdminRole.Id,
+      User = user,
+      Role = institutionAdminRole,
+    });
+    await context.SaveChangesAsync();
+
+    var service = new AiUsageService(
+      context,
+      Options.Create(new AiUsageLimitOptions()),
+      NullLogger<AiUsageService>.Instance);
+
+    var quota = await service.GetRemainingQuotaAsync(user.Id, AiFeatureTypes.CustomChallengeGeneration, CancellationToken.None);
+
+    Assert.Equal(300, quota.MonthlyLimit);
+    Assert.Equal(300, quota.Remaining);
+  }
 }

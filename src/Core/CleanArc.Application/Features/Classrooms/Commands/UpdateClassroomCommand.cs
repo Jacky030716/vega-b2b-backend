@@ -9,7 +9,8 @@ public record UpdateClassroomCommand(
     bool IsAdmin,
     string Name,
     string? Description,
-    ClassroomThumbnailRequest? ThumbnailInfo = null) : IRequest<OperationResult<UpdatedClassroomDto>>;
+    ClassroomThumbnailRequest? ThumbnailInfo = null,
+    int? TeacherId = null) : IRequest<OperationResult<UpdatedClassroomDto>>;
 
 public record UpdatedClassroomDto(
     int Id,

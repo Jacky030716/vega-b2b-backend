@@ -16,6 +16,7 @@ public interface IClassroomRepository
   Task ReplaceClassroomSubjectsAndModulesAsync(int classroomId, IEnumerable<string> subjects, int teacherId);
   Task<IReadOnlyList<string>> GetClassroomSubjectsAsync(int classroomId);
   Task<bool> IsModuleAttachedToClassroomAsync(int classroomId, int moduleId);
+  Task<string?> GetAttachedModuleTypeAsync(int classroomId, int moduleId);
   Task<int?> ResolveChallengeModuleIdAsync(int classroomId);
   Task ArchiveClassroomAsync(Classroom classroom, int deletedBy);
   Task DeleteClassroomAsync(int classroomId);

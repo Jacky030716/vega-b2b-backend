@@ -61,9 +61,8 @@ internal class UserPasswordLoginQueryHandler : IRequestHandler<UserPasswordLogin
 
     var roles = await _userManager.GetUserRolesAsync(user);
     var hasAllowedRole = roles.Any(role =>
-        role.Equals("teacher", StringComparison.OrdinalIgnoreCase)
-        || role.Equals("admin", StringComparison.OrdinalIgnoreCase)
-        || role.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase));
+        role.Equals(RoleNames.Teacher, StringComparison.OrdinalIgnoreCase)
+        || RoleNames.IsInstitutionAdmin(role));
 
     if (!hasAllowedRole)
     {
