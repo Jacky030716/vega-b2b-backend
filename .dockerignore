@@ -1,0 +1,12 @@
+**/.git
+**/.vscode
+**/bin
+**/obj
+**/artifacts
+**/.gemini
+**/node_modules
+out/
+publish/
+*.db
+*.local
+*.log
