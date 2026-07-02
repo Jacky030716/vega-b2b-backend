@@ -1,251 +1,147 @@
-# MemowordCleanArc
+# Vega B2B Backend System
 
-# Guide to Creating a New API in Clean Architecture
-
-This guide provides a step-by-step process for creating a new API endpoint in a .NET 8 project following Clean Architecture principles.
+Vega B2B is a gamified, adaptive language learning platform. The backend is built on **.NET 8** following **Clean Architecture**, **CQRS (Command Query Responsibility Segregation)**, and **Domain-Driven Design (DDD)** principles to provide a scalable, secure, and performant service.
 
 ---
 
-## **1. Define the Requirements**
-1. Clarify the purpose of the API.
-    - **Example**: Create an API for managing "Products" with operations like adding, updating, and retrieving products.
-2. Decide on the route structure and HTTP method.
-    - **Example**: `POST /api/v1/products` for adding a product.
-3. Define the input and output JSON structure.
-    - **Input**:
-      ```json
-      {
-          "name": "Product Name",
-          "price": 100.00,
-          "category": "Category Name"
-      }
-      ```
-    - **Output**:
-      ```json
-      {
-          "id": 1,
-          "name": "Product Name",
-          "price": 100.00,
-          "category": "Category Name"
-      }
-      ```
+## 🏛️ Architecture Overview
 
----
+The system strictly adheres to Clean Architecture, keeping the core business logic independent of external frameworks, databases, and UI layers.
 
-## **2. Update the Project Structure**
-
-### **Step 2.1**: Add a New Folder for the Feature
-- Navigate to `Core/CleanArc.Application/Features`.
-- Create a new folder named `Products` to group all files related to this feature:
-  ```
-  Core/CleanArc.Application/Features/Products
-  ```
-
-### **Step 2.2**: Inside the `Products` folder, create the following structure:
-- **Commands**: For command handling (e.g., `AddProductCommand`).
-- **Queries**: For query handling (e.g., `GetProductQuery`).
-- **DTOs**: For data transfer objects.
-  ```
-  Core/CleanArc.Application/Features/Products/Commands
-  Core/CleanArc.Application/Features/Products/Queries
-  Core/CleanArc.Application/Features/Products/DTOs
-  ```
-
----
-
-## **3. Define the Command and Handler**
-
-### **Step 3.1**: Define the Command
-Create `AddProductCommand` in `Commands`:
-```csharp
-public record AddProductCommand(string Name, decimal Price, string Category)
-    : IRequest<ProductDto>, IValidatableModel<AddProductCommand>
-{
-    public IValidator<AddProductCommand> ValidateApplicationModel(ApplicationBaseValidationModelProvider<AddProductCommand> validator)
-    {
-        validator.RuleFor(c => c.Name).NotEmpty().WithMessage("Name is required.");
-        validator.RuleFor(c => c.Price).GreaterThan(0).WithMessage("Price must be greater than zero.");
-        return validator;
-    }
-};
+```mermaid
+graph TD
+    API[API Layer: CleanArc.Web.Api] --> Application[Application Layer: CleanArc.Application]
+    Infrastructure[Infrastructure Layer: Identity, Persistence, CrossCutting] --> Application
+    Infrastructure --> Domain[Domain Layer: CleanArc.Domain]
+    Application --> Domain
 ```
 
-### **Step 3.2**: Implement the Handler
-Create `AddProductCommandHandler` in the same folder:
-```csharp
-internal class AddProductCommandHandler : IRequestHandler<AddProductCommand, ProductDto>
-{
-    private readonly IProductRepository _productRepository;
+### Layer Dependency Rules
+*   **API** $\rightarrow$ **Application** $\rightarrow$ **Domain** *(Allowed)*
+*   **Infrastructure** $\rightarrow$ **Domain** / **Application** *(Allowed — implements contracts)*
+*   **Domain** has no dependencies on other projects *(Strict Rule)*
+*   **Application** cannot depend on **Infrastructure** directly; it interacts solely via interfaces defined in the Application contracts.
 
-    public AddProductCommandHandler(IProductRepository productRepository)
-    {
-        _productRepository = productRepository;
-    }
+---
 
-    public async Task<ProductDto> Handle(AddProductCommand request, CancellationToken cancellationToken)
-    {
-        var product = new Product { Name = request.Name, Price = request.Price, Category = request.Category };
-        await _productRepository.AddProductAsync(product);
-        
-        return new ProductDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Price = product.Price,
-            Category = product.Category
-        };
-    }
-}
+## 📂 Repository Structure
+
+The project code is organized as follows:
+
+```
+vega-backend/src/
+├── Core/
+│   ├── CleanArc.Domain/                 # Core Domain Entities (no external dependencies)
+│   │   ├── Common/BaseEntity.cs         # Audit logs, BaseEntity, IEntity
+│   │   └── Entities/                    # Bounded contexts: User, Adaptive, Quiz, Institution
+│   └── CleanArc.Application/            # Business Logic & CQRS Pipelines
+│       ├── Features/                    # Mediator Handlers organized by Bounded Context
+│       ├── Contracts/                   # Interfaces (IUnitOfWork, IRepository, AI services)
+│       ├── Models/Common/               # OperationResult Result Monad
+│       └── Profiles/                    # AutoMapper Profile mapping
+├── Infrastructure/
+│   ├── CleanArc.Infrastructure.Persistence/ # Entity Framework Core and Data Stores
+│   │   ├── ApplicationDbContext.cs      # Database Context & SQL configurations
+│   │   ├── Repositories/                # Database Repository Implementations
+│   │   └── Services/                    # Adaptive Challenge engines & AI pipeline services
+│   └── CleanArc.Infrastructure.Identity/    # Identity Server configuration
+│       ├── Identity/                    # ASP.NET Identity (Roles, Claims, Seeding)
+│       └── Jwt/                         # JWT Token Service
+└── API/
+    └── CleanArc.Web.Api/                # Carter Routing Modules & Controllers
+        ├── Modules/                     # Carter ICarterModule Endpoint Modules (REST endpoints)
+        ├── Scripts/SchemaRepairs/       # Custom SQLite Schema Repair Scripts
+        └── Program.cs                   # Application Bootstrapper
 ```
 
 ---
 
-## **4. Update the Domain Layer**
+## ⚙️ Core Design Patterns & System Principles
 
-### **Step 4.1**: Define the Product Entity
-Add `Product` in `Core/CleanArc.Domain/Entities`:
-```csharp
-public class Product : BaseEntity
-{
-    public string Name { get; set; }
-    public decimal Price { get; set; }
-    public string Category { get; set; }
-}
-```
+### 1. CQRS Command & Query Pattern (via Mediator)
+Every database modification or data fetch operation runs through a pipeline using Mediator. Handlers are defined in the same file as their commands to keep features cohesive and maintainable.
+*   **Commands & Queries**: Declared as `public sealed record` objects.
+*   **Handlers**: Declared as `internal sealed class` implementations.
+*   **Entity Framework Context**: Handlers never inject `ApplicationDbContext` directly; they always interact through [IUnitOfWork](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Core/CleanArc.Application/Contracts/Persistence/IUnitOfWork.cs).
 
----
+### 2. OperationResult Monad (Cross-Layer Results)
+To avoid throwing custom exceptions for expected domain errors (e.g. resource not found, forbidden operations), handlers return [OperationResult<T>](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Core/CleanArc.Application/Models/Common/OperationResult.cs).
+*   `SuccessResult(value)` $\rightarrow$ maps to `200 OK`
+*   `FailureResult(message)` $\rightarrow$ maps to `400 Bad Request`
+*   `UnauthorizedResult(message)` $\rightarrow$ maps to `401 Unauthorized`
+*   `ForbiddenResult(message)` $\rightarrow$ maps to `403 Forbidden`
+*   `NotFoundResult(message)` $\rightarrow$ maps to `404 Not Found`
 
-## **5. Update the Infrastructure Layer**
+### 3. Modular Carter Route Endpoints
+Instead of traditional bloated controllers, route mapping is handled using `ICarterModule` configurations in `CleanArc.Web.Api/Modules/`. Endpoints are lightweight and versioned explicitly.
 
-### **Step 5.1**: Add a Repository Interface
-Create `IProductRepository` in `Core/CleanArc.Application/Contracts/Persistence`:
-```csharp
-public interface IProductRepository
-{
-    Task AddProductAsync(Product product);
-    Task<Product> GetProductByIdAsync(int id);
-}
-```
-
-### **Step 5.2**: Implement the Repository
-Add `ProductRepository` in `Infrastructure/CleanArc.Infrastructure.Persistence/Repositories`:
-```csharp
-internal class ProductRepository : BaseAsyncRepository<Product>, IProductRepository
-{
-    public ProductRepository(ApplicationDbContext dbContext) : base(dbContext) { }
-
-    public async Task AddProductAsync(Product product)
-    {
-        await base.AddAsync(product);
-    }
-
-    public async Task<Product> GetProductByIdAsync(int id)
-    {
-        return await base.TableNoTracking.FirstOrDefaultAsync(p => p.Id == id);
-    }
-}
-```
-
-### **Step 5.3**: Register the Repository
-Update `ServiceCollectionExtensions.cs`:
-```csharp
-services.AddScoped<IProductRepository, ProductRepository>();
-```
-
-### **Step 5.4**: Update the Database Context
-Add `DbSet<Product>` to `ApplicationDbContext`:
-```csharp
-public DbSet<Product> Products { get; set; }
-```
+### 4. Dynamic Token Claim and Role Mapping
+Roles are defined in the [RoleNames](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Core/CleanArc.Application/Contracts/Identity/RoleNames.cs) static class (`student`, `teacher`, and `institution_admin`).
+*   To prevent cross-role bypasses and endpoint lockouts, [AppUserClaimsPrincipleFactory](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Infrastructure/CleanArc.Infrastructure.Identity/Identity/AppUserClaimsPrincipleFactory.cs) and [ServiceCollectionExtension](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Infrastructure/CleanArc.Infrastructure.Identity/ServiceConfiguration/ServiceCollectionExtension.cs) map `admin` and `institution_admin` roles dynamically to each other.
 
 ---
 
-## **6. Update the API Layer**
+## ⚡ Core Functional Modules
 
-### **Step 6.1**: Create a Controller
-Add `ProductController` in `API/CleanArc.Web.Api/Controllers/V1`:
-```csharp
-[ApiVersion("1")]
-[ApiController]
-[Route("api/v{version:apiVersion}/products")]
-public class ProductController : ControllerBase
-{
-    private readonly ISender _sender;
+### 🧠 1. Adaptive Challenge Engine
+Generates and assigns learning challenges based on individual student performance.
+*   **Adaptive Strategies**: Evaluates student weakness matrices and translates syllabus content into interactive games:
+    *   *Spell Catcher* (Spelling validation and recall)
+    *   *Syllable Sushi* (Syllable parsing and segment grouping)
+    *   *Voice Bridge* (Pronunciation/speech validation)
+    *   *Echo Sequence* (Audio comprehension and visual memory)
+    *   *Translation* (Bilingual word translations)
+*   **Key Services**: [ChallengeGenerator](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Infrastructure/CleanArc.Infrastructure.Persistence/Services/Adaptive/ChallengeGenerator.cs) and [ChallengeOrchestrator](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Infrastructure/CleanArc.Infrastructure.Persistence/Services/Adaptive/ChallengeOrchestrator.cs).
+*   **JSON Resiliency**: [ChallengeContentNormalizer](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/Core/CleanArc.Application/Features/Games/Commands/ChallengeContentNormalizer.cs) cleans and normalizes AI generated quiz JSON formats, correcting common discrepancies in property names (e.g. mapping `translation`, `targetWord`, `text` keys automatically to `word`).
 
-    public ProductController(ISender sender)
-    {
-        _sender = sender;
-    }
+### 🏫 2. Classroom & Module Management
+*   Provides modular syllabus tracking for classrooms.
+*   Restricts join codes to users with the `student` role.
+*   Imposes a limit of **3 challenges** per syllabus module on predefined structures, but allows unlimited custom challenges on custom library modules.
 
-    [HttpPost]
-    public async Task<IActionResult> AddProduct([FromBody] AddProductCommand command)
-    {
-        var result = await _sender.Send(command);
-        return Ok(result);
-    }
-}
-```
+### 💳 3. Billing & Seat capacity checks
+*   Secures subscription limits for institutions.
+*   Before generating or bulk-creating student/educator accounts, checks the institution subscription capacity against the maximum seats allowed (`MaxSeats`).
 
-### **Step 6.2**: Add Swagger Documentation
-Update `SwaggerConfigurationExtensions.cs`:
-```csharp
-services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Product API", Version = "v1" });
-});
-```
+### 🤖 4. AI Hub Service Pipeline
+*   Orchestrates LLM generation (via Google Gemini) for quiz plans and syllabus translation content.
+*   Incorporates monthly AI token rate-limiting quotas on a per-user level.
+*   Logs all generated prompts, parameters, and token cost usage details into database audit files (`AiUsageLog` / `AiAuditLog`).
 
 ---
 
-## **7. Update the Database**
+## 🛠️ Developer Setup & Commands
 
-### **Step 7.1**: Add a Migration
-Run the following command:
+### 1. Build the Solution
+Compile the projects to verify code cleanliness:
 ```bash
-dotnet ef migrations add AddProductsTable -p Infrastructure/CleanArc.Infrastructure.Persistence -s API/CleanArc.Web.Api
+dotnet build
 ```
 
-### **Step 7.2**: Apply the Migration
-Run:
+### 2. Run Test Suites
+The project includes a robust suite of unit and integration tests covering security, AI generation, and database limits:
 ```bash
-dotnet ef database update -p Infrastructure/CleanArc.Infrastructure.Persistence -s API/CleanArc.Web.Api
+dotnet test
+```
+
+### 3. Database Schema Migration and Repair
+We use Entity Framework Core for persistence migrations. Additionally, dynamic SQL schema scripts (such as [20260630_RemoveLegacyClassroomMetadataColumns.sql](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/src/API/CleanArc.Web.Api/Scripts/SchemaRepairs/20260630_RemoveLegacyClassroomMetadataColumns.sql)) run automatically at startup to repair legacy columns.
+*   **Create Migration**:
+    ```bash
+    dotnet ef migrations add <MigrationName> -p src/Infrastructure/CleanArc.Infrastructure.Persistence -s src/API/CleanArc.Web.Api
+    ```
+*   **Apply Migration**:
+    ```bash
+    dotnet ef database update -p src/Infrastructure/CleanArc.Infrastructure.Persistence -s src/API/CleanArc.Web.Api
+    ```
+
+### 4. Running the Development Server
+```bash
+cd src/API/CleanArc.Web.Api
+dotnet run
 ```
 
 ---
 
-## **8. Add Error Handling**
-Ensure validation and error-handling middleware is active:
-```csharp
-app.UseMiddleware<ExceptionHandler>();
-```
-
----
-
-## **9. Write Tests**
-
-### **Step 9.1**: Unit Tests
-Add tests for `AddProductCommandHandler` in `Tests/BaseSetup`:
-```csharp
-[Fact]
-public async Task AddProduct_ShouldReturnProductDto()
-{
-    var repositoryMock = new Mock<IProductRepository>();
-    var handler = new AddProductCommandHandler(repositoryMock.Object);
-
-    var command = new AddProductCommand("Test Product", 100.0M, "Category");
-
-    var result = await handler.Handle(command, CancellationToken.None);
-
-    Assert.NotNull(result);
-    Assert.Equal("Test Product", result.Name);
-}
-```
-
-### **Step 9.2**: Integration Tests
-Add tests for the endpoint in `Tests/Infrastructure`.
-
----
-
-This guide ensures consistency and adherence to best practices for building API endpoints in Clean Architecture. Follow these steps for each new feature to maintain project quality and scalability.
-
-
+## 🔗 Development References
+*   [Guide to Creating a New API in Clean Architecture](file:///C:/Users/JackyLoh716/Desktop/Y4S2_FYP/vega-backend/docs/creating_new_api_guide.md)
