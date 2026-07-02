@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -36,19 +36,22 @@ public static class LoggingConfiguration
         columnOpts.PrimaryKey = columnOpts.Id;
         columnOpts.Id.DataType = SqlDbType.Int;
 
-        if (!context.HostingEnvironment.IsDevelopment())
+        var sqlServerConnectionString = context.Configuration.GetConnectionString("SqlServer");
+        if (!context.HostingEnvironment.IsDevelopment() && !string.IsNullOrEmpty(sqlServerConnectionString))
         {
             configuration.WriteTo
                 .MSSqlServer(
-                    connectionString: context.Configuration.GetConnectionString("SqlServer"),
+                    connectionString: sqlServerConnectionString,
                     sinkOptions: new MSSqlServerSinkOptions { TableName = "LogEvents", AutoCreateSqlTable = true, SchemaName = "log" })
                 .MinimumLevel.Warning();
 
         }
-
         else{
             configuration.WriteTo.Console().MinimumLevel.Information();
-            configuration.WriteTo.File(new JsonFormatter(), "logs/log.json").MinimumLevel.Information();
+            if (context.HostingEnvironment.IsDevelopment())
+            {
+                configuration.WriteTo.File(new JsonFormatter(), "logs/log.json").MinimumLevel.Information();
+            }
         }
 
         #region ElasticSearch Configuration. UnComment if Needed 
