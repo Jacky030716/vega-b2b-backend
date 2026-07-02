@@ -19,6 +19,29 @@ public class SeedGameData : ISeedGameData
 
     public async Task Seed()
     {
+        if (!await _dbContext.Institutions.AnyAsync(i => i.Id == 1))
+        {
+            try
+            {
+                await _dbContext.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO \"Institutions\" (\"Id\", \"Name\", \"SubscriptionTier\", \"MaxSeats\", \"SeatsUsed\", \"RenewalDate\", \"StripeCustomerId\") " +
+                    "VALUES (1, 'Vega Primary', 'Premium', 1000, 0, CURRENT_TIMESTAMP, '');");
+            }
+            catch
+            {
+                var defaultInstitution = new CleanArc.Domain.Entities.Institution.Institution
+                {
+                    Name = "Vega Primary",
+                    SubscriptionTier = "Premium",
+                    MaxSeats = 1000,
+                    SeatsUsed = 0,
+                    StripeCustomerId = ""
+                };
+                await _dbContext.Institutions.AddAsync(defaultInstitution);
+                await _dbContext.SaveChangesAsync();
+            }
+        }
+
         if (!await _dbContext.ShopItems.AnyAsync())
         {
             var shopItems = new List<CleanArc.Domain.Entities.Shop.ShopItem>
@@ -619,6 +642,7 @@ public class SeedGameData : ISeedGameData
 
         var bmModule = new SyllabusModule
         {
+            ModuleCode = "PREDEFINED-BM-Y1-T1-W1",
             Subject = "Bahasa Melayu",
             Language = "ms",
             YearLevel = 1,
@@ -632,6 +656,7 @@ public class SeedGameData : ISeedGameData
 
         var englishModule = new SyllabusModule
         {
+            ModuleCode = "PREDEFINED-EN-Y1-T1-W1",
             Subject = "English",
             Language = "en",
             YearLevel = 1,
