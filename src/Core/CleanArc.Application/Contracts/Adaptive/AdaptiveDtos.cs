@@ -285,7 +285,7 @@ public record StartAdaptiveAttemptDto(int StudentChallengeAttemptId, int Challen
 
 public record SubmitAdaptiveItemAttemptRequest(
     int StudentChallengeAttemptId,
-    int ChallengeItemId,
+    int? ChallengeItemId,
     int? VocabularyItemId,
     int? GameTemplateId,
     DateTime? PresentedAt,

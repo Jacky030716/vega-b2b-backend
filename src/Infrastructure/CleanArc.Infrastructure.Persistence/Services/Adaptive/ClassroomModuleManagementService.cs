@@ -502,7 +502,7 @@ public class ClassroomModuleManagementService(
         var itemAttemptIds = await dbContext.StudentChallengeItemAttempts
             .Where(attempt =>
                 studentAttemptIds.Contains(attempt.StudentChallengeAttemptId) ||
-                challengeItemIds.Contains(attempt.ChallengeItemId))
+                (attempt.ChallengeItemId.HasValue && challengeItemIds.Contains(attempt.ChallengeItemId.Value)))
             .Select(attempt => attempt.Id)
             .ToListAsync(cancellationToken);
 

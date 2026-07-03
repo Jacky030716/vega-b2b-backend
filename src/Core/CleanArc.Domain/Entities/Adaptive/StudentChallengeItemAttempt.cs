@@ -8,8 +8,8 @@ public class StudentChallengeItemAttempt : BaseEntity<int>
     public int StudentChallengeAttemptId { get; set; }
     public StudentChallengeAttempt StudentChallengeAttempt { get; set; } = null!;
 
-    public int ChallengeItemId { get; set; }
-    public ChallengeItem ChallengeItem { get; set; } = null!;
+    public int? ChallengeItemId { get; set; }
+    public ChallengeItem? ChallengeItem { get; set; }
 
     public int? VocabularyItemId { get; set; }
     public VocabularyItem? VocabularyItem { get; set; }
@@ -28,5 +28,5 @@ public class StudentChallengeItemAttempt : BaseEntity<int>
     public string? ExpectedAnswerText { get; set; }
     public decimal? SpeechConfidence { get; set; }
     public string? ErrorType { get; set; }
-    public string RawTelemetryJson { get; set; } = "{}";
+    public string? RawTelemetryJson { get; set; } = "{}";
 }

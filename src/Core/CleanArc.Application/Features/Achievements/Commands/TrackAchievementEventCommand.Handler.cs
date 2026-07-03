@@ -22,7 +22,8 @@ internal class TrackAchievementEventCommandHandler(
             request.EventType,
             request.EventId,
             propertiesJson,
-            cancellationToken);
+            cancellationToken,
+            request.Timestamp);
 
         return OperationResult<TrackAchievementEventResult>.SuccessResult(
             new TrackAchievementEventResult(unlockedBadgeIds));

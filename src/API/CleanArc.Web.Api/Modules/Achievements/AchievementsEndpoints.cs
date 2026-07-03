@@ -37,6 +37,7 @@ public class AchievementsEndpoints : ICarterModule
         return result.ToEndpointResult();
       }), _version, "SyncStudentAchievements", "Student Achievements")
       .RequireAuthorization(b => b.RequireRole("student", "admin"));
+
     // GET /Badges/ — full badge catalog (all badges, no unlock state)
     app.MapEndpoint(builder => builder.MapGet(_routePrefix, async (ISender sender) =>
     {
@@ -82,7 +83,8 @@ public class AchievementsEndpoints : ICarterModule
           userId,
           request.EventType,
           request.EventId,
-          request.Properties));
+          request.Properties,
+          request.Timestamp));
 
       return result.ToEndpointResult();
     }), _version, "TrackAchievementEvent", _tag).RequireAuthorization();

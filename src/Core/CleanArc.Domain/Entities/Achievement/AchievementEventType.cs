@@ -106,12 +106,12 @@ public static class AchievementEventTypeExtensions
     if (string.IsNullOrWhiteSpace(value))
       return null;
 
-    if (TryParseEventType(value, out var parsed))
-      return parsed.GetEventTypeString();
-
     var key = value.Trim();
     if (EventAliases.TryGetValue(key, out var aliasType))
       return aliasType.GetEventTypeString();
+
+    if (TryParseEventType(value, out var parsed))
+      return parsed.GetEventTypeString();
 
     return null;
   }

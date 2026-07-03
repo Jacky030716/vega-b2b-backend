@@ -141,6 +141,14 @@ public class SrsNotificationServiceTests
         {
             Service.ProcessPushNotificationAttemptAsync(attemptId, CancellationToken.None).GetAwaiter().GetResult();
         }
+
+        public void EnqueueAchievementEvent(int userId, string eventType, string eventId, string propertiesJson)
+        {
+        }
+
+        public void EnqueueSyncStudentAchievements(int userId)
+        {
+        }
     }
 
     private static ApplicationDbContext CreateContext()

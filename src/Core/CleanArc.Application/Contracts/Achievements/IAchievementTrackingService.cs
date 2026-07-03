@@ -7,6 +7,17 @@ public interface IAchievementTrackingService
       string eventType,
       string eventId,
       string propertiesJson,
+      CancellationToken cancellationToken = default,
+      string? timestamp = null);
+
+  Task<IReadOnlyList<int>> ExecuteTrackingJobAsync(
+      int userId,
+      string eventType,
+      string eventId,
+      string propertiesJson,
+      CancellationToken cancellationToken = default);
+
+  Task ReconcileAllUsersAchievementsAsync(
       CancellationToken cancellationToken = default);
 
   Task<IReadOnlyList<StudentAchievementDto>> GetStudentAchievementsAsync(

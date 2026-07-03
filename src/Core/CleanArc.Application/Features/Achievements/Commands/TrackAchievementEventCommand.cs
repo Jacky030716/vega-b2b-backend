@@ -8,7 +8,8 @@ public record TrackAchievementEventCommand(
     int UserId,
     string EventType,
     string EventId,
-    JsonElement Properties
+    JsonElement Properties,
+    string? Timestamp = null
 ) : IRequest<OperationResult<TrackAchievementEventResult>>;
 
 public record TrackAchievementEventResult(

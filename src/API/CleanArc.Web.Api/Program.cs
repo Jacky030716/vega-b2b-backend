@@ -4,8 +4,10 @@ using Carter;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
+
 using CleanArc.Application.Contracts.Adaptive;
 using CleanArc.Application.Contracts.Notifications;
+using CleanArc.Application.Contracts.Achievements;
 using CleanArc.Application.Models.Common;
 using CleanArc.Application.ServiceConfiguration;
 using CleanArc.Domain.Entities.User;
@@ -169,7 +171,7 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 app.MapControllers();
 
-// Register Hangfire recurring job for SRS mastery decay notifications
+// Register Hangfire recurring job for SRS mastery decay notifications and achievements reconciliation
 using (var scope = app.Services.CreateScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
@@ -177,6 +179,11 @@ using (var scope = app.Services.CreateScope())
         "SrsMasteryDecayNotification",
         service => service.SendMasteryDecayNotificationsAsync(CancellationToken.None),
         "0 */8 * * *");
+
+    recurringJobManager.AddOrUpdate<IAchievementTrackingService>(
+        "DailyAchievementsReconciliation",
+        service => service.ReconcileAllUsersAchievementsAsync(CancellationToken.None),
+        Cron.Daily);
 }
 
 

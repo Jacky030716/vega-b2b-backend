@@ -84,6 +84,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<UserBadgeProgress> UserBadgeProgresses { get; set; }
     public DbSet<UserAchievementEvent> UserAchievementEvents { get; set; }
     public DbSet<AchievementTrigger> AchievementTriggers { get; set; }
+    public DbSet<ProcessedEvent> ProcessedEvents { get; set; }
 
     // Shop
     public DbSet<ShopItem> ShopItems { get; set; }

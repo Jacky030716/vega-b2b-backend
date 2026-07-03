@@ -170,7 +170,7 @@ public class StudentChallengeItemAttemptConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.ErrorType).HasColumnName("error_type").HasMaxLength(80);
         builder.Property(x => x.RawTelemetryJson).HasColumnName("raw_telemetry_json").HasColumnType("jsonb").HasDefaultValue("{}");
         builder.HasOne(x => x.StudentChallengeAttempt).WithMany(x => x.ItemAttempts).HasForeignKey(x => x.StudentChallengeAttemptId);
-        builder.HasOne(x => x.ChallengeItem).WithMany().HasForeignKey(x => x.ChallengeItemId);
+        builder.HasOne(x => x.ChallengeItem).WithMany().HasForeignKey(x => x.ChallengeItemId).IsRequired(false);
         builder.HasOne(x => x.VocabularyItem).WithMany().HasForeignKey(x => x.VocabularyItemId).IsRequired(false);
         builder.HasOne(x => x.GameTemplate).WithMany().HasForeignKey(x => x.GameTemplateId).IsRequired(false);
     }

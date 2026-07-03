@@ -1,14 +1,18 @@
 #nullable enable
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CleanArc.Application.Contracts.Achievements;
+using CleanArc.Application.Contracts.Notifications;
 using CleanArc.Domain.Entities.Achievement;
 using CleanArc.Infrastructure.Persistence.Services.Achievements;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanArc.Infrastructure.Persistence.Services;
 
-internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
+internal sealed class AchievementTrackingService(
+    ApplicationDbContext dbContext,
+    IBackgroundJobManager backgroundJobManager)
     : IAchievementTrackingService
 {
   private static readonly JsonSerializerOptions JsonOptions = new()
@@ -21,6 +25,18 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
       string eventType,
       string eventId,
       string propertiesJson,
+      CancellationToken cancellationToken = default,
+      string? timestamp = null)
+  {
+    return await ProcessEventThroughQueueAsync(userId, eventType, eventId, propertiesJson, timestamp, cancellationToken);
+  }
+
+  public async Task<IReadOnlyList<int>> ProcessEventThroughQueueAsync(
+      int userId,
+      string eventType,
+      string eventId,
+      string propertiesJson,
+      string? timestamp = null,
       CancellationToken cancellationToken = default)
   {
     var normalizedEventType = AchievementEventTypeExtensions.NormalizeEventType(eventType);
@@ -30,7 +46,6 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
     // Validate that the event type is a known achievement event type
     if (!AchievementEventTypeExtensions.TryParseEventType(normalizedEventType, out var _))
     {
-      // Log invalid event type (could also throw or return empty)
       System.Diagnostics.Debug.WriteLine($"Unknown achievement event type: {normalizedEventType}");
       return Array.Empty<int>();
     }
@@ -40,16 +55,28 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
         : eventId.Trim();
 
     var safePropertiesJson = string.IsNullOrWhiteSpace(propertiesJson) ? "{}" : propertiesJson;
-    var eventProperties = ParseJsonObject(safePropertiesJson);
-    if (eventProperties is null)
-      eventProperties = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
 
-    await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+    // Check processed events table first (idempotency check)
+    var processedEvent = await dbContext.ProcessedEvents
+        .AsNoTracking()
+        .FirstOrDefaultAsync(pe => pe.Id == normalizedEventId, cancellationToken);
 
-    // Serialize by user within the transaction to avoid lost updates under concurrency.
-    await dbContext.Database.ExecuteSqlInterpolatedAsync(
-        $"SELECT pg_advisory_xact_lock({userId})",
-        cancellationToken);
+    if (processedEvent is not null)
+    {
+        return string.IsNullOrWhiteSpace(processedEvent.UnlockedBadgeIds)
+            ? Array.Empty<int>()
+            : processedEvent.UnlockedBadgeIds
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(int.Parse)
+                .ToList();
+    }
+
+    // Write event to the database (UserAchievementEvents acting as inbox/history log)
+    DateTime processedAt = DateTime.UtcNow;
+    if (!string.IsNullOrWhiteSpace(timestamp) && DateTime.TryParse(timestamp, out var parsedTimestamp))
+    {
+        processedAt = parsedTimestamp.ToUniversalTime();
+    }
 
     var inboxEvent = new UserAchievementEvent
     {
@@ -57,7 +84,7 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
       EventType = normalizedEventType,
       EventId = normalizedEventId,
       PropertiesJson = safePropertiesJson,
-      ProcessedAt = DateTime.UtcNow,
+      ProcessedAt = processedAt,
     };
 
     dbContext.UserAchievementEvents.Add(inboxEvent);
@@ -68,10 +95,85 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
     }
     catch (DbUpdateException)
     {
-      // Duplicate event: already processed.
-      await transaction.RollbackAsync(cancellationToken);
+      // Duplicate event: already processed in parallel. Fetch previously unlocked badges.
+      var existingProcessed = await dbContext.ProcessedEvents
+          .AsNoTracking()
+          .FirstOrDefaultAsync(pe => pe.Id == normalizedEventId, cancellationToken);
+      if (existingProcessed is not null)
+      {
+          return string.IsNullOrWhiteSpace(existingProcessed.UnlockedBadgeIds)
+              ? Array.Empty<int>()
+              : existingProcessed.UnlockedBadgeIds
+                  .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                  .Select(int.Parse)
+                  .ToList();
+      }
       return Array.Empty<int>();
     }
+
+    // Place it onto the DB-backed message queue / background worker channel
+    backgroundJobManager.EnqueueAchievementEvent(userId, normalizedEventType, normalizedEventId, safePropertiesJson);
+
+    // Wait/Poll ProcessedEvents table until the background worker completes processing
+    var startTime = DateTime.UtcNow;
+    while ((DateTime.UtcNow - startTime).TotalSeconds < 5)
+    {
+        var pe = await dbContext.ProcessedEvents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == normalizedEventId, cancellationToken);
+
+        if (pe is not null)
+        {
+            return string.IsNullOrWhiteSpace(pe.UnlockedBadgeIds)
+                ? Array.Empty<int>()
+                : pe.UnlockedBadgeIds
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(int.Parse)
+                    .ToList();
+        }
+
+        await Task.Delay(100, cancellationToken);
+    }
+
+    // Fallback: If job processing times out or background queue is not active, run synchronously
+    return await ExecuteTrackingJobAsync(userId, normalizedEventType, normalizedEventId, safePropertiesJson, cancellationToken);
+  }
+
+  public async Task<IReadOnlyList<int>> ExecuteTrackingJobAsync(
+      int userId,
+      string eventType,
+      string eventId,
+      string propertiesJson,
+      CancellationToken cancellationToken = default)
+  {
+    var normalizedEventType = AchievementEventTypeExtensions.NormalizeEventType(eventType) ?? eventType;
+    var normalizedEventId = eventId.Trim();
+
+    await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+    // Serialize by user within the transaction to avoid lost updates under concurrency.
+    await dbContext.Database.ExecuteSqlInterpolatedAsync(
+        $"SELECT pg_advisory_xact_lock({userId})",
+        cancellationToken);
+
+    // Re-verify processed events inside the transaction to avoid race conditions.
+    var processedEvent = await dbContext.ProcessedEvents
+        .FirstOrDefaultAsync(pe => pe.Id == normalizedEventId, cancellationToken);
+
+    if (processedEvent is not null)
+    {
+        await transaction.CommitAsync(cancellationToken);
+        return string.IsNullOrWhiteSpace(processedEvent.UnlockedBadgeIds)
+            ? Array.Empty<int>()
+            : processedEvent.UnlockedBadgeIds
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(int.Parse)
+                .ToList();
+    }
+
+    var eventProperties = ParseJsonObject(propertiesJson);
+    if (eventProperties is null)
+      eventProperties = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
 
     var activeBadgeIds = await dbContext.Badges
         .AsNoTracking()
@@ -82,7 +184,7 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
         .AsNoTracking()
         .Where(ub => ub.UserId == userId)
         .Select(ub => ub.BadgeId)
-      .ToListAsync(cancellationToken);
+        .ToListAsync(cancellationToken);
 
     var earnedBadgeIds = earnedBadgeIdList.ToHashSet();
 
@@ -155,6 +257,14 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
 
     if (candidateRules.Count == 0)
     {
+      var peEmpty = new ProcessedEvent(normalizedEventId)
+      {
+          ProcessedAt = DateTime.UtcNow,
+          UnlockedBadgeIds = string.Empty
+      };
+      dbContext.ProcessedEvents.Add(peEmpty);
+      await dbContext.SaveChangesAsync(cancellationToken);
+
       await transaction.CommitAsync(cancellationToken);
       return Array.Empty<int>();
     }
@@ -208,8 +318,29 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
 
     var unlockedNow = await UnlockBadgesAsync(userId, unlockBadgeIds, now, cancellationToken);
 
+    var newProcessedEvent = new ProcessedEvent(normalizedEventId)
+    {
+        ProcessedAt = DateTime.UtcNow,
+        UnlockedBadgeIds = string.Join(",", unlockedNow)
+    };
+    dbContext.ProcessedEvents.Add(newProcessedEvent);
+    await dbContext.SaveChangesAsync(cancellationToken);
+
     await transaction.CommitAsync(cancellationToken);
     return unlockedNow;
+  }
+
+  public async Task ReconcileAllUsersAchievementsAsync(CancellationToken cancellationToken = default)
+  {
+      var userIds = await dbContext.Users
+          .AsNoTracking()
+          .Select(u => u.Id)
+          .ToListAsync(cancellationToken);
+
+      foreach (var userId in userIds)
+      {
+          backgroundJobManager.EnqueueSyncStudentAchievements(userId);
+      }
   }
 
   public async Task<IReadOnlyList<StudentAchievementDto>> GetStudentAchievementsAsync(
@@ -287,50 +418,203 @@ internal sealed class AchievementTrackingService(ApplicationDbContext dbContext)
 
     var unlocked = new List<int>();
 
-    var completedChallengeCount = await dbContext.Attempts
-        .AsNoTracking()
-        .Where(a => a.UserId == userId && a.IsCompleted)
-        .Select(a => a.ChallengeId)
-        .Distinct()
-        .CountAsync(cancellationToken);
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "FIRST_CHALLENGE", completedChallengeCount, cancellationToken));
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "COMPLETE_3_CHALLENGES", completedChallengeCount, cancellationToken));
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "COMPLETE_10_CHALLENGES", completedChallengeCount, cancellationToken));
+    // 1. Get all active badges
+    var activeBadges = await dbContext.Badges
+        .Where(b => b.IsActive)
+        .ToListAsync(cancellationToken);
 
-    var perfectScoreProgress = await dbContext.Attempts
-        .AsNoTracking()
-        .AnyAsync(a => a.UserId == userId && a.IsCompleted && a.StarsEarned >= 3, cancellationToken)
-        ? 3m
-        : 0m;
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "PERFECT_SCORE", perfectScoreProgress, cancellationToken));
+    // 2. For each active badge, parse its rule or trigger
+    foreach (var badge in activeBadges)
+    {
+        // Skip if already earned and not repeatable
+        var hasEarned = await dbContext.UserBadges.AnyAsync(ub => ub.UserId == userId && ub.BadgeId == badge.Id, cancellationToken);
+        if (hasEarned) 
+            continue; 
 
-    var userLevel = await dbContext.UserProgresses
-        .AsNoTracking()
-        .Where(up => up.UserId == userId)
-        .Select(up => (int?)up.CurrentLevel)
-        .FirstOrDefaultAsync(cancellationToken);
-    userLevel ??= await dbContext.Users
-        .AsNoTracking()
-        .Where(u => u.Id == userId)
-        .Select(u => (int?)u.Level)
-        .FirstOrDefaultAsync(cancellationToken) ?? 1;
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "REACH_LEVEL_5", userLevel.Value, cancellationToken));
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "REACH_LEVEL_10", userLevel.Value, cancellationToken));
+        decimal currentProgress = 0m;
 
-    var ownedMascotCount = await dbContext.UserInventoryItems
-        .AsNoTracking()
-        .Include(item => item.ShopItem)
-        .Where(item => item.UserId == userId && item.ShopItem.Category.ToLower() == "avatar")
-        .Select(item => item.ShopItemId)
-        .Distinct()
-        .CountAsync(cancellationToken);
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "OWN_3_MASCOTS", ownedMascotCount, cancellationToken));
+        // Try parsing from AchievementTriggers
+        var trigger = await dbContext.AchievementTriggers
+            .FirstOrDefaultAsync(t => t.BadgeId == badge.Id && t.IsActive, cancellationToken);
 
-    var completedModuleCount = await CountCompletedModulesAsync(userId, cancellationToken);
-    unlocked.AddRange(await SetProgressByCodeAsync(userId, "COMPLETE_1_MODULE", completedModuleCount, cancellationToken));
+        string? eventType = trigger?.EventType ?? ResolveRuleEventType(badge.RuleJson);
+        string? aggType = trigger?.AggregationType ?? TryParseRule(badge.RuleJson!)?.Aggregation;
+        string? srcField = trigger?.AggregationSourceField ?? TryParseRule(badge.RuleJson!)?.SourceField;
+
+        if (string.IsNullOrEmpty(eventType))
+        {
+            // Fallback to hardcoded codes if no declarative rules exist
+            if (badge.Code == "FIRST_CHALLENGE" || badge.Code == "COMPLETE_3_CHALLENGES" || badge.Code == "COMPLETE_10_CHALLENGES")
+            {
+                eventType = "CHALLENGE_COMPLETED";
+                aggType = "count";
+            }
+            else if (badge.Code == "PERFECT_SCORE")
+            {
+                eventType = "QuizPerfectScore";
+                aggType = "count";
+            }
+            else if (badge.Code == "REACH_LEVEL_5" || badge.Code == "REACH_LEVEL_10")
+            {
+                eventType = "LevelMilestone";
+                aggType = "max";
+            }
+            else if (badge.Code == "OWN_3_MASCOTS")
+            {
+                eventType = "ItemPurchased";
+                aggType = "count";
+            }
+            else if (badge.Code == "COMPLETE_1_MODULE")
+            {
+                eventType = "ModuleCompleted";
+                aggType = "count";
+            }
+            else if (badge.Code == "TEAM_PLAYER")
+            {
+                eventType = "ClassroomJoined";
+                aggType = "count";
+            }
+        }
+
+        if (!string.IsNullOrEmpty(eventType))
+        {
+            currentProgress = await AggregateHistoryAsync(userId, eventType, aggType, srcField, cancellationToken);
+            unlocked.AddRange(await SetProgressByCodeAsync(userId, badge.Code, currentProgress, cancellationToken));
+        }
+    }
 
     await transaction.CommitAsync(cancellationToken);
     return unlocked.Distinct().ToList();
+  }
+
+  private async Task<decimal> AggregateHistoryAsync(
+      int userId,
+      string eventType,
+      string? aggregationType,
+      string? sourceField,
+      CancellationToken cancellationToken)
+  {
+      var normalizedEventType = AchievementEventTypeExtensions.NormalizeEventType(eventType) ?? eventType;
+      var agg = (aggregationType ?? "count").Trim().ToLowerInvariant();
+
+      // Aggregate state directly from database transaction histories:
+      if (string.Equals(normalizedEventType, "ClassroomJoined", StringComparison.OrdinalIgnoreCase) || 
+          string.Equals(normalizedEventType, "classroom_joined", StringComparison.OrdinalIgnoreCase))
+      {
+          return await dbContext.ClassroomStudents
+              .AsNoTracking()
+              .CountAsync(cs => cs.UserId == userId, cancellationToken);
+      }
+      else if (string.Equals(normalizedEventType, "CHALLENGE_COMPLETED", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedEventType, "QuizCompleted", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedEventType, "attempt_completed", StringComparison.OrdinalIgnoreCase))
+      {
+          return await dbContext.Attempts
+              .AsNoTracking()
+              .CountAsync(a => a.UserId == userId && a.IsCompleted, cancellationToken);
+      }
+      else if (string.Equals(normalizedEventType, "QuizPerfectScore", StringComparison.OrdinalIgnoreCase))
+      {
+          return await dbContext.Attempts
+              .AsNoTracking()
+              .CountAsync(a => a.UserId == userId && a.IsCompleted && a.StarsEarned >= 3, cancellationToken);
+      }
+      else if (string.Equals(normalizedEventType, "LevelMilestone", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedEventType, "LEVEL_REACHED", StringComparison.OrdinalIgnoreCase))
+      {
+          var level = await dbContext.UserProgresses
+              .AsNoTracking()
+              .Where(up => up.UserId == userId)
+              .Select(up => (int?)up.CurrentLevel)
+              .FirstOrDefaultAsync(cancellationToken);
+          level ??= await dbContext.Users
+              .AsNoTracking()
+              .Where(u => u.Id == userId)
+              .Select(u => (int?)u.Level)
+              .FirstOrDefaultAsync(cancellationToken);
+          return level ?? 1;
+      }
+      else if (string.Equals(normalizedEventType, "ItemPurchased", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedEventType, "MASCOT_PURCHASED", StringComparison.OrdinalIgnoreCase))
+      {
+          return await dbContext.UserInventoryItems
+              .AsNoTracking()
+              .Include(item => item.ShopItem)
+              .Where(item => item.UserId == userId && item.ShopItem.Category.ToLower() == "avatar")
+              .Select(item => item.ShopItemId)
+              .Distinct()
+              .CountAsync(cancellationToken);
+      }
+      else if (string.Equals(normalizedEventType, "ModuleCompleted", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedEventType, "MODULE_COMPLETED", StringComparison.OrdinalIgnoreCase))
+      {
+          return await CountCompletedModulesAsync(userId, cancellationToken);
+      }
+      else if (string.Equals(normalizedEventType, "diamond_earned", StringComparison.OrdinalIgnoreCase))
+      {
+          return await dbContext.DiamondTransactions
+              .AsNoTracking()
+              .Where(t => t.UserId == userId && t.Amount > 0)
+              .SumAsync(t => (decimal)t.Amount, cancellationToken);
+      }
+      else if (string.Equals(normalizedEventType, "diamond_spent", StringComparison.OrdinalIgnoreCase))
+      {
+          return await dbContext.DiamondTransactions
+              .AsNoTracking()
+              .Where(t => t.UserId == userId && t.Amount < 0)
+              .SumAsync(t => (decimal)-t.Amount, cancellationToken);
+      }
+      else if (string.Equals(normalizedEventType, "daily_check_in", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedEventType, "DailyStreakReached", StringComparison.OrdinalIgnoreCase))
+      {
+          return await dbContext.UserStreaks
+              .AsNoTracking()
+              .Where(us => us.UserId == userId)
+              .Select(us => (decimal)us.CurrentStreak)
+              .FirstOrDefaultAsync(cancellationToken);
+      }
+
+      // Default/fallback: check general UserAchievementEvents logged in history
+      var query = dbContext.UserAchievementEvents
+          .AsNoTracking()
+          .Where(e => e.UserId == userId && e.EventType == normalizedEventType);
+
+      if (agg == "count")
+      {
+          return await query.CountAsync(cancellationToken);
+      }
+      else if (agg == "sum" && !string.IsNullOrWhiteSpace(sourceField))
+      {
+          var events = await query.ToListAsync(cancellationToken);
+          decimal sum = 0m;
+          foreach (var ev in events)
+          {
+              var props = ParseJsonObject(ev.PropertiesJson);
+              if (props != null && props.TryGetValue(sourceField, out var propVal))
+              {
+                  if (propVal.ValueKind == JsonValueKind.Number && propVal.TryGetDecimal(out var d))
+                      sum += d;
+              }
+          }
+          return sum;
+      }
+      else if (agg == "max" && !string.IsNullOrWhiteSpace(sourceField))
+      {
+          var events = await query.ToListAsync(cancellationToken);
+          decimal max = 0m;
+          foreach (var ev in events)
+          {
+              var props = ParseJsonObject(ev.PropertiesJson);
+              if (props != null && props.TryGetValue(sourceField, out var propVal))
+              {
+                  if (propVal.ValueKind == JsonValueKind.Number && propVal.TryGetDecimal(out var d))
+                      max = Math.Max(max, d);
+              }
+          }
+          return max;
+      }
+
+      return 0m;
   }
 
   private async Task<IReadOnlyList<int>> SetProgressByCodeAsync(
@@ -465,7 +749,14 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
     try
     {
       using var doc = JsonDocument.Parse(ruleJson);
-      return doc.RootElement.TryGetProperty("threshold", out var threshold)
+      var root = doc.RootElement;
+      JsonElement target = root;
+      if (root.TryGetProperty("rule", out var ruleProp) && ruleProp.ValueKind == JsonValueKind.Object)
+      {
+          target = ruleProp;
+      }
+
+      return target.TryGetProperty("threshold", out var threshold)
           && threshold.ValueKind == JsonValueKind.Number
           && threshold.TryGetDecimal(out var value)
         ? value
@@ -485,7 +776,19 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
     try
     {
       using var doc = JsonDocument.Parse(ruleJson);
-      return doc.RootElement.TryGetProperty("eventType", out var eventType)
+      var root = doc.RootElement;
+      JsonElement target = root;
+      if (root.TryGetProperty("rule", out var ruleProp) && ruleProp.ValueKind == JsonValueKind.Object)
+      {
+          target = ruleProp;
+      }
+
+      if (target.TryGetProperty("triggerEvent", out var triggerEvent) && triggerEvent.ValueKind == JsonValueKind.String)
+      {
+          return triggerEvent.GetString();
+      }
+
+      return target.TryGetProperty("eventType", out var eventType)
           && eventType.ValueKind == JsonValueKind.String
         ? eventType.GetString()
         : null;
@@ -582,7 +885,29 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
   {
     try
     {
-      return JsonSerializer.Deserialize<BadgeRule>(ruleJson, JsonOptions);
+      using var doc = JsonDocument.Parse(ruleJson);
+      var root = doc.RootElement;
+      
+      JsonElement targetElement = root;
+      if (root.TryGetProperty("rule", out var ruleProp) && ruleProp.ValueKind == JsonValueKind.Object)
+      {
+          targetElement = ruleProp;
+      }
+
+      var rule = JsonSerializer.Deserialize<BadgeRule>(targetElement.GetRawText(), JsonOptions);
+      if (rule != null)
+      {
+          if (targetElement.TryGetProperty("triggerEvent", out var triggerProp) && triggerProp.ValueKind == JsonValueKind.String)
+          {
+              rule.EventType = triggerProp.GetString() ?? string.Empty;
+          }
+          else if (string.IsNullOrEmpty(rule.EventType) && !string.IsNullOrEmpty(rule.TriggerEvent))
+          {
+              rule.EventType = rule.TriggerEvent;
+          }
+          return rule;
+      }
+      return null;
     }
     catch
     {
@@ -648,6 +973,9 @@ ON CONFLICT (""UserId"", ""BadgeId"") DO NOTHING;", cancellationToken);
 
   private sealed class BadgeRule
   {
+    [JsonPropertyName("triggerEvent")]
+    public string? TriggerEvent { get; set; }
+
     public string EventType { get; set; } = string.Empty;
     public string Aggregation { get; set; } = "count";
     public decimal Threshold { get; set; }
