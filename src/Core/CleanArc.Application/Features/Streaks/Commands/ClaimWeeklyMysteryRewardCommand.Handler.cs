@@ -10,11 +10,9 @@ namespace CleanArc.Application.Features.Streaks.Commands;
 internal class ClaimWeeklyMysteryRewardCommandHandler : IRequestHandler<ClaimWeeklyMysteryRewardCommand, OperationResult<ClaimWeeklyMysteryRewardResult>>
 {
   private const string MascotCategory = "avatar";
-  private const string RarityLegendary = "legendary";
-  private const string RarityRare = "rare";
-  private const string RarityNormal = "common";
-  private const int DiamondMin = 500;
-  private const int DiamondMax = 2000;
+  private const string SpyFamilyTheme = "spy_family";
+  private const int WeeklyDiamonds = 3000;
+  private const int DuplicateDiamonds = 3000;
 
   private readonly IUnitOfWork _unitOfWork;
   private readonly IAchievementTrackingService _achievementTrackingService;
@@ -38,11 +36,7 @@ internal class ClaimWeeklyMysteryRewardCommandHandler : IRequestHandler<ClaimWee
     {
       return OperationResult<ClaimWeeklyMysteryRewardResult>.SuccessResult(
         new ClaimWeeklyMysteryRewardResult(
-          false,
-          false,
-          0,
-          false,
-          null,
+          false, false, 0, false, false, null,
           "Complete today on a 7-day streak milestone to claim this reward."));
     }
 
@@ -51,47 +45,52 @@ internal class ClaimWeeklyMysteryRewardCommandHandler : IRequestHandler<ClaimWee
     {
       return OperationResult<ClaimWeeklyMysteryRewardResult>.SuccessResult(
         new ClaimWeeklyMysteryRewardResult(
-          true,
-          true,
-          0,
-          false,
-          null,
+          true, true, 0, false, false, null,
           "Weekly mystery reward already claimed for today."));
     }
 
-    var rewardTier = RollRewardTier();
-    var userMascotInventory = await _unitOfWork.ShopRepository.GetUserInventoryAsync(request.UserId, MascotCategory);
-    var ownedMascotIds = userMascotInventory.Select(i => i.ShopItemId).ToHashSet();
+    // Load all spy_family mascots and the user's current avatar inventory
+    var allSpyFamilyMascots = await _unitOfWork.ShopRepository.GetShopItemsByCategoryAndRaritiesAsync(
+      MascotCategory, "legendary", "rare", "common", "normal");
+    var spyFamilyPool = allSpyFamilyMascots
+      .Where(m => string.Equals(m.Theme, SpyFamilyTheme, StringComparison.OrdinalIgnoreCase))
+      .ToList();
+
+    var userInventory = await _unitOfWork.ShopRepository.GetUserInventoryAsync(request.UserId, MascotCategory);
+    var ownedIds = userInventory.Select(i => i.ShopItemId).ToHashSet();
 
     int diamondsEarned;
     MysteryMascotRewardDto? mascotReward = null;
+    bool isDuplicate = false;
 
-    if (rewardTier == MysteryRewardTier.Diamonds)
+    if (spyFamilyPool.Count == 0)
     {
-      diamondsEarned = Random.Shared.Next(DiamondMin, DiamondMax + 1);
+      // No spy_family mascots seeded yet — diamonds only fallback
+      diamondsEarned = WeeklyDiamonds;
     }
     else
     {
-      var mascotItem = await TryPickMascotForTierAsync(rewardTier, ownedMascotIds);
-      if (mascotItem is null)
+      // Pick a random spy_family mascot
+      var picked = spyFamilyPool[Random.Shared.Next(0, spyFamilyPool.Count)];
+
+      if (ownedIds.Contains(picked.Id))
       {
-        diamondsEarned = Random.Shared.Next(DiamondMin, DiamondMax + 1);
+        // Already owns it — convert to diamonds
+        isDuplicate = true;
+        diamondsEarned = DuplicateDiamonds;
       }
       else
       {
-        await _unitOfWork.ShopRepository.AddToInventoryAsync(new UserInventoryItem
+        // Award the mascot
+        await _unitOfWork.ShopRepository.TryAddToInventoryAsync(new UserInventoryItem
         {
           UserId = request.UserId,
-          ShopItemId = mascotItem.Id,
+          ShopItemId = picked.Id,
           AcquiredAt = DateTime.UtcNow
         });
 
-        diamondsEarned = GetMascotBonusDiamonds(rewardTier);
-        mascotReward = new MysteryMascotRewardDto(
-          mascotItem.Id,
-          mascotItem.Name,
-          mascotItem.Rarity,
-          mascotItem.ImageUrl);
+        diamondsEarned = WeeklyDiamonds;
+        mascotReward = new MysteryMascotRewardDto(picked.Id, picked.Name, picked.Rarity, picked.ImageUrl);
       }
     }
 
@@ -101,7 +100,11 @@ internal class ClaimWeeklyMysteryRewardCommandHandler : IRequestHandler<ClaimWee
     {
       UserId = request.UserId,
       Amount = diamondsEarned,
-      Reason = mascotReward is null ? "Weekly mystery reward (diamonds)" : "Weekly mystery reward (mascot + diamonds)",
+      Reason = isDuplicate
+        ? "Weekly mystery reward (duplicate mascot → diamonds)"
+        : mascotReward is null
+          ? "Weekly mystery reward (diamonds)"
+          : "Weekly mystery reward (mascot + diamonds)",
       ReferenceId = $"weekly-mystery:{today:yyyy-MM-dd}"
     });
 
@@ -116,6 +119,7 @@ internal class ClaimWeeklyMysteryRewardCommandHandler : IRequestHandler<ClaimWee
         amount = diamondsEarned,
         source = "weekly_mystery_reward",
         awardedMascot = mascotReward is not null,
+        isDuplicate,
         rarity = mascotReward?.Rarity,
       }),
       cancellationToken);
@@ -126,88 +130,20 @@ internal class ClaimWeeklyMysteryRewardCommandHandler : IRequestHandler<ClaimWee
         false,
         diamondsEarned,
         mascotReward is not null,
+        isDuplicate,
         mascotReward,
-        mascotReward is null
-          ? "Mystery reward granted: diamonds."
-          : "Mystery reward granted: mascot and diamonds."));
+        isDuplicate
+          ? "Duplicate mascot! Converted to diamonds."
+          : mascotReward is null
+            ? "Mystery reward granted: diamonds."
+            : "Mystery reward granted: mascot and diamonds."));
   }
 
   private static bool IsEligibleForMysteryClaim(CleanArc.Domain.Entities.Streak.UserStreak userStreak, DateOnly today)
   {
-    if (userStreak.CurrentStreak <= 0)
-    {
-      return false;
-    }
-
+    if (userStreak.CurrentStreak <= 0) return false;
     var isMilestone = userStreak.CurrentStreak % 7 == 0;
     var checkedInToday = userStreak.LastCheckInDate == today;
     return isMilestone && checkedInToday;
-  }
-
-  private static MysteryRewardTier RollRewardTier()
-  {
-    var roll = Random.Shared.Next(1, 101);
-
-    if (roll <= 1)
-    {
-      return MysteryRewardTier.LegendaryMascot;
-    }
-
-    if (roll <= 6)
-    {
-      return MysteryRewardTier.RareMascot;
-    }
-
-    if (roll <= 16)
-    {
-      return MysteryRewardTier.NormalMascot;
-    }
-
-    return MysteryRewardTier.Diamonds;
-  }
-
-  private async Task<ShopItem?> TryPickMascotForTierAsync(MysteryRewardTier tier, HashSet<int> ownedMascotIds)
-  {
-    var rarityAliases = tier switch
-    {
-      MysteryRewardTier.LegendaryMascot => new[] { RarityLegendary },
-      MysteryRewardTier.RareMascot => new[] { RarityRare },
-      MysteryRewardTier.NormalMascot => new[] { RarityNormal, "normal" },
-      _ => Array.Empty<string>()
-    };
-
-    if (rarityAliases.Length == 0)
-    {
-      return null;
-    }
-
-    var candidates = await _unitOfWork.ShopRepository.GetShopItemsByCategoryAndRaritiesAsync(MascotCategory, rarityAliases);
-    if (candidates.Count == 0)
-    {
-      return null;
-    }
-
-    var unowned = candidates.Where(c => !ownedMascotIds.Contains(c.Id)).ToList();
-    var pool = unowned.Count > 0 ? unowned : candidates;
-    return pool[Random.Shared.Next(0, pool.Count)];
-  }
-
-  private static int GetMascotBonusDiamonds(MysteryRewardTier tier)
-  {
-    return tier switch
-    {
-      MysteryRewardTier.LegendaryMascot => 1000,
-      MysteryRewardTier.RareMascot => 750,
-      MysteryRewardTier.NormalMascot => 500,
-      _ => Random.Shared.Next(DiamondMin, DiamondMax + 1)
-    };
-  }
-
-  private enum MysteryRewardTier
-  {
-    LegendaryMascot,
-    RareMascot,
-    NormalMascot,
-    Diamonds
   }
 }

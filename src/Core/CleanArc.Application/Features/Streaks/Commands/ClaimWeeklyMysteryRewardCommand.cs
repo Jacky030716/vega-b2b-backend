@@ -17,6 +17,7 @@ public record ClaimWeeklyMysteryRewardResult(
   bool AlreadyClaimed,
   int DiamondsEarned,
   bool AwardedMascot,
+  bool IsDuplicate,
   MysteryMascotRewardDto? Mascot,
   string Message);
 
