@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Enrichers.Span;
+using Serilog.Events;
 using Serilog.Exceptions;
 using Serilog.Formatting.Json;
 using Serilog.Sinks.MSSqlServer;
@@ -17,6 +18,12 @@ public static class LoggingConfiguration
 
         var env = context.HostingEnvironment;
 
+
+        configuration.MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+            .MinimumLevel.Override("System", LogEventLevel.Warning);
 
         configuration.Enrich.FromLogContext()
             .Enrich.WithProperty("ApplicationName", env.ApplicationName)

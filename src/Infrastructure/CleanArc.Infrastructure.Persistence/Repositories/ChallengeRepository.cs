@@ -1,5 +1,6 @@
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Domain.Entities.Quiz;
+using CleanArc.Domain.Entities.User;
 using CleanArc.Infrastructure.Persistence.Repositories.Common;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -190,13 +191,37 @@ internal class ChallengeRepository(ApplicationDbContext dbContext)
     }
 
     public async Task<List<ChallengeProgress>> GetChallengeLeaderboardAsync(int challengeId, int classroomId)
-        => await DbContext.ChallengeProgresses.AsNoTracking()
-            .Include(cp => cp.User)
+    {
+        var data = await DbContext.ChallengeProgresses.AsNoTracking()
             .Where(cp => cp.ChallengeId == challengeId && cp.ClassroomId == classroomId)
-            .OrderByDescending(cp => cp.BestScore)
-            .ThenBy(cp => cp.BestDurationSeconds)
-            .ThenBy(cp => cp.AttemptCount)
+            .Select(cp => new
+            {
+                Progress = cp,
+                UserName = cp.User == null ? null : cp.User.UserName,
+                Name = cp.User == null ? null : cp.User.Name,
+                AvatarId = cp.User == null ? null : cp.User.AvatarId,
+                AvatarUrl = cp.User == null ? null : cp.User.AvatarUrl
+            })
+            .OrderByDescending(x => x.Progress.BestScore)
+            .ThenBy(x => x.Progress.BestDurationSeconds)
+            .ThenBy(x => x.Progress.AttemptCount)
             .ToListAsync();
+
+        return data.Select(x =>
+        {
+            if (x.UserName != null || x.Name != null || x.AvatarId != null || x.AvatarUrl != null)
+            {
+                x.Progress.User = new User
+                {
+                    UserName = x.UserName,
+                    Name = x.Name,
+                    AvatarId = x.AvatarId,
+                    AvatarUrl = x.AvatarUrl
+                };
+            }
+            return x.Progress;
+        }).ToList();
+    }
 
     public async Task<IReadOnlyDictionary<int, ChallengeLeaderboardSnapshot>> GetChallengeLeaderboardSnapshotsAsync(
         int classroomId,
