@@ -158,12 +158,18 @@ app.UseExceptionHandler(errorApp =>
 });
 app.UseSwaggerAndUI();
 
-app.MapGet("/health", () => Results.Ok(new
+app.MapMethods("/health", new[] { HttpMethods.Get, HttpMethods.Head }, (HttpContext context) =>
 {
-    status = "ok",
-    service = "vega-backend",
-    timestamp = DateTimeOffset.UtcNow
-}))
+    if (HttpMethods.IsHead(context.Request.Method))
+        return Results.Ok();
+
+    return Results.Ok(new
+    {
+        status = "ok",
+        service = "vega-backend",
+        timestamp = DateTimeOffset.UtcNow
+    });
+})
 .AllowAnonymous()
 .ExcludeFromDescription();
 
