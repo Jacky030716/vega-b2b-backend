@@ -8,5 +8,6 @@ public record CreateClassroomCommand(
     string Name,
     string Description,
     string? Thumbnail,
-    ClassroomThumbnailRequest? ThumbnailInfo = null)
+    ClassroomThumbnailRequest? ThumbnailInfo = null,
+    IReadOnlyList<int>? StudentIds = null)
     : IRequest<OperationResult<int>>;

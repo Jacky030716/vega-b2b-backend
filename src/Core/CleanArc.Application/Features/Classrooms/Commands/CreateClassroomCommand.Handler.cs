@@ -1,6 +1,9 @@
+using System.Collections.Generic;
+using System.Security.Cryptography;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.User;
 using Mediator;
 
 namespace CleanArc.Application.Features.Classrooms.Commands;
@@ -62,6 +65,49 @@ internal class CreateClassroomCommandHandler : IRequestHandler<CreateClassroomCo
     };
 
     var created = await _unitOfWork.ClassroomRepository.CreateClassroomAsync(classroom);
+
+    if (request.StudentIds is { Count: > 0 })
+    {
+      var existingCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      foreach (var studentId in request.StudentIds)
+      {
+        await _unitOfWork.ClassroomRepository.JoinClassroomAsync(new ClassroomStudent
+        {
+          ClassroomId = created.Id,
+          UserId = studentId,
+          JoinedDate = DateTime.UtcNow
+        });
+
+        string loginCode;
+        while (true)
+        {
+          var candidate = RandomNumberGenerator.GetInt32(1000, 10000).ToString();
+          if (existingCodes.Contains(candidate))
+            continue;
+
+          var existing = await _unitOfWork.StudentCredentialRepository.GetByLoginCodeAsync(candidate);
+          if (existing != null)
+            continue;
+
+          loginCode = candidate;
+          existingCodes.Add(loginCode);
+          break;
+        }
+
+        await _unitOfWork.StudentCredentialRepository.CreateAsync(new StudentCredential
+        {
+          UserId = studentId,
+          ClassroomId = created.Id,
+          StudentLoginCode = loginCode,
+          VisualPasswordHash = "DEFAULT",
+          IsActive = true,
+          FailedAttempts = 0
+        });
+      }
+
+      await _unitOfWork.CommitAsync();
+    }
+
     return OperationResult<int>.SuccessResult(created.Id);
   }
 

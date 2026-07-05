@@ -27,6 +27,7 @@ public interface IClassroomRepository
   // Students
   Task<ClassroomStudent> JoinClassroomAsync(ClassroomStudent student);
   Task<ClassroomStudent> GetClassroomStudentAsync(int classroomId, int userId);
+  Task<bool> RemoveClassroomStudentAsync(int classroomId, int userId);
   Task<int> GetStudentCountAsync(int classroomId);
   /// <summary>Batch version of GetStudentCountAsync — returns counts for all given classroomIds in one query.</summary>
   Task<IReadOnlyDictionary<int, int>> GetStudentCountsAsync(IReadOnlyList<int> classroomIds);

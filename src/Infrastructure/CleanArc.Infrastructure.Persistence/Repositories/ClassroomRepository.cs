@@ -382,6 +382,21 @@ internal class ClassroomRepository(ApplicationDbContext dbContext) : BaseAsyncRe
         .FirstOrDefaultAsync(cs => cs.ClassroomId == classroomId && cs.UserId == userId);
   }
 
+  public async Task<bool> RemoveClassroomStudentAsync(int classroomId, int userId)
+  {
+    var membership = await DbContext.ClassroomStudents
+        .FirstOrDefaultAsync(cs => cs.ClassroomId == classroomId && cs.UserId == userId);
+
+    if (membership is null)
+    {
+      return false;
+    }
+
+    DbContext.ClassroomStudents.Remove(membership);
+    await DbContext.SaveChangesAsync();
+    return true;
+  }
+
   public async Task<int> GetStudentCountAsync(int classroomId)
   {
     return await DbContext.ClassroomStudents.CountAsync(cs => cs.ClassroomId == classroomId);

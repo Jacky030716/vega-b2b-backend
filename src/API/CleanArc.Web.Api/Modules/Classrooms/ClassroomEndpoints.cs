@@ -303,6 +303,45 @@ public class ClassroomEndpoints : ICarterModule
       return result.ToEndpointResult();
     }), _version, "GetClassroomMembers", _tag).RequireAuthorization();
 
+    // Get classroom assignable students (same institution, not already in the classroom)
+    app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId:int}}/student-candidates", async (
+        int classroomId,
+        ClaimsPrincipal user,
+        ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var isAdmin = user.IsInRole("admin") || user.IsInRole("Admin") || user.IsInRole("InstitutionAdmin");
+      var result = await sender.Send(new GetClassroomAssignableStudentsQuery(classroomId, userId, isAdmin));
+      return result.ToEndpointResult();
+    }), _version, "GetClassroomAssignableStudents", _tag)
+    .RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapPost($"{_routePrefix}{{classroomId:int}}/students/{{studentId:int}}", async (
+        int classroomId,
+        int studentId,
+        ClaimsPrincipal user,
+        ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var isAdmin = user.IsInRole("admin") || user.IsInRole("Admin") || user.IsInRole("InstitutionAdmin");
+      var result = await sender.Send(new AddClassroomStudentCommand(classroomId, studentId, userId, isAdmin));
+      return result.ToEndpointResult();
+    }), _version, "AddClassroomStudent", _tag)
+    .RequireAuthorization();
+
+    app.MapEndpoint(builder => builder.MapDelete($"{_routePrefix}{{classroomId:int}}/students/{{studentId:int}}", async (
+        int classroomId,
+        int studentId,
+        ClaimsPrincipal user,
+        ISender sender) =>
+    {
+      var userId = int.Parse(user.Identity.GetUserId());
+      var isAdmin = user.IsInRole("admin") || user.IsInRole("Admin") || user.IsInRole("InstitutionAdmin");
+      var result = await sender.Send(new RemoveClassroomStudentCommand(classroomId, studentId, userId, isAdmin));
+      return result.ToEndpointResult();
+    }), _version, "RemoveClassroomStudent", _tag)
+    .RequireAuthorization();
+
     // Get educator-facing student diagnostics inside a classroom
     app.MapEndpoint(builder => builder.MapGet($"{_routePrefix}{{classroomId}}/students/{{studentId}}/diagnostics", async (
         int classroomId,
@@ -387,7 +426,8 @@ public class ClassroomEndpoints : ICarterModule
         request.Name,
         request.Description,
         thumbnailInfo?.Url,
-        thumbnailInfo));
+        thumbnailInfo,
+        request.StudentIds));
       return result.ToEndpointResult();
     }), _version, "CreateClassroom", _tag).RequireAuthorization();
 

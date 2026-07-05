@@ -56,7 +56,8 @@ public class SpellingTestService(
             .ToListAsync(cancellationToken);
         if (modules.Count != moduleIds.Count)
             throw CreateSpellingTestFailure("One or more selected modules were not found.", classroomId, teacherId, request, moduleIds);
-        if (modules.Any(module => !string.Equals(module.Subject, subject, StringComparison.OrdinalIgnoreCase)))
+        var config = NormalizeConfig(request.Config);
+        if (!IsMixedMemoryTest(config) && modules.Any(module => !string.Equals(module.Subject, subject, StringComparison.OrdinalIgnoreCase)))
             throw CreateSpellingTestFailure(
                 "Selected modules must match the selected subject.",
                 classroomId,
@@ -64,7 +65,6 @@ public class SpellingTestService(
                 request,
                 moduleIds,
                 modules.Select(module => $"{module.Id}:{module.Subject}:Y{module.YearLevel}").ToList());
-        var config = NormalizeConfig(request.Config);
         var words = await SelectWordsAsync(classroomId, moduleIds, config, title, cancellationToken);
         if (words.Count == 0)
             throw CreateSpellingTestFailure("Selected modules do not contain vocabulary for a spelling test.", classroomId, teacherId, request, moduleIds);
@@ -383,11 +383,12 @@ public class SpellingTestService(
                 continue;
             var answer = answers.LastOrDefault(candidate => candidate.VocabularyItemId == wordId);
             var answerText = answer?.AnswerText ?? string.Empty;
-            var wasCorrect = NormalizeAnswer(answerText) == NormalizeAnswer(question.Word);
+            var expectedText = SpellingTestMemoryLanguage.ResolveTargetText(question);
+            var wasCorrect = NormalizeAnswer(answerText) == NormalizeAnswer(expectedText);
             if (wasCorrect) correct++;
             results.Add(new SpellingTestAnswerResultDto(
                 wordId,
-                question.Word,
+                expectedText,
                 answerText,
                 wasCorrect,
                 answer?.ResponseTimeMs,
@@ -777,6 +778,9 @@ public class SpellingTestService(
             words = words.OrderBy(word => StableHash($"{seed}|{word.Id}")).ToList();
         }
 
+        if (IsMixedMemoryTest(config))
+            words = SpellingTestMemoryLanguage.OrderMixedMemoryWords(words).ToList();
+
         if (config.WordCount is int wordCount && wordCount > 0)
             words = words.Take(wordCount).ToList();
 
@@ -865,6 +869,8 @@ public class SpellingTestService(
                 return new SpellingTestQuestionDto(
                     item.Id,
                     item.Word,
+                    SpellingTestMemoryLanguage.NormalizeLanguageCode(item.Language),
+                    SpellingTestMemoryLanguage.ResolveTargetText(item),
                     item.MeaningText,
                     item.ExampleSentence,
                     ChallengeGenerator.GetTranslation(item, "ms"),
@@ -934,6 +940,11 @@ public class SpellingTestService(
         {
             return NormalizeConfig(null);
         }
+    }
+
+    private static bool IsMixedMemoryTest(SpellingTestConfigDto config)
+    {
+        return string.Equals(config.GameType?.Trim(), "MIXED", StringComparison.OrdinalIgnoreCase);
     }
 
     private static List<int> ParseIntList(string raw)

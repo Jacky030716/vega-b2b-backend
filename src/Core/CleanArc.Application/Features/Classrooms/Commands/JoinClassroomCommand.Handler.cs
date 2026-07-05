@@ -1,7 +1,13 @@
+using System;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 using CleanArc.Application.Contracts.Identity;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
 using CleanArc.Domain.Entities.Classroom;
+using CleanArc.Domain.Entities.User;
 using Mediator;
 
 namespace CleanArc.Application.Features.Classrooms.Commands;
@@ -43,6 +49,30 @@ internal class JoinClassroomCommandHandler : IRequestHandler<JoinClassroomComman
       UserId = request.UserId,
       JoinedDate = DateTime.UtcNow
     });
+
+    string loginCode;
+    while (true)
+    {
+      var candidate = RandomNumberGenerator.GetInt32(1000, 10000).ToString();
+      var existingCred = await _unitOfWork.StudentCredentialRepository.GetByLoginCodeAsync(candidate);
+      if (existingCred == null)
+      {
+        loginCode = candidate;
+        break;
+      }
+    }
+
+    await _unitOfWork.StudentCredentialRepository.CreateAsync(new StudentCredential
+    {
+      UserId = request.UserId,
+      ClassroomId = classroom.Id,
+      StudentLoginCode = loginCode,
+      VisualPasswordHash = "DEFAULT",
+      IsActive = true,
+      FailedAttempts = 0
+    });
+
+    await _unitOfWork.CommitAsync();
 
     // Automatically link student to teacher's institution
     var teacher = await _userManager.GetUserByIdAsync(classroom.TeacherId);

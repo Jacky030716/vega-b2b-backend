@@ -720,6 +720,8 @@ public record StudentSpellingTestSummaryDto(
 public record SpellingTestQuestionDto(
     int VocabularyItemId,
     string Word,
+    string? Language,
+    string TargetText,
     string? MeaningText,
     string? ExampleSentence,
     string? BmText,
