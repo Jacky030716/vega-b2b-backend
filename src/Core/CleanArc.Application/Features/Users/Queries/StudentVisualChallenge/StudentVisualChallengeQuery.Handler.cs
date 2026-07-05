@@ -41,6 +41,19 @@ internal class StudentVisualChallengeQueryHandler : IRequestHandler<StudentVisua
       var existingCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
       foreach (var member in missingCredMembers)
       {
+        var memberCredentials = await _unitOfWork.StudentCredentialRepository.GetByUserIdAsync(member.UserId)
+            ?? new List<StudentCredential>();
+        var inactiveCredential = memberCredentials.FirstOrDefault(credential => credential.ClassroomId == classroom.Id);
+        if (inactiveCredential is not null)
+        {
+          inactiveCredential.IsActive = true;
+          inactiveCredential.FailedAttempts = 0;
+          inactiveCredential.LastFailedAt = null;
+          await _unitOfWork.StudentCredentialRepository.UpdateAsync(inactiveCredential);
+          credentialByUserId[member.UserId] = inactiveCredential;
+          continue;
+        }
+
         string loginCode;
         while (true)
         {

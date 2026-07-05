@@ -111,31 +111,7 @@ internal sealed class AchievementTrackingService(
       return Array.Empty<int>();
     }
 
-    // Place it onto the DB-backed message queue / background worker channel
-    backgroundJobManager.EnqueueAchievementEvent(userId, normalizedEventType, normalizedEventId, safePropertiesJson);
-
-    // Wait/Poll ProcessedEvents table until the background worker completes processing
-    var startTime = DateTime.UtcNow;
-    while ((DateTime.UtcNow - startTime).TotalSeconds < 5)
-    {
-        var pe = await dbContext.ProcessedEvents
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == normalizedEventId, cancellationToken);
-
-        if (pe is not null)
-        {
-            return string.IsNullOrWhiteSpace(pe.UnlockedBadgeIds)
-                ? Array.Empty<int>()
-                : pe.UnlockedBadgeIds
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(int.Parse)
-                    .ToList();
-        }
-
-        await Task.Delay(100, cancellationToken);
-    }
-
-    // Fallback: If job processing times out or background queue is not active, run synchronously
+    // Directly execute tracking job synchronously to eliminate Hangfire latency & polling database queries.
     return await ExecuteTrackingJobAsync(userId, normalizedEventType, normalizedEventId, safePropertiesJson, cancellationToken);
   }
 

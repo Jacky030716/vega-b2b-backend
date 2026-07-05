@@ -740,6 +740,7 @@ public record StudentSpellingTestDetailDto(
 public record SpellingTestAnswerDto(
     int VocabularyItemId,
     string AnswerText,
+    string? ExpectedAnswerText,
     int? ResponseTimeMs,
     int? RetriesCount,
     int? HintsUsed);

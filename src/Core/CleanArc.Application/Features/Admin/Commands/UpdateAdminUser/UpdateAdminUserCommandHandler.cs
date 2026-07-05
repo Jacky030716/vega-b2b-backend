@@ -1,8 +1,10 @@
 using System.Linq;
+using System.Security.Cryptography;
 using CleanArc.Application.Common;
 using CleanArc.Application.Contracts.Identity;
 using CleanArc.Application.Contracts.Persistence;
 using CleanArc.Application.Models.Common;
+using CleanArc.Domain.Entities.User;
 using Mediator;
 
 namespace CleanArc.Application.Features.Admin.Commands.UpdateAdminUser;
@@ -97,14 +99,35 @@ internal sealed class UpdateAdminUserCommandHandler(
                 }
 
                 var credentials = await unitOfWork.StudentCredentialRepository.GetByUserIdAsync(user.Id);
-                foreach (var credential in credentials)
+                var classrooms = await unitOfWork.ClassroomRepository.GetStudentClassroomsAsync(user.Id);
+                var normalizedVisualSequence = NormalizeVisualSequenceToIds(request.PicturePassword);
+
+                foreach (var classroom in classrooms)
                 {
-                    credential.VisualPasswordHash = VisualPasswordHelper.HashPassword(
-                        request.PicturePassword,
-                        credential.StudentLoginCode
-                    );
-                    await unitOfWork.StudentCredentialRepository.UpdateAsync(credential);
+                    var existingCred = credentials.FirstOrDefault(c => c.ClassroomId == classroom.Id);
+                    if (existingCred != null)
+                    {
+                        existingCred.VisualPasswordHash = VisualPasswordHelper.HashPassword(
+                            normalizedVisualSequence,
+                            existingCred.StudentLoginCode
+                        );
+                        await unitOfWork.StudentCredentialRepository.UpdateAsync(existingCred);
+                    }
+                    else
+                    {
+                        var loginCode = await GenerateUniqueLoginCodeAsync(unitOfWork.StudentCredentialRepository);
+                        await unitOfWork.StudentCredentialRepository.CreateAsync(new StudentCredential
+                        {
+                            UserId = user.Id,
+                            ClassroomId = classroom.Id,
+                            StudentLoginCode = loginCode,
+                            VisualPasswordHash = VisualPasswordHelper.HashPassword(normalizedVisualSequence, loginCode),
+                            IsActive = true,
+                            FailedAttempts = 0
+                        });
+                    }
                 }
+                await unitOfWork.CommitAsync();
             }
 
             if (!string.IsNullOrWhiteSpace(request.Password))
@@ -146,5 +169,37 @@ internal sealed class UpdateAdminUserCommandHandler(
             Email = user.Email ?? string.Empty,
             IsActive = request.IsActive
         });
+    }
+
+    private static async Task<string> GenerateUniqueLoginCodeAsync(IStudentCredentialRepository repository)
+    {
+        while (true)
+        {
+            var candidate = RandomNumberGenerator.GetInt32(1000, 10000).ToString();
+            var existing = await repository.GetByLoginCodeAsync(candidate);
+            if (existing == null)
+            {
+                return candidate;
+            }
+        }
+    }
+
+    private static string NormalizeVisualSequenceToIds(string picturePassword)
+    {
+        if (string.IsNullOrWhiteSpace(picturePassword))
+            return picturePassword;
+
+        var parts = picturePassword.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        var translatedParts = parts.Select(part =>
+        {
+            var trimmed = part.Trim().ToLowerInvariant();
+            if (trimmed.StartsWith("icon_") && int.TryParse(trimmed.Substring(5), out var num))
+            {
+                return num.ToString();
+            }
+            return trimmed;
+        });
+
+        return string.Join("-", translatedParts);
     }
 }

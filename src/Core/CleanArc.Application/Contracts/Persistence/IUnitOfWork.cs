@@ -3,7 +3,7 @@ namespace CleanArc.Application.Contracts.Persistence;
 public interface IUnitOfWork
 {
     public IUserRefreshTokenRepository UserRefreshTokenRepository { get; }
-    public IWordListRepository WordListRepository { get; }
+
 
     // New repositories
     public IStreakRepository StreakRepository { get; }

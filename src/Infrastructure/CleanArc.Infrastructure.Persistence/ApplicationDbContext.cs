@@ -16,7 +16,7 @@ using CleanArc.Domain.Entities.Shop;
 using CleanArc.Domain.Entities.Sticker;
 using CleanArc.Domain.Entities.Streak;
 using CleanArc.Domain.Entities.User;
-using CleanArc.Domain.Entities.Word;
+
 using CleanArc.SharedKernel.Extensions;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -40,7 +40,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int, UserClaim
     public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
     // Word
-    public DbSet<Word> Words { get; set; }
+
 
     // Quiz & Games
     public DbSet<Game> Games { get; set; }

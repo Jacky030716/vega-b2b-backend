@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Pluralize.NET;
@@ -70,16 +70,68 @@ public static class ModelBuilderExtensions
     }
 
     /// <summary>
-    /// Set DeleteBehavior.Restrict by default for relations
+    /// Set DeleteBehavior.Restrict by default for relations, while preserving explicit cascade delete behaviors and user-owned data cascades.
     /// </summary>
     /// <param name="modelBuilder"></param>
     public static void AddRestrictDeleteBehaviorConvention(this ModelBuilder modelBuilder)
     {
-        IEnumerable<IMutableForeignKey> cascadeFKs = modelBuilder.Model.GetEntityTypes()
+        var allFKs = modelBuilder.Model.GetEntityTypes()
             .SelectMany(t => t.GetForeignKeys())
-            .Where(fk => !fk.IsOwnership && fk.DeleteBehavior == DeleteBehavior.Cascade);
-        foreach (IMutableForeignKey fk in cascadeFKs)
-            fk.DeleteBehavior = DeleteBehavior.Restrict;
+            .Where(fk => !fk.IsOwnership)
+            .ToList();
+
+        var cascadeAllowedPrincipalNames = new HashSet<string>
+        {
+            "User",
+            "Classroom",
+            "VocabularyItem",
+            "StudentChallengeAttempt",
+            "SpellingTest",
+            "Badge",
+            "Role"
+        };
+
+        foreach (var fk in allFKs)
+        {
+            var principalName = fk.PrincipalEntityType.ClrType.Name;
+
+            // Check if cascade delete is allowed for this principal entity type
+            if (cascadeAllowedPrincipalNames.Contains(principalName))
+            {
+                if (principalName == "User")
+                {
+                    // For User, do not cascade delete if it represents a teacher/creator association
+                    bool isTeacherOrCreator = false;
+                    foreach (var property in fk.Properties)
+                    {
+                        var name = property.Name.ToLowerInvariant();
+                        if (name.Contains("teacher") || name.Contains("createdby") || name.Contains("approvedby"))
+                        {
+                            isTeacherOrCreator = true;
+                            break;
+                        }
+                    }
+
+                    if (!isTeacherOrCreator)
+                    {
+                        fk.DeleteBehavior = DeleteBehavior.Cascade;
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Allow cascade delete for other designated aggregate roots
+                    fk.DeleteBehavior = DeleteBehavior.Cascade;
+                    continue;
+                }
+            }
+
+            // Default all other cascade relationships to Restrict
+            if (fk.DeleteBehavior == DeleteBehavior.Cascade)
+            {
+                fk.DeleteBehavior = DeleteBehavior.Restrict;
+            }
+        }
     }
 
     /// <summary>

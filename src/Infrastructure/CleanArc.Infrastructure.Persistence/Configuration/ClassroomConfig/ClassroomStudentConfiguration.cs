@@ -9,6 +9,6 @@ public class ClassroomStudentConfiguration : IEntityTypeConfiguration<ClassroomS
   public void Configure(EntityTypeBuilder<ClassroomStudent> builder)
   {
     builder.HasIndex(cs => new { cs.ClassroomId, cs.UserId }).IsUnique();
-    builder.HasOne(cs => cs.User).WithMany().HasForeignKey(cs => cs.UserId);
+    builder.HasOne(cs => cs.User).WithMany().HasForeignKey(cs => cs.UserId).OnDelete(DeleteBehavior.Cascade);
   }
 }

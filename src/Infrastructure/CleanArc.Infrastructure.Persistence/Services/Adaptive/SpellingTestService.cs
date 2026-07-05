@@ -383,7 +383,9 @@ public class SpellingTestService(
                 continue;
             var answer = answers.LastOrDefault(candidate => candidate.VocabularyItemId == wordId);
             var answerText = answer?.AnswerText ?? string.Empty;
-            var expectedText = SpellingTestMemoryLanguage.ResolveTargetText(question);
+            var expectedText = string.IsNullOrWhiteSpace(answer?.ExpectedAnswerText)
+                ? SpellingTestMemoryLanguage.ResolveTargetText(question)
+                : answer.ExpectedAnswerText.Trim();
             var wasCorrect = NormalizeAnswer(answerText) == NormalizeAnswer(expectedText);
             if (wasCorrect) correct++;
             results.Add(new SpellingTestAnswerResultDto(

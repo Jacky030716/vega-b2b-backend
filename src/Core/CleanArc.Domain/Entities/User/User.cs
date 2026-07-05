@@ -1,5 +1,5 @@
 using CleanArc.Domain.Common;
-using CleanArc.Domain.Entities.Word;
+
 using CleanArc.Domain.Entities.Institution;
 using Microsoft.AspNetCore.Identity;
 
@@ -61,7 +61,7 @@ public class User : IdentityUser<int>, IEntity
 
     #region Navigation Properties
 
-    public IList<WordList> WordLists { get; set; }
+
     public ICollection<InstitutionUser> InstitutionMemberships { get; set; } = new List<InstitutionUser>();
 
     #endregion

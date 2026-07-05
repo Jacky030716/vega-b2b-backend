@@ -8,7 +8,7 @@ public class UnitOfWork : IUnitOfWork
     private readonly ApplicationDbContext _db;
 
     public IUserRefreshTokenRepository UserRefreshTokenRepository { get; }
-    public IWordListRepository WordListRepository { get; }
+
 
     // New repositories
     public IStreakRepository StreakRepository { get; }
@@ -28,7 +28,7 @@ public class UnitOfWork : IUnitOfWork
     {
         _db = db;
         UserRefreshTokenRepository = new UserRefreshTokenRepository(_db);
-        WordListRepository = new WordListRepository(_db);
+
 
         // New repositories
         StreakRepository = new StreakRepository(_db);
