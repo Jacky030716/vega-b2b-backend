@@ -53,16 +53,33 @@ internal sealed class AddClassroomStudentCommandHandler(
             JoinedDate = DateTime.UtcNow
         });
 
+        var existingCredentials = await unitOfWork.StudentCredentialRepository.GetByUserIdAsync(request.StudentId)
+            ?? new List<StudentCredential>();
+        var classroomCredential = existingCredentials.FirstOrDefault(credential => credential.ClassroomId == request.ClassroomId);
+
         var loginCode = await GenerateUniqueLoginCodeAsync(unitOfWork.StudentCredentialRepository, cancellationToken);
-        await unitOfWork.StudentCredentialRepository.CreateAsync(new StudentCredential
+        if (classroomCredential is not null)
         {
-            UserId = request.StudentId,
-            ClassroomId = request.ClassroomId,
-            StudentLoginCode = loginCode,
-            VisualPasswordHash = "DEFAULT",
-            IsActive = true,
-            FailedAttempts = 0
-        });
+            classroomCredential.StudentLoginCode = loginCode;
+            classroomCredential.VisualPasswordHash = "DEFAULT";
+            classroomCredential.IsActive = true;
+            classroomCredential.FailedAttempts = 0;
+            classroomCredential.LastFailedAt = null;
+            classroomCredential.LastSuccessfulLoginAt = null;
+            await unitOfWork.StudentCredentialRepository.UpdateAsync(classroomCredential);
+        }
+        else
+        {
+            await unitOfWork.StudentCredentialRepository.CreateAsync(new StudentCredential
+            {
+                UserId = request.StudentId,
+                ClassroomId = request.ClassroomId,
+                StudentLoginCode = loginCode,
+                VisualPasswordHash = "DEFAULT",
+                IsActive = true,
+                FailedAttempts = 0
+            });
+        }
 
         await unitOfWork.CommitAsync();
 
