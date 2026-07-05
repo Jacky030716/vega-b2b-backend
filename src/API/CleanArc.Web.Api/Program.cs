@@ -158,6 +158,15 @@ app.UseExceptionHandler(errorApp =>
 });
 app.UseSwaggerAndUI();
 
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ok",
+    service = "vega-backend",
+    timestamp = DateTimeOffset.UtcNow
+}))
+.AllowAnonymous()
+.ExcludeFromDescription();
+
 app.MapCarter();
 app.UseRouting();
 
